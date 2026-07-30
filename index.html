@@ -282,13 +282,7 @@ input[type=range]::-webkit-slider-thumb{
       <div class="form-group">
         <label>Club de cantera</label>
         <select id="cr-cantera">
-          <option value="random">🎲 Aleatorio (según tu país)</option>
-          <option value="Atlético Banfield">🇦🇷 Atlético Banfield (Argentina)</option>
-          <option value="Boca Juniors Juvenil">🇦🇷 Boca Juniors Juvenil (Argentina)</option>
-          <option value="São Paulo Sub-20">🇧🇷 São Paulo Sub-20 (Brasil)</option>
-          <option value="Santos Laguna">🇲🇽 Santos Laguna (México)</option>
-          <option value="Rayo Vallecano B">🇪🇸 Rayo Vallecano B (España)</option>
-          <option value="Nottingham Sub-21">🏴󠁧󠁢󠁥󠁮󠁧󠁿 Nottingham Sub-21 (Inglaterra)</option>
+          <option value="random">🎲 Aleatorio</option>
         </select>
       </div>
       <div class="form-group">
@@ -592,81 +586,203 @@ const POSITIONS = {
 };
 
 const CLUBS = [
-  // España (europe)
-  {name:"Madrid CF",league:"La Liga",country:"España",continent:"europe",competition:"Champions League",stars:5,minOverall:80,salaryBase:18000000},
-  {name:"FC Cataluña",league:"La Liga",country:"España",continent:"europe",competition:"Champions League",stars:5,minOverall:82,salaryBase:20000000},
-  {name:"Atlético Capital",league:"La Liga",country:"España",continent:"europe",competition:"Champions League",stars:4,minOverall:76,salaryBase:10000000},
-  {name:"Sevilla FC",league:"La Liga",country:"España",continent:"europe",competition:"Europa League",stars:3,minOverall:70,salaryBase:4000000},
-  {name:"Real Sociedad",league:"La Liga",country:"España",continent:"europe",competition:"Europa League",stars:3,minOverall:72,salaryBase:5000000},
-  {name:"Villarreal",league:"La Liga",country:"España",continent:"europe",competition:"Europa League",stars:3,minOverall:70,salaryBase:3500000},
-  {name:"Real Betis",league:"La Liga",country:"España",continent:"europe",competition:"Conference League",stars:3,minOverall:68,salaryBase:3000000},
-  // Inglaterra (europe)
-  {name:"Manchester Reds",league:"Premier League",country:"Inglaterra",continent:"europe",competition:"Champions League",stars:5,minOverall:78,salaryBase:19000000},
-  {name:"London Blues",league:"Premier League",country:"Inglaterra",continent:"europe",competition:"Champions League",stars:5,minOverall:80,salaryBase:18500000},
-  {name:"North London",league:"Premier League",country:"Inglaterra",continent:"europe",competition:"Champions League",stars:4,minOverall:76,salaryBase:12000000},
-  {name:"Liverpool Reds",league:"Premier League",country:"Inglaterra",continent:"europe",competition:"Champions League",stars:5,minOverall:80,salaryBase:17000000},
-  {name:"Manchester Cityzens",league:"Premier League",country:"Inglaterra",continent:"europe",competition:"Champions League",stars:5,minOverall:82,salaryBase:22000000},
-  {name:"Newcastle Magpies",league:"Premier League",country:"Inglaterra",continent:"europe",competition:"Europa League",stars:4,minOverall:74,salaryBase:9000000},
-  {name:"Tottenham Spurs",league:"Premier League",country:"Inglaterra",continent:"europe",competition:"Europa League",stars:4,minOverall:74,salaryBase:8000000},
-  {name:"Aston Villa",league:"Premier League",country:"Inglaterra",continent:"europe",competition:"Conference League",stars:3,minOverall:70,salaryBase:5000000},
-  // Italia (europe)
-  {name:"Milán Rossoneri",league:"Serie A",country:"Italia",continent:"europe",competition:"Champions League",stars:5,minOverall:78,salaryBase:14000000},
-  {name:"Turín Zebras",league:"Serie A",country:"Italia",continent:"europe",competition:"Champions League",stars:5,minOverall:80,salaryBase:15000000},
-  {name:"Inter Milán",league:"Serie A",country:"Italia",continent:"europe",competition:"Champions League",stars:5,minOverall:80,salaryBase:14500000},
-  {name:"Nápoles Azul",league:"Serie A",country:"Italia",continent:"europe",competition:"Europa League",stars:4,minOverall:76,salaryBase:11000000},
-  {name:"Roma Giallorossi",league:"Serie A",country:"Italia",continent:"europe",competition:"Europa League",stars:4,minOverall:74,salaryBase:7000000},
-  {name:"Lazio Roma",league:"Serie A",country:"Italia",continent:"europe",competition:"Conference League",stars:3,minOverall:70,salaryBase:4000000},
-  // Alemania (europe)
-  {name:"Múnich Baviera",league:"Bundesliga",country:"Alemania",continent:"europe",competition:"Champions League",stars:5,minOverall:80,salaryBase:17000000},
-  {name:"Dortmund Amarillo",league:"Bundesliga",country:"Alemania",continent:"europe",competition:"Europa League",stars:4,minOverall:76,salaryBase:10000000},
-  {name:"Leipzig RB",league:"Bundesliga",country:"Alemania",continent:"europe",competition:"Europa League",stars:4,minOverall:74,salaryBase:8000000},
-  {name:"Leverkusen",league:"Bundesliga",country:"Alemania",continent:"europe",competition:"Europa League",stars:4,minOverall:74,salaryBase:7500000},
-  // Francia (europe)
-  {name:"París Saint",league:"Ligue 1",country:"Francia",continent:"europe",competition:"Champions League",stars:5,minOverall:78,salaryBase:19000000},
-  {name:"Marsella Olímpico",league:"Ligue 1",country:"Francia",continent:"europe",competition:"Europa League",stars:3,minOverall:70,salaryBase:5000000},
-  {name:"Lión Olímpico",league:"Ligue 1",country:"Francia",continent:"europe",competition:"Europa League",stars:3,minOverall:70,salaryBase:4500000},
-  {name:"Mónaco AS",league:"Ligue 1",country:"Francia",continent:"europe",competition:"Europa League",stars:3,minOverall:70,salaryBase:4000000},
-  // Portugal (europe)
-  {name:"Benfica Lisboa",league:"Liga Portugal",country:"Portugal",continent:"europe",competition:"Champions League",stars:4,minOverall:74,salaryBase:7000000},
-  {name:"Porto Dragões",league:"Liga Portugal",country:"Portugal",continent:"europe",competition:"Europa League",stars:4,minOverall:72,salaryBase:6000000},
-  // Países Bajos (europe)
-  {name:"Ajax Ámsterdam",league:"Eredivisie",country:"Países Bajos",continent:"europe",competition:"Europa League",stars:3,minOverall:70,salaryBase:3500000},
-  {name:"PSV Eindhoven",league:"Eredivisie",country:"Países Bajos",continent:"europe",competition:"Conference League",stars:3,minOverall:68,salaryBase:2500000},
-  // Bélgica (europe)
-  {name:"Club Brujas",league:"Pro League",country:"Bélgica",continent:"europe",competition:"Conference League",stars:2,minOverall:64,salaryBase:1200000},
-  // Turquía (europe)
-  {name:"Galatasaray",league:"Super Lig",country:"Turquía",continent:"europe",competition:"Europa League",stars:3,minOverall:70,salaryBase:5000000},
-  // Sudamérica
-  {name:"Buenos Aires Boca",league:"Liga Argentina",country:"Argentina",continent:"americas",competition:"Libertadores",stars:3,minOverall:65,salaryBase:1500000},
-  {name:"Avellaneda Racing",league:"Liga Argentina",country:"Argentina",continent:"americas",competition:"Libertadores",stars:3,minOverall:62,salaryBase:800000},
-  {name:"Rosario Newell",league:"Liga Argentina",country:"Argentina",continent:"americas",competition:"Sudamericana",stars:2,minOverall:58,salaryBase:400000},
-  {name:"Río Flamengo",league:"Brasileirão",country:"Brasil",continent:"americas",competition:"Libertadores",stars:4,minOverall:72,salaryBase:4000000},
-  {name:"São Paulo FC",league:"Brasileirão",country:"Brasil",continent:"americas",competition:"Libertadores",stars:3,minOverall:68,salaryBase:2500000},
-  {name:"Santos FC",league:"Brasileirão",country:"Brasil",continent:"americas",competition:"Sudamericana",stars:3,minOverall:66,salaryBase:1800000},
-  // México (americas)
-  {name:"CDMX Águilas",league:"Liga MX",country:"México",continent:"americas",competition:"Concacaf Champions",stars:3,minOverall:68,salaryBase:3000000},
-  {name:"Guadalajara Chivas",league:"Liga MX",country:"México",continent:"americas",competition:"Concacaf Champions",stars:3,minOverall:66,salaryBase:2500000},
-  {name:"Monterrey Rayados",league:"Liga MX",country:"México",continent:"americas",competition:"Concacaf Champions",stars:3,minOverall:70,salaryBase:3500000},
-  // USA (americas)
-  {name:"Los Ángeles Galaxy",league:"MLS",country:"Estados Unidos",continent:"americas",competition:"Concacaf Champions",stars:2,minOverall:65,salaryBase:4000000},
-  {name:"Inter Miami",league:"MLS",country:"Estados Unidos",continent:"americas",competition:"Concacaf Champions",stars:3,minOverall:68,salaryBase:7000000},
-  // Arabia Saudí (middleeast)
-  {name:"Al-Hilal Riyadh",league:"Saudi Pro League",country:"Arabia Saudí",continent:"middleeast",competition:"AFC Champions",stars:3,minOverall:72,salaryBase:30000000},
-  {name:"Al-Nassr FC",league:"Saudi Pro League",country:"Arabia Saudí",continent:"middleeast",competition:"AFC Champions",stars:3,minOverall:72,salaryBase:28000000},
-  // Cantera
-  {name:"Atlético Banfield",league:"Reservas",country:"Argentina",continent:"americas",competition:"-",stars:1,minOverall:0,salaryBase:50000},
-  {name:"Santos Laguna",league:"Fuerzas Básicas",country:"México",continent:"americas",competition:"-",stars:1,minOverall:0,salaryBase:40000},
-  {name:"Rayo Vallecano B",league:"División Juvenil",country:"España",continent:"europe",competition:"-",stars:1,minOverall:0,salaryBase:60000},
-  {name:"Nottingham Sub-23",league:"Academia",country:"Inglaterra",continent:"europe",competition:"-",stars:1,minOverall:0,salaryBase:55000}
-];
-
-const YOUTH_CLUBS = [
-  {name:"Atlético Banfield",league:"Reservas",country:"Argentina",stars:1,minOverall:0,salaryBase:20000},
-  {name:"Santos Laguna",league:"Fuerzas Básicas",country:"México",stars:1,minOverall:0,salaryBase:15000},
-  {name:"Rayo Vallecano B",league:"División Juvenil",country:"España",stars:1,minOverall:0,salaryBase:25000},
-  {name:"Nottingham Sub-21",league:"Academia",country:"Inglaterra",stars:1,minOverall:0,salaryBase:22000},
-  {name:"São Paulo Sub-20",league:"Base",country:"Brasil",stars:1,minOverall:0,salaryBase:18000},
-  {name:"Boca Juniors Juvenil",league:"Inferiores",country:"Argentina",stars:1,minOverall:0,salaryBase:20000}
+  // ARGENTINA (americas)
+  {name:"Buenos Aires Boca",league:"Liga Argentina",country:"Argentina",continent:"americas",competition:"Libertadores",stars:4,minOverall:68,salaryBase:2000000},
+  {name:"River Buenos Aires",league:"Liga Argentina",country:"Argentina",continent:"americas",competition:"Libertadores",stars:4,minOverall:70,salaryBase:2500000},
+  {name:"Avellaneda Racing",league:"Liga Argentina",country:"Argentina",continent:"americas",competition:"Sudamericana",stars:3,minOverall:64,salaryBase:1000000},
+  {name:"Independiente",league:"Liga Argentina",country:"Argentina",continent:"americas",competition:"Sudamericana",stars:3,minOverall:62,salaryBase:900000},
+  {name:"San Lorenzo",league:"Liga Argentina",country:"Argentina",continent:"americas",competition:"Sudamericana",stars:3,minOverall:63,salaryBase:950000},
+  {name:"Estudiantes LP",league:"Liga Argentina",country:"Argentina",continent:"americas",competition:"Sudamericana",stars:3,minOverall:65,salaryBase:1100000},
+  {name:"Rosario Central",league:"Liga Argentina",country:"Argentina",continent:"americas",competition:"Sudamericana",stars:2,minOverall:60,salaryBase:600000},
+  {name:"Newells Rosario",league:"Liga Argentina",country:"Argentina",continent:"americas",competition:"-",stars:2,minOverall:58,salaryBase:400000},
+  // BRASIL (americas)
+  {name:"Río Flamengo",league:"Brasileirão",country:"Brasil",continent:"americas",competition:"Libertadores",stars:4,minOverall:74,salaryBase:4500000},
+  {name:"Palmeiras SP",league:"Brasileirão",country:"Brasil",continent:"americas",competition:"Libertadores",stars:4,minOverall:73,salaryBase:4200000},
+  {name:"São Paulo FC",league:"Brasileirão",country:"Brasil",continent:"americas",competition:"Libertadores",stars:4,minOverall:70,salaryBase:3500000},
+  {name:"Corinthians SP",league:"Brasileirão",country:"Brasil",continent:"americas",competition:"Sudamericana",stars:3,minOverall:68,salaryBase:2800000},
+  {name:"Santos FC",league:"Brasileirão",country:"Brasil",continent:"americas",competition:"Sudamericana",stars:3,minOverall:66,salaryBase:2000000},
+  {name:"Internacional",league:"Brasileirão",country:"Brasil",continent:"americas",competition:"Sudamericana",stars:3,minOverall:67,salaryBase:2200000},
+  {name:"Grêmio PA",league:"Brasileirão",country:"Brasil",continent:"americas",competition:"Sudamericana",stars:3,minOverall:65,salaryBase:1800000},
+  {name:"Fluminense Río",league:"Brasileirão",country:"Brasil",continent:"americas",competition:"-",stars:3,minOverall:66,salaryBase:2000000},
+  // MÉXICO (americas)
+  {name:"CDMX Águilas",league:"Liga MX",country:"México",continent:"americas",competition:"Concacaf Champions",stars:3,minOverall:70,salaryBase:3500000},
+  {name:"Guadalajara Chivas",league:"Liga MX",country:"México",continent:"americas",competition:"Concacaf Champions",stars:3,minOverall:68,salaryBase:2800000},
+  {name:"Monterrey Rayados",league:"Liga MX",country:"México",continent:"americas",competition:"Concacaf Champions",stars:3,minOverall:72,salaryBase:4000000},
+  {name:"Tigres UANL",league:"Liga MX",country:"México",continent:"americas",competition:"Concacaf Champions",stars:3,minOverall:71,salaryBase:3800000},
+  {name:"Cruz Azul",league:"Liga MX",country:"México",continent:"americas",competition:"Concacaf Champions",stars:3,minOverall:68,salaryBase:2500000},
+  {name:"Pachuca",league:"Liga MX",country:"México",continent:"americas",competition:"-",stars:2,minOverall:65,salaryBase:1800000},
+  {name:"Toluca",league:"Liga MX",country:"México",continent:"americas",competition:"-",stars:2,minOverall:64,salaryBase:1500000},
+  // URUGUAY
+  {name:"Peñarol Montevideo",league:"Liga Uruguaya",country:"Uruguay",continent:"americas",competition:"Libertadores",stars:3,minOverall:65,salaryBase:1200000},
+  {name:"Nacional Montevideo",league:"Liga Uruguaya",country:"Uruguay",continent:"americas",competition:"Libertadores",stars:3,minOverall:64,salaryBase:1100000},
+  // COLOMBIA
+  {name:"Nacional Medellín",league:"Liga Colombiana",country:"Colombia",continent:"americas",competition:"Libertadores",stars:3,minOverall:64,salaryBase:1000000},
+  {name:"Millonarios Bogotá",league:"Liga Colombiana",country:"Colombia",continent:"americas",competition:"Sudamericana",stars:2,minOverall:62,salaryBase:800000},
+  {name:"América Cali",league:"Liga Colombiana",country:"Colombia",continent:"americas",competition:"Sudamericana",stars:2,minOverall:60,salaryBase:600000},
+  {name:"Junior Barranquilla",league:"Liga Colombiana",country:"Colombia",continent:"americas",competition:"Sudamericana",stars:2,minOverall:60,salaryBase:550000},
+  // CHILE
+  {name:"Colo-Colo",league:"Liga Chilena",country:"Chile",continent:"americas",competition:"Libertadores",stars:3,minOverall:63,salaryBase:900000},
+  {name:"U de Chile",league:"Liga Chilena",country:"Chile",continent:"americas",competition:"Sudamericana",stars:2,minOverall:61,salaryBase:700000},
+  {name:"UC Católica",league:"Liga Chilena",country:"Chile",continent:"americas",competition:"Sudamericana",stars:2,minOverall:62,salaryBase:750000},
+  // PERÚ
+  {name:"Alianza Lima",league:"Liga Peruana",country:"Perú",continent:"americas",competition:"Libertadores",stars:2,minOverall:60,salaryBase:600000},
+  {name:"Universitario",league:"Liga Peruana",country:"Perú",continent:"americas",competition:"Sudamericana",stars:2,minOverall:58,salaryBase:450000},
+  {name:"Cristal Lima",league:"Liga Peruana",country:"Perú",continent:"americas",competition:"Sudamericana",stars:2,minOverall:59,salaryBase:500000},
+  // ECUADOR
+  {name:"Liga Quito",league:"Liga Ecuatoriana",country:"Ecuador",continent:"americas",competition:"Libertadores",stars:3,minOverall:64,salaryBase:850000},
+  {name:"Barcelona Guayaquil",league:"Liga Ecuatoriana",country:"Ecuador",continent:"americas",competition:"Libertadores",stars:2,minOverall:62,salaryBase:700000},
+  {name:"Ind. del Valle",league:"Liga Ecuatoriana",country:"Ecuador",continent:"americas",competition:"Sudamericana",stars:2,minOverall:63,salaryBase:800000},
+  // PARAGUAY
+  {name:"Olimpia Asunción",league:"Liga Paraguaya",country:"Paraguay",continent:"americas",competition:"Libertadores",stars:3,minOverall:63,salaryBase:800000},
+  {name:"Cerro Porteño",league:"Liga Paraguaya",country:"Paraguay",continent:"americas",competition:"Sudamericana",stars:2,minOverall:60,salaryBase:550000},
+  {name:"Libertad",league:"Liga Paraguaya",country:"Paraguay",continent:"americas",competition:"Sudamericana",stars:2,minOverall:60,salaryBase:500000},
+  // USA & CANADÁ
+  {name:"Los Ángeles Galaxy",league:"MLS",country:"Estados Unidos",continent:"americas",competition:"Concacaf Champions",stars:2,minOverall:65,salaryBase:4500000},
+  {name:"Inter Miami",league:"MLS",country:"Estados Unidos",continent:"americas",competition:"Concacaf Champions",stars:3,minOverall:68,salaryBase:8000000},
+  {name:"LAFC",league:"MLS",country:"Estados Unidos",continent:"americas",competition:"Concacaf Champions",stars:2,minOverall:66,salaryBase:5000000},
+  {name:"Toronto FC",league:"MLS",country:"Canadá",continent:"americas",competition:"Concacaf Champions",stars:2,minOverall:63,salaryBase:3000000},
+  // ESPAÑA (europe)
+  {name:"Madrid CF",league:"La Liga",country:"España",continent:"europe",competition:"Champions League",stars:5,minOverall:82,salaryBase:20000000},
+  {name:"FC Cataluña",league:"La Liga",country:"España",continent:"europe",competition:"Champions League",stars:5,minOverall:83,salaryBase:22000000},
+  {name:"Atlético Capital",league:"La Liga",country:"España",continent:"europe",competition:"Champions League",stars:4,minOverall:78,salaryBase:12000000},
+  {name:"Sevilla FC",league:"La Liga",country:"España",continent:"europe",competition:"Europa League",stars:3,minOverall:72,salaryBase:5000000},
+  {name:"Real Sociedad",league:"La Liga",country:"España",continent:"europe",competition:"Europa League",stars:3,minOverall:74,salaryBase:6000000},
+  {name:"Villarreal",league:"La Liga",country:"España",continent:"europe",competition:"Europa League",stars:3,minOverall:72,salaryBase:4500000},
+  {name:"Real Betis",league:"La Liga",country:"España",continent:"europe",competition:"Conference League",stars:3,minOverall:70,salaryBase:4000000},
+  {name:"Athletic Bilbao",league:"La Liga",country:"España",continent:"europe",competition:"Europa League",stars:3,minOverall:72,salaryBase:5000000},
+  {name:"Valencia CF",league:"La Liga",country:"España",continent:"europe",competition:"Conference League",stars:3,minOverall:68,salaryBase:3500000},
+  // INGLATERRA
+  {name:"Manchester Cityzens",league:"Premier League",country:"Inglaterra",continent:"europe",competition:"Champions League",stars:5,minOverall:83,salaryBase:24000000},
+  {name:"Liverpool Reds",league:"Premier League",country:"Inglaterra",continent:"europe",competition:"Champions League",stars:5,minOverall:82,salaryBase:20000000},
+  {name:"London Blues",league:"Premier League",country:"Inglaterra",continent:"europe",competition:"Champions League",stars:5,minOverall:81,salaryBase:19000000},
+  {name:"North London",league:"Premier League",country:"Inglaterra",continent:"europe",competition:"Champions League",stars:4,minOverall:78,salaryBase:14000000},
+  {name:"Manchester Reds",league:"Premier League",country:"Inglaterra",continent:"europe",competition:"Europa League",stars:5,minOverall:78,salaryBase:18000000},
+  {name:"Tottenham Spurs",league:"Premier League",country:"Inglaterra",continent:"europe",competition:"Europa League",stars:4,minOverall:76,salaryBase:10000000},
+  {name:"Newcastle Magpies",league:"Premier League",country:"Inglaterra",continent:"europe",competition:"Europa League",stars:4,minOverall:76,salaryBase:11000000},
+  {name:"Aston Villa",league:"Premier League",country:"Inglaterra",continent:"europe",competition:"Conference League",stars:3,minOverall:72,salaryBase:6000000},
+  // ALEMANIA
+  {name:"Múnich Baviera",league:"Bundesliga",country:"Alemania",continent:"europe",competition:"Champions League",stars:5,minOverall:82,salaryBase:19000000},
+  {name:"Dortmund Amarillo",league:"Bundesliga",country:"Alemania",continent:"europe",competition:"Champions League",stars:4,minOverall:78,salaryBase:12000000},
+  {name:"Leipzig RB",league:"Bundesliga",country:"Alemania",continent:"europe",competition:"Europa League",stars:4,minOverall:76,salaryBase:9000000},
+  {name:"Leverkusen",league:"Bundesliga",country:"Alemania",continent:"europe",competition:"Champions League",stars:4,minOverall:77,salaryBase:10000000},
+  {name:"Frankfurt",league:"Bundesliga",country:"Alemania",continent:"europe",competition:"Europa League",stars:3,minOverall:74,salaryBase:7000000},
+  {name:"Stuttgart",league:"Bundesliga",country:"Alemania",continent:"europe",competition:"Conference League",stars:3,minOverall:72,salaryBase:5500000},
+  // ITALIA
+  {name:"Inter Milán",league:"Serie A",country:"Italia",continent:"europe",competition:"Champions League",stars:5,minOverall:82,salaryBase:16000000},
+  {name:"Milán Rossoneri",league:"Serie A",country:"Italia",continent:"europe",competition:"Champions League",stars:5,minOverall:80,salaryBase:15000000},
+  {name:"Turín Zebras",league:"Serie A",country:"Italia",continent:"europe",competition:"Champions League",stars:5,minOverall:81,salaryBase:17000000},
+  {name:"Nápoles Azul",league:"Serie A",country:"Italia",continent:"europe",competition:"Europa League",stars:4,minOverall:78,salaryBase:12000000},
+  {name:"Roma Giallorossi",league:"Serie A",country:"Italia",continent:"europe",competition:"Europa League",stars:4,minOverall:76,salaryBase:8000000},
+  {name:"Lazio Roma",league:"Serie A",country:"Italia",continent:"europe",competition:"Europa League",stars:3,minOverall:74,salaryBase:5500000},
+  {name:"Atalanta Bérgamo",league:"Serie A",country:"Italia",continent:"europe",competition:"Champions League",stars:4,minOverall:77,salaryBase:9000000},
+  {name:"Fiorentina",league:"Serie A",country:"Italia",continent:"europe",competition:"Conference League",stars:3,minOverall:72,salaryBase:4500000},
+  // FRANCIA
+  {name:"París Saint",league:"Ligue 1",country:"Francia",continent:"europe",competition:"Champions League",stars:5,minOverall:80,salaryBase:21000000},
+  {name:"Marsella Olímpico",league:"Ligue 1",country:"Francia",continent:"europe",competition:"Europa League",stars:3,minOverall:72,salaryBase:6000000},
+  {name:"Lión Olímpico",league:"Ligue 1",country:"Francia",continent:"europe",competition:"Europa League",stars:3,minOverall:72,salaryBase:5500000},
+  {name:"Mónaco AS",league:"Ligue 1",country:"Francia",continent:"europe",competition:"Europa League",stars:3,minOverall:73,salaryBase:7000000},
+  {name:"Lille OSC",league:"Ligue 1",country:"Francia",continent:"europe",competition:"Conference League",stars:3,minOverall:70,salaryBase:4000000},
+  {name:"Lens RC",league:"Ligue 1",country:"Francia",continent:"europe",competition:"Conference League",stars:3,minOverall:70,salaryBase:3800000},
+  // PORTUGAL
+  {name:"Benfica Lisboa",league:"Liga Portugal",country:"Portugal",continent:"europe",competition:"Champions League",stars:4,minOverall:76,salaryBase:8000000},
+  {name:"Porto Dragões",league:"Liga Portugal",country:"Portugal",continent:"europe",competition:"Europa League",stars:4,minOverall:74,salaryBase:7000000},
+  {name:"Sporting Lisboa",league:"Liga Portugal",country:"Portugal",continent:"europe",competition:"Europa League",stars:4,minOverall:75,salaryBase:7500000},
+  {name:"Braga",league:"Liga Portugal",country:"Portugal",continent:"europe",competition:"Conference League",stars:3,minOverall:70,salaryBase:3500000},
+  // PAÍSES BAJOS
+  {name:"Ajax Ámsterdam",league:"Eredivisie",country:"Países Bajos",continent:"europe",competition:"Europa League",stars:3,minOverall:72,salaryBase:4000000},
+  {name:"PSV Eindhoven",league:"Eredivisie",country:"Países Bajos",continent:"europe",competition:"Champions League",stars:3,minOverall:73,salaryBase:4500000},
+  {name:"Feyenoord",league:"Eredivisie",country:"Países Bajos",continent:"europe",competition:"Europa League",stars:3,minOverall:72,salaryBase:4000000},
+  {name:"AZ Alkmaar",league:"Eredivisie",country:"Países Bajos",continent:"europe",competition:"Conference League",stars:2,minOverall:68,salaryBase:2500000},
+  // BÉLGICA
+  {name:"Club Brujas",league:"Pro League",country:"Bélgica",continent:"europe",competition:"Champions League",stars:3,minOverall:72,salaryBase:3500000},
+  {name:"Anderlecht",league:"Pro League",country:"Bélgica",continent:"europe",competition:"Europa League",stars:3,minOverall:70,salaryBase:2500000},
+  {name:"Genk",league:"Pro League",country:"Bélgica",continent:"europe",competition:"Europa League",stars:2,minOverall:68,salaryBase:2000000},
+  {name:"Antwerp",league:"Pro League",country:"Bélgica",continent:"europe",competition:"Conference League",stars:2,minOverall:66,salaryBase:1800000},
+  // TURQUÍA
+  {name:"Galatasaray",league:"Super Lig",country:"Turquía",continent:"europe",competition:"Europa League",stars:3,minOverall:72,salaryBase:6000000},
+  {name:"Fenerbahçe",league:"Super Lig",country:"Turquía",continent:"europe",competition:"Europa League",stars:3,minOverall:71,salaryBase:5500000},
+  {name:"Beşiktaş",league:"Super Lig",country:"Turquía",continent:"europe",competition:"Conference League",stars:3,minOverall:70,salaryBase:4500000},
+  {name:"Trabzonspor",league:"Super Lig",country:"Turquía",continent:"europe",competition:"Conference League",stars:2,minOverall:66,salaryBase:3000000},
+  // CROACIA
+  {name:"Dinamo Zagreb",league:"HNL",country:"Croacia",continent:"europe",competition:"Europa League",stars:2,minOverall:66,salaryBase:1500000},
+  // SUECIA
+  {name:"Malmö FF",league:"Allsvenskan",country:"Suecia",continent:"europe",competition:"Conference League",stars:2,minOverall:65,salaryBase:1200000},
+  // ARABIA SAUDÍ (middleeast)
+  {name:"Al-Hilal Riyadh",league:"Saudi Pro League",country:"Arabia Saudí",continent:"middleeast",competition:"AFC Champions",stars:4,minOverall:74,salaryBase:35000000},
+  {name:"Al-Nassr FC",league:"Saudi Pro League",country:"Arabia Saudí",continent:"middleeast",competition:"AFC Champions",stars:4,minOverall:74,salaryBase:32000000},
+  {name:"Al-Ittihad Jeddah",league:"Saudi Pro League",country:"Arabia Saudí",continent:"middleeast",competition:"AFC Champions",stars:3,minOverall:70,salaryBase:20000000},
+  // JAPÓN (asia)
+  {name:"Kashima Antlers",league:"J1 League",country:"Japón",continent:"asia",competition:"AFC Champions",stars:2,minOverall:65,salaryBase:1500000},
+  {name:"Urawa Reds",league:"J1 League",country:"Japón",continent:"asia",competition:"AFC Champions",stars:2,minOverall:63,salaryBase:1200000},
+  {name:"Yokohama Marinos",league:"J1 League",country:"Japón",continent:"asia",competition:"AFC Champions",stars:2,minOverall:64,salaryBase:1300000},
+  // COREA DEL SUR
+  {name:"Jeonbuk Hyundai",league:"K League 1",country:"Corea del Sur",continent:"asia",competition:"AFC Champions",stars:2,minOverall:64,salaryBase:1200000},
+  {name:"Ulsan Hyundai",league:"K League 1",country:"Corea del Sur",continent:"asia",competition:"AFC Champions",stars:2,minOverall:65,salaryBase:1300000},
+  // AUSTRALIA
+  {name:"Melbourne City",league:"A-League",country:"Australia",continent:"asia",competition:"AFC Champions",stars:2,minOverall:62,salaryBase:800000},
+  {name:"Sydney FC",league:"A-League",country:"Australia",continent:"asia",competition:"AFC Champions",stars:2,minOverall:63,salaryBase:900000},
+  // SENEGAL
+  {name:"Génération Foot",league:"Ligue 1 Senegal",country:"Senegal",continent:"africa",competition:"CAF Champions",stars:1,minOverall:55,salaryBase:200000},
+  // GHANA
+  {name:"Asante Kotoko",league:"Ghana Premier",country:"Ghana",continent:"africa",competition:"CAF Champions",stars:1,minOverall:56,salaryBase:250000},
+  // NIGERIA
+  {name:"Enyimba FC",league:"NPFL",country:"Nigeria",continent:"africa",competition:"CAF Champions",stars:1,minOverall:57,salaryBase:300000},
+  // CAMERÚN
+  {name:"Canon Yaoundé",league:"Elite One",country:"Camerún",continent:"africa",competition:"CAF Champions",stars:1,minOverall:54,salaryBase:150000},
+  // MARRUECOS
+  {name:"Wydad Casablanca",league:"Botola Pro",country:"Marruecos",continent:"africa",competition:"CAF Champions",stars:2,minOverall:62,salaryBase:500000},
+  {name:"Raja Casablanca",league:"Botola Pro",country:"Marruecos",continent:"africa",competition:"CAF Champions",stars:2,minOverall:61,salaryBase:450000},
+  // EGIPTO
+  {name:"Al Ahly",league:"Egyptian Premier",country:"Egipto",continent:"africa",competition:"CAF Champions",stars:2,minOverall:64,salaryBase:600000},
+  {name:"Zamalek",league:"Egyptian Premier",country:"Egipto",continent:"africa",competition:"CAF Champions",stars:2,minOverall:62,salaryBase:500000},
+  // CANTERAS (starting youth clubs - stars 1)
+  {name:"Boca Juvenil",league:"Reservas",country:"Argentina",continent:"americas",competition:"-",stars:1,minOverall:0,salaryBase:20000},
+  {name:"River Juvenil",league:"Reservas",country:"Argentina",continent:"americas",competition:"-",stars:1,minOverall:0,salaryBase:22000},
+  {name:"Banfield B",league:"Reservas",country:"Argentina",continent:"americas",competition:"-",stars:1,minOverall:0,salaryBase:18000},
+  {name:"Flamengo Sub-20",league:"Base",country:"Brasil",continent:"americas",competition:"-",stars:1,minOverall:0,salaryBase:20000},
+  {name:"São Paulo Sub-20",league:"Base",country:"Brasil",continent:"americas",competition:"-",stars:1,minOverall:0,salaryBase:18000},
+  {name:"Santos Sub-20",league:"Base",country:"Brasil",continent:"americas",competition:"-",stars:1,minOverall:0,salaryBase:17000},
+  {name:"Santos Laguna B",league:"Fuerzas Básicas",country:"México",continent:"americas",competition:"-",stars:1,minOverall:0,salaryBase:15000},
+  {name:"Chivas Sub-20",league:"Fuerzas Básicas",country:"México",continent:"americas",competition:"-",stars:1,minOverall:0,salaryBase:16000},
+  {name:"Pachuca Sub-20",league:"Fuerzas Básicas",country:"México",continent:"americas",competition:"-",stars:1,minOverall:0,salaryBase:14000},
+  {name:"La Fábrica",league:"División Juvenil",country:"España",continent:"europe",competition:"-",stars:1,minOverall:0,salaryBase:28000},
+  {name:"La Masia B",league:"División Juvenil",country:"España",continent:"europe",competition:"-",stars:1,minOverall:0,salaryBase:30000},
+  {name:"Rayo B",league:"División Juvenil",country:"España",continent:"europe",competition:"-",stars:1,minOverall:0,salaryBase:25000},
+  {name:"Red Devils Sub-21",league:"Academia",country:"Inglaterra",continent:"europe",competition:"-",stars:1,minOverall:0,salaryBase:28000},
+  {name:"Cityzens Sub-21",league:"Academia",country:"Inglaterra",continent:"europe",competition:"-",stars:1,minOverall:0,salaryBase:30000},
+  {name:"Blues Sub-21",league:"Academia",country:"Inglaterra",continent:"europe",competition:"-",stars:1,minOverall:0,salaryBase:26000},
+  {name:"Milán Primavera",league:"Primavera",country:"Italia",continent:"europe",competition:"-",stars:1,minOverall:0,salaryBase:22000},
+  {name:"Atalanta Sub-19",league:"Primavera",country:"Italia",continent:"europe",competition:"-",stars:1,minOverall:0,salaryBase:20000},
+  {name:"Múnich Sub-19",league:"Sub-19",country:"Alemania",continent:"europe",competition:"-",stars:1,minOverall:0,salaryBase:25000},
+  {name:"Dortmund Sub-19",league:"Sub-19",country:"Alemania",continent:"europe",competition:"-",stars:1,minOverall:0,salaryBase:24000},
+  {name:"París Sub-19",league:"Academia",country:"Francia",continent:"europe",competition:"-",stars:1,minOverall:0,salaryBase:26000},
+  {name:"Marsella Sub-19",league:"Academia",country:"Francia",continent:"europe",competition:"-",stars:1,minOverall:0,salaryBase:22000},
+  {name:"Benfica Sub-19",league:"Academia",country:"Portugal",continent:"europe",competition:"-",stars:1,minOverall:0,salaryBase:20000},
+  {name:"Porto Sub-19",league:"Academia",country:"Portugal",continent:"europe",competition:"-",stars:1,minOverall:0,salaryBase:19000},
+  {name:"Ajax Sub-19",league:"Academia",country:"Países Bajos",continent:"europe",competition:"-",stars:1,minOverall:0,salaryBase:22000},
+  {name:"Anderlecht Sub-19",league:"Academia",country:"Bélgica",continent:"europe",competition:"-",stars:1,minOverall:0,salaryBase:18000},
+  {name:"Dinamo Sub-19",league:"Academia",country:"Croacia",continent:"europe",competition:"-",stars:1,minOverall:0,salaryBase:12000},
+  {name:"Malmö Sub-19",league:"Academia",country:"Suecia",continent:"europe",competition:"-",stars:1,minOverall:0,salaryBase:10000},
+  {name:"Galatasaray Sub-19",league:"Fuerzas Básicas",country:"Turquía",continent:"europe",competition:"-",stars:1,minOverall:0,salaryBase:14000},
+  {name:"Peñarol Juvenil",league:"Reservas",country:"Uruguay",continent:"americas",competition:"-",stars:1,minOverall:0,salaryBase:15000},
+  {name:"Nacional Juvenil",league:"Reservas",country:"Uruguay",continent:"americas",competition:"-",stars:1,minOverall:0,salaryBase:14000},
+  {name:"Nacional Sub-20",league:"Reservas",country:"Colombia",continent:"americas",competition:"-",stars:1,minOverall:0,salaryBase:12000},
+  {name:"Colo-Colo Sub-20",league:"Reservas",country:"Chile",continent:"americas",competition:"-",stars:1,minOverall:0,salaryBase:11000},
+  {name:"Alianza Sub-20",league:"Reservas",country:"Perú",continent:"americas",competition:"-",stars:1,minOverall:0,salaryBase:10000},
+  {name:"Liga Quito Sub-20",league:"Reservas",country:"Ecuador",continent:"americas",competition:"-",stars:1,minOverall:0,salaryBase:10000},
+  {name:"Olimpia Sub-20",league:"Reservas",country:"Paraguay",continent:"americas",competition:"-",stars:1,minOverall:0,salaryBase:9000},
+  {name:"LA Galaxy Sub-19",league:"Academia",country:"Estados Unidos",continent:"americas",competition:"-",stars:1,minOverall:0,salaryBase:18000},
+  {name:"Toronto Sub-19",league:"Academia",country:"Canadá",continent:"americas",competition:"-",stars:1,minOverall:0,salaryBase:15000},
+  {name:"Al-Hilal Sub-19",league:"Academia",country:"Arabia Saudí",continent:"middleeast",competition:"-",stars:1,minOverall:0,salaryBase:20000},
+  {name:"Kashima Sub-18",league:"Academia",country:"Japón",continent:"asia",competition:"-",stars:1,minOverall:0,salaryBase:10000},
+  {name:"Jeonbuk Sub-18",league:"Academia",country:"Corea del Sur",continent:"asia",competition:"-",stars:1,minOverall:0,salaryBase:10000},
+  {name:"Sydney Sub-20",league:"Academia",country:"Australia",continent:"asia",competition:"-",stars:1,minOverall:0,salaryBase:12000},
+  {name:"Génération Foot B",league:"Reservas",country:"Senegal",continent:"africa",competition:"-",stars:1,minOverall:0,salaryBase:5000},
+  {name:"Asante Kotoko B",league:"Reservas",country:"Ghana",continent:"africa",competition:"-",stars:1,minOverall:0,salaryBase:5000},
+  {name:"Enyimba B",league:"Reservas",country:"Nigeria",continent:"africa",competition:"-",stars:1,minOverall:0,salaryBase:4000},
+  {name:"Canon Yaoundé B",league:"Reservas",country:"Camerún",continent:"africa",competition:"-",stars:1,minOverall:0,salaryBase:4000},
+  {name:"Wydad Sub-20",league:"Reservas",country:"Marruecos",continent:"africa",competition:"-",stars:1,minOverall:0,salaryBase:8000},
+  {name:"Al Ahly Sub-20",league:"Reservas",country:"Egipto",continent:"africa",competition:"-",stars:1,minOverall:0,salaryBase:8000}
 ];
 
 const LIFE_ITEMS = [
@@ -1464,7 +1580,28 @@ function selectPosition(pos, el){
 function initCreateScreen(){
   const sel = document.getElementById("cr-country");
   sel.value = pick(COUNTRIES);
+  updateCanteraOptions();
+  sel.addEventListener("change", updateCanteraOptions);
   refreshPreviewStats();
+}
+
+function updateCanteraOptions(){
+  const country = document.getElementById("cr-country").value;
+  const CANTERAS = CLUBS.filter(c=>c.stars===1);
+  const byCountry = CANTERAS.filter(c=>c.country===country);
+  const sel = document.getElementById("cr-cantera");
+  sel.innerHTML = '<option value="random">🎲 Aleatorio</option>';
+  byCountry.forEach(c=>{
+    sel.innerHTML += `<option value="${c.name}">${c.name} (${c.league})</option>`;
+  });
+  // Add a few from nearby countries for variety
+  const others = CANTERAS.filter(c=>c.country!==country).slice(0,3);
+  if(others.length>0){
+    sel.innerHTML += '<option disabled>── Otras canteras ──</option>';
+    others.forEach(c=>{
+      sel.innerHTML += `<option value="${c.name}">${c.name} (${c.country})</option>`;
+    });
+  }
 }
 
 function refreshPreviewStats(){
@@ -1543,35 +1680,25 @@ function handleStart(){
 }
 
 function assignYouthClub(){
+  const CANTERAS = CLUBS.filter(c=>c.stars===1);
   let youthClub;
-  // If player chose a specific cantera, use it directly
   if(P.selectedCantera && P.selectedCantera!=="random"){
-    youthClub = YOUTH_CLUBS.find(y=>y.name===P.selectedCantera) || pick(YOUTH_CLUBS);
+    youthClub = CANTERAS.find(y=>y.name===P.selectedCantera) || pick(CANTERAS);
   } else {
-    let youthClubName;
     const c = P.country;
-    if(c==="Argentina") youthClubName = pick(["Atlético Banfield","Boca Juniors Juvenil"]);
-  else if(c==="Brasil") youthClubName = "São Paulo Sub-20";
-  else if(c==="México") youthClubName = "Santos Laguna";
-  else if(c==="España") youthClubName = "Rayo Vallecano B";
-  else if(c==="Inglaterra") youthClubName = "Nottingham Sub-21";
-  else if(["Uruguay","Paraguay","Chile","Perú","Ecuador","Colombia"].includes(c))
-    youthClubName = pick(["Atlético Banfield","São Paulo Sub-20"]);
-  else if(["Italia","Francia","Alemania","Portugal","Países Bajos","Bélgica","Croacia","Suecia","Turquía"].includes(c))
-    youthClubName = pick(["Rayo Vallecano B","Nottingham Sub-21"]);
-  else if(["Japón","Corea del Sur","Australia"].includes(c))
-    youthClubName = "Santos Laguna";
-  else if(["Senegal","Ghana","Nigeria","Camerún","Marruecos","Egipto"].includes(c))
-    youthClubName = "São Paulo Sub-20";
-  else if(["Estados Unidos","Canadá"].includes(c))
-    youthClubName = "Santos Laguna";
-  else if(["Arabia Saudí"].includes(c))
-    youthClubName = "Atlético Banfield";
-  else
-    youthClubName = pick(["Rayo Vallecano B","Nottingham Sub-21"]);
-
-    youthClub = YOUTH_CLUBS.find(y=>y.name===youthClubName) || pick(YOUTH_CLUBS);
+    const byCountry = CANTERAS.filter(y=>y.country===c);
+    if(byCountry.length>0) youthClub = pick(byCountry);
+    else {
+      // Nearby region fallback
+      const sa = CANTERAS.filter(y=>["Argentina","Brasil","Uruguay","Colombia","Chile","Perú","Ecuador","Paraguay"].includes(y.country));
+      const eu = CANTERAS.filter(y=>["España","Inglaterra","Italia","Alemania","Francia","Portugal","Países Bajos","Bélgica","Croacia","Suecia","Turquía"].includes(y.country));
+      const na = CANTERAS.filter(y=>["México","Estados Unidos","Canadá"].includes(y.country));
+      if(["Argentina","Brasil","Uruguay","Colombia","Chile","Perú","Ecuador","Paraguay"].includes(c)) youthClub = pick(sa);
+      else if(["México","Estados Unidos","Canadá"].includes(c)) youthClub = pick(na);
+      else youthClub = pick(eu.length>0?eu:CANTERAS);
+    }
   }
+  if(!youthClub) youthClub = pick(CANTERAS);
   P.clubName = youthClub.name;
   P.clubLeague = youthClub.league;
   P.clubCountry = youthClub.country;
