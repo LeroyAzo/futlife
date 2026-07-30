@@ -1950,17 +1950,28 @@ function advanceYear(){
   // Generate realistic base season stats BEFORE events
   generateSeasonStats();
 
-  // Sort events chronologically
+  // Sort events chronologically - title events go LAST
   const eventOrder = {match:1,national:2,worldcup:2,transfer:3,injury:4,coach:5,contract:6,life:7,relationship:8,drama:9,humor:10,random:11};
+  function hasTitleEffect(evt){
+    const opts = evt.options||[];
+    for(const o of opts){
+      if(o.effects?.winTitle||o.effects?.titles||o.failEffects?.winTitle||o.failEffects?.titles) return true;
+    }
+    return false;
+  }
   currentYearEvents.sort((a,b)=>{
+    const ta = hasTitleEffect(a)?99:0;
+    const tb = hasTitleEffect(b)?99:0;
+    if(ta!==tb) return ta-tb;
     const oa = eventOrder[a.type]||10;
     const ob = eventOrder[b.type]||10;
     if(oa!==ob) return oa-ob;
-    // Within same type: small last
     const sa = a.magnitude==="small"?2:a.magnitude==="big"?0:1;
     const sb = b.magnitude==="small"?2:b.magnitude==="big"?0:1;
     return sa-sb;
   });
+
+  P.seasonWonTitle = false;
 
   // Contract countdown - only if not just signed this year
   if(P.clubStars>0){
@@ -2169,8 +2180,8 @@ function resolveEvent(event, option){
         P.clubName = "Agente libre"; P.clubStars = 0; P.salary = 0; P.contractYears = 0;
         showFreeAgentPicker(); return;
       }
-      if(e.titles){e.titles.forEach(t=>{P.titles.push(t);effectsHTML+=`🏆 ${t}<br>`})}
-      if(e.winTitle){const t="Campeón de liga ("+P.age+")";P.titles.push(t);effectsHTML+=`🏆 ${t}<br>`}
+      if(e.titles){e.titles.forEach(t=>{P.titles.push(t);effectsHTML+=`🏆 ${t}<br>`;P.seasonWonTitle=true})}
+      if(e.winTitle){const t="Campeón de liga ("+P.age+")";P.titles.push(t);effectsHTML+=`🏆 ${t}<br>`;P.seasonWonTitle=true}
       if(e.overallPenalty){for(const k of Object.keys(P.stats)){P.stats[k]=Math.max(10,P.stats[k]-5)};effectsHTML+="📉 Atributos -5 (declive)<br>"}
     }
   } else {
@@ -2579,6 +2590,7 @@ function showYearSummary(){
   document.getElementById("sum-year").textContent = P.age;
   const list = document.getElementById("sum-events-list");
   const cr = P.competitionResult||{league:"No disponible",leaguePos:"-",teamStrength:0};
+  const leaguePos = P.seasonWonTitle ? 1 : cr.leaguePos;
   
   // Season stats + competition results
   list.innerHTML = `
@@ -2590,9 +2602,9 @@ function showYearSummary(){
         <div><span style="font-size:24px;font-weight:700;color:#79c0ff">${P.seasonAssists||0}</span><br><span style="font-size:11px;color:#8b949e">Asistencias</span></div>
       </div>
       <div style="text-align:center;font-size:18px;font-weight:700;color:#d29922">
-        🏆 ${getPositionMedal(cr.leaguePos)} ${cr.leaguePos}° lugar en ${cr.league}
+        🏆 ${getPositionMedal(leaguePos)} ${leaguePos}° lugar en ${cr.league}
       </div>
-      ${getPositionText(cr.leaguePos)}
+      ${getPositionText(leaguePos)}
     </div>
   `;
   
