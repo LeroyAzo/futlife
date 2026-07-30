@@ -684,7 +684,7 @@ const P = {
   morale:60, energyAvailable:true, injured:false, injuryWeeks:0,
   relationships:{entrenador:60,compañeros:60,pareja:0,familia:70,amigos:60},
   hasPartner:false, partnerName:"", married:false, hasKids:false, kidNames:[],
-  seasonGoals:0, seasonAssists:0, careerGoals:0, careerAssists:0,
+  seasonGoals:0, seasonAssists:0, seasonMatches:0, careerGoals:0, careerAssists:0,
   careerMatches:0,
   titles:[], achievements:[],
   clubHistory:[], timeline:[],
@@ -1297,6 +1297,56 @@ function refreshOverall(){
   else document.getElementById("top-ovr").style.color="#e6edf3";
 }
 
+function generateSeasonStats(){
+  if(P.clubStars===0) return;
+  const pos = P.position;
+  const ovr = P.overall;
+  const roleMul = 1 + (P.squadRole-2)*0.15; // Role affects playing time
+  const baseMatches = Math.floor((25 + (P.squadRole*4) + randomBetween(0,8)) * (P.injured?0.3:1));
+  P.seasonMatches = Math.min(55, baseMatches);
+  P.careerMatches += P.seasonMatches;
+
+  // Goals based on position and overall
+  if(pos==="DC") P.seasonGoals = Math.floor(ovr*0.2 + roleMul*5 + randomBetween(-3,6));
+  else if(pos==="EI"||pos==="ED") P.seasonGoals = Math.floor(ovr*0.15 + roleMul*4 + randomBetween(-2,5));
+  else if(pos==="MCO") P.seasonGoals = Math.floor(ovr*0.12 + roleMul*3 + randomBetween(-2,4));
+  else if(pos==="MC"||pos==="MCD") P.seasonGoals = Math.floor(ovr*0.08 + randomBetween(0,3));
+  else if(pos==="DFI"||pos==="DFD"||pos==="LI"||pos==="LD") P.seasonGoals = Math.floor(ovr*0.04 + randomBetween(0,2));
+  else P.seasonGoals = 0; // PO
+  P.seasonGoals = Math.max(0, P.seasonGoals);
+
+  // Assists based on position
+  if(pos==="MCO"||pos==="MC") P.seasonAssists = Math.floor(ovr*0.18 + roleMul*4 + randomBetween(-2,5));
+  else if(pos==="EI"||pos==="ED") P.seasonAssists = Math.floor(ovr*0.12 + roleMul*3 + randomBetween(-1,4));
+  else if(pos==="DC") P.seasonAssists = Math.floor(ovr*0.08 + randomBetween(0,4));
+  else if(pos==="MCD"||pos==="LI"||pos==="LD") P.seasonAssists = Math.floor(ovr*0.1 + randomBetween(0,3));
+  else P.seasonAssists = Math.floor(ovr*0.03 + randomBetween(0,2));
+  P.seasonAssists = Math.max(0, P.seasonAssists);
+
+  // Add to career totals  
+  P.careerGoals += P.seasonGoals;
+  P.careerAssists += P.seasonAssists;
+
+  // Competition results
+  P.competitionResult = generateCompetitionResults();
+}
+
+function generateCompetitionResults(){
+  const stars = P.clubStars;
+  const ovr = P.overall;
+  const teamStrength = Math.min(20, Math.floor(stars*4 + ovr/8 + randomBetween(-3,2)));
+  const leaguePos = Math.max(1, Math.min(20, 21 - teamStrength + randomBetween(-2,2)));
+
+  // League name from current club
+  const league = P.clubLeague||"Liga";
+
+  return {
+    league: league,
+    leaguePos: leaguePos,
+    teamStrength: teamStrength
+  };
+}
+
 function updateUI(){
   document.getElementById("top-name").textContent = P.name;
   document.getElementById("top-age").textContent = P.age;
@@ -1444,7 +1494,7 @@ function handleStart(){
   P.injured = false;
   P.relationships = {entrenador:60,compañeros:60,pareja:0,familia:70,amigos:60};
   P.hasPartner = false; P.married = false; P.hasKids = false; P.kidNames = [];
-  P.seasonGoals = 0; P.seasonAssists = 0; P.careerGoals = 0; P.careerAssists = 0;
+  P.seasonGoals = 0; P.seasonAssists = 0; P.seasonMatches = 0; P.careerGoals = 0; P.careerAssists = 0;
   P.careerMatches = 0;
   P.titles = []; P.achievements = [];
   P.clubHistory = []; P.timeline = [];
@@ -1635,6 +1685,7 @@ function advanceYear(){
   P.year++;
   P.seasonGoals = 0;
   P.seasonAssists = 0;
+  P.seasonMatches = 0;
   P.energyAvailable = true;
 
   // Passive follower growth proportional to current followers
@@ -1747,6 +1798,21 @@ function advanceYear(){
 
   currentYearEvents = [...picked, ...currentYearEvents];
   if(currentYearEvents.length===0) currentYearEvents.push(ALL_EVENTS.find(e=>e.type==="random"));
+
+  // Generate realistic base season stats BEFORE events
+  generateSeasonStats();
+
+  // Sort events chronologically
+  const eventOrder = {match:1,national:2,worldcup:2,transfer:3,injury:4,coach:5,contract:6,life:7,relationship:8,drama:9,humor:10,random:11};
+  currentYearEvents.sort((a,b)=>{
+    const oa = eventOrder[a.type]||10;
+    const ob = eventOrder[b.type]||10;
+    if(oa!==ob) return oa-ob;
+    // Within same type: small last
+    const sa = a.magnitude==="small"?2:a.magnitude==="big"?0:1;
+    const sb = b.magnitude==="small"?2:b.magnitude==="big"?0:1;
+    return sa-sb;
+  });
 
   // Simple contract countdown - no performance targets to kick you out
   if(P.clubStars>0){
@@ -2359,15 +2425,36 @@ function openNegotiationFromPicker(idx){
 function showYearSummary(){
   document.getElementById("sum-year").textContent = P.age;
   const list = document.getElementById("sum-events-list");
-  list.innerHTML = "";
+  const cr = P.competitionResult||{league:"No disponible",leaguePos:"-",teamStrength:0};
+  
+  // Season stats + competition results
+  list.innerHTML = `
+    <div style="background:#0d1117;border-radius:10px;padding:14px;margin-bottom:16px">
+      <h4 style="text-align:center;color:#e6edf3;margin-bottom:12px">🏟️ ${cr.league}</h4>
+      <div style="display:flex;justify-content:space-around;text-align:center;margin-bottom:10px">
+        <div><span style="font-size:24px;font-weight:700;color:#7ee787">${P.seasonMatches||0}</span><br><span style="font-size:11px;color:#8b949e">Partidos</span></div>
+        <div><span style="font-size:24px;font-weight:700;color:#f0883e">${P.seasonGoals||0}</span><br><span style="font-size:11px;color:#8b949e">Goles</span></div>
+        <div><span style="font-size:24px;font-weight:700;color:#79c0ff">${P.seasonAssists||0}</span><br><span style="font-size:11px;color:#8b949e">Asistencias</span></div>
+      </div>
+      <div style="text-align:center;font-size:18px;font-weight:700;color:#d29922">
+        🏆 ${getPositionMedal(cr.leaguePos)} ${cr.leaguePos}° lugar en ${cr.league}
+      </div>
+      ${getPositionText(cr.leaguePos)}
+    </div>
+  `;
+  
+  // Events list
   if(P.yearEvents.length===0){
-    list.innerHTML = "<p style='color:#8b949e'>Un año tranquilo sin grandes sucesos.</p>";
+    list.innerHTML += "<p style='color:#8b949e'>Sin eventos destacados este año.</p>";
   } else {
+    list.innerHTML += "<h4 style='color:#8b949e;font-size:12px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px'>Sucesos del año</h4>";
     P.yearEvents.forEach(ev=>{
       const emoji = ev.result==="positive"?"✅":ev.result==="negative"?"❌":"➖";
-      list.innerHTML += `<p>${emoji} <strong>${ev.title}:</strong> ${ev.text}</p>`;
+      list.innerHTML += `<p style="font-size:13px;margin-bottom:4px">${emoji} <strong>${ev.title}:</strong> ${ev.text}</p>`;
     });
   }
+
+  // ... rest same
 
   // Achievements during summary
   const achDiv = document.getElementById("sum-achievements");
@@ -2392,6 +2479,21 @@ function closeSummary(){
     P.retirementReason = "edad avanzada";
     showRetirement();
   }
+}
+
+function getPositionMedal(pos){
+  if(pos===1) return "🥇";
+  if(pos<=3) return "🥈";
+  if(pos<=6) return "🏅";
+  return "📊";
+}
+
+function getPositionText(pos){
+  if(pos===1) return "<p style='text-align:center;color:#7ee787;font-size:13px;margin-top:4px'>¡CAMPEONES! Un año histórico para el club.</p>";
+  if(pos<=3) return "<p style='text-align:center;color:#79c0ff;font-size:13px;margin-top:4px'>Clasificaron a copas internacionales. ¡Gran temporada!</p>";
+  if(pos<=6) return "<p style='text-align:center;color:#d29922;font-size:13px;margin-top:4px'>Media tabla. Temporada decente, se puede mejorar.</p>";
+  if(pos<=15) return "<p style='text-align:center;color:#8b949e;font-size:13px;margin-top:4px'>Temporada discreta. Hay que trabajar más.</p>";
+  return "<p style='text-align:center;color:#f85149;font-size:13px;margin-top:4px'>Casi descienden. Un año para olvidar.</p>";
 }
 
 // ============================================================
@@ -2485,8 +2587,9 @@ function renderStats(){
   }
   div.innerHTML += `
     <div style="margin-top:12px;display:flex;justify-content:space-between;font-size:12px;color:#8b949e">
-      <span>Goles temporada: ${P.seasonGoals}</span>
-      <span>Asistencias: ${P.seasonAssists}</span>
+      <span>📊 Temporada: ${P.seasonMatches||0} partidos</span>
+      <span>⚽ ${P.seasonGoals||0} goles</span>
+      <span>🎯 ${P.seasonAssists||0} asist.</span>
     </div>
     <div style="display:flex;justify-content:space-between;font-size:12px;color:#8b949e">
       <span>Goles carrera: ${P.careerGoals}</span>
