@@ -1,0 +1,2641 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Football Life - Simulador de Carrera</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+  background:#0d1117;
+  color:#e6edf3;
+  min-height:100vh;
+  overflow-x:hidden;
+}
+body::before{
+  content:'';
+  position:fixed;
+  inset:0;
+  background:radial-gradient(ellipse at 50% 0%, rgba(34,139,34,0.08) 0%, transparent 60%),
+             radial-gradient(ellipse at 80% 100%, rgba(34,139,34,0.05) 0%, transparent 50%);
+  pointer-events:none;
+  z-index:0;
+}
+
+.screen{display:none;position:relative;z-index:1}
+.screen.active{display:flex;flex-direction:column;align-items:center;min-height:100vh}
+
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:#161b22}
+::-webkit-scrollbar-thumb{background:#30363d;border-radius:3px}
+
+/* ===== CREATE SCREEN ===== */
+#create-screen{padding:20px;justify-content:center;min-height:100vh}
+#create-screen .logo{font-size:36px;font-weight:900;background:linear-gradient(135deg,#2ea043,#7ee787);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:2px;text-align:center}
+#create-screen .subtitle{color:#8b949e;font-size:14px;margin-bottom:24px;text-align:center}
+
+.create-layout{
+  display:flex;gap:32px;max-width:900px;width:100%;
+  align-items:center;justify-content:center;flex-wrap:wrap;
+}
+.create-left{
+  flex:0 0 320px;display:flex;flex-direction:column;gap:16px;
+  background:#161b22;border:1px solid #30363d;border-radius:16px;
+  padding:28px;
+}
+.create-right{
+  flex:0 0 380px;display:flex;flex-direction:column;align-items:center;gap:12px;
+}
+.field-container{
+  position:relative;width:100%;max-width:380px;
+  aspect-ratio:3/4;background:linear-gradient(180deg,#1a6e1a 0%,#145214 50%,#0e3e0e 100%);
+  border-radius:12px;border:3px solid rgba(255,255,255,0.2);
+  overflow:hidden;box-shadow:0 0 40px rgba(0,0,0,0.3);
+}
+/* Field markings */
+.field-container::before{
+  content:'';position:absolute;inset:10px;
+  border:2px solid rgba(255,255,255,0.15);border-radius:4px;
+}
+/* Position dots */
+
+.pos-dot{
+  position:absolute;width:36px;height:36px;border-radius:50%;
+  background:rgba(255,255,255,0.08);border:2px solid rgba(255,255,255,0.2);
+  transform:translate(-50%,-50%);cursor:pointer;transition:all .3s;
+  display:flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:700;color:rgba(255,255,255,0.5);
+  z-index:2;
+}
+.pos-dot:hover{background:rgba(46,160,67,0.3);border-color:#2ea043;color:#fff;box-shadow:0 0 20px rgba(46,160,67,0.4);transform:translate(-50%,-50%) scale(1.15)}
+.pos-dot.selected{background:rgba(46,160,67,0.5);border-color:#7ee787;color:#fff;box-shadow:0 0 25px rgba(126,231,135,0.5)}
+
+.stats-preview{display:flex;gap:6px;flex-wrap:wrap}
+.stat-badge{
+  background:#0d1117;border:1px solid #21262d;border-radius:8px;
+  padding:8px 10px;font-size:11px;color:#8b949e;
+  display:flex;flex-direction:column;align-items:center;gap:2px;
+  flex:1;min-width:52px;
+}
+.stat-badge .val{font-size:17px;font-weight:700;color:#7ee787}
+.form-group{display:flex;flex-direction:column;gap:6px}
+.form-group label{font-size:13px;color:#8b949e;text-transform:uppercase;letter-spacing:1px;font-weight:600}
+.form-group input,.form-group select{
+  background:#0d1117;border:1px solid #30363d;border-radius:8px;
+  padding:12px 16px;color:#e6edf3;font-size:16px;font-family:inherit;
+  outline:none;transition:border-color .2s;
+}
+.form-group input:focus,.form-group select:focus{border-color:#2ea043}
+
+@media(max-width:760px){
+  .create-layout{flex-direction:column-reverse}
+  .create-left{flex:0 0 auto;width:100%}
+  .create-right{flex:0 0 auto;width:100%;max-width:320px}
+  .field-container{max-width:280px}
+}
+
+.btn{
+  padding:14px 28px;border:none;border-radius:10px;font-size:16px;
+  font-weight:600;font-family:inherit;cursor:pointer;transition:all .2s;
+}
+.btn-primary{background:#238636;color:#fff;width:100%}
+.btn-primary:hover{background:#2ea043;transform:translateY(-1px)}
+.btn-primary:active{transform:translateY(0)}
+.btn-danger{background:#da3633;color:#fff}
+.btn-danger:hover{background:#f85149}
+.btn-outline{background:transparent;border:1px solid #30363d;color:#e6edf3}
+.btn-outline:hover{border-color:#58a6ff;color:#58a6ff}
+.btn-small{padding:8px 16px;font-size:13px}
+.btn-advance{
+  background:linear-gradient(135deg,#238636,#2ea043);
+  color:#fff;font-size:20px;padding:16px 48px;
+  box-shadow:0 4px 20px rgba(35,134,54,0.3);
+  letter-spacing:1px;
+}
+.btn-advance:hover{box-shadow:0 6px 30px rgba(35,134,54,0.5);transform:translateY(-2px)}
+
+/* ===== MAIN SCREEN ===== */
+#main-screen{max-width:700px;margin:0 auto;width:100%;padding:0 16px 32px}
+
+.top-bar{
+  position:sticky;top:0;z-index:10;
+  background:rgba(13,17,23,0.92);backdrop-filter:blur(12px);
+  border-bottom:1px solid #21262d;
+  padding:12px 16px;margin:0 -16px 16px;
+  display:flex;justify-content:space-between;align-items:center;
+  flex-wrap:wrap;gap:8px;
+}
+.top-info{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.top-item{font-size:13px;color:#8b949e}
+.top-item span{color:#e6edf3;font-weight:600}
+.top-ovr{font-size:28px;font-weight:900;color:#7ee787;text-shadow:0 0 20px rgba(126,231,135,0.3)}
+.top-smiley{font-size:24px}
+
+.tab-bar{
+  display:flex;gap:4px;margin-bottom:20px;background:#161b22;
+  border-radius:12px;padding:4px;overflow-x:auto;
+}
+.tab-btn{
+  flex:1;min-width:70px;padding:10px 12px;border:none;border-radius:10px;
+  background:transparent;color:#8b949e;font-size:12px;font-weight:600;
+  font-family:inherit;cursor:pointer;transition:all .2s;
+  white-space:nowrap;
+}
+.tab-btn.active{background:#238636;color:#fff}
+.tab-btn:hover:not(.active){color:#e6edf3;background:rgba(255,255,255,0.03)}
+
+.tab-panel{display:none;animation:fadeIn .3s ease}
+.tab-panel.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+.section-card{
+  background:#161b22;border:1px solid #21262d;border-radius:12px;
+  padding:20px;margin-bottom:12px;
+}
+.section-card h3{font-size:14px;color:#8b949e;margin-bottom:12px;text-transform:uppercase;letter-spacing:1px}
+
+.event-log{max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:8px}
+.event-log-item{
+  background:#0d1117;border-left:3px solid #30363d;border-radius:0 8px 8px 0;
+  padding:10px 14px;font-size:13px;line-height:1.5;
+}
+.event-log-item.pos{border-left-color:#2ea043}
+.event-log-item.neg{border-left-color:#da3633}
+.event-log-item.neutral{border-left-color:#d29922}
+
+.rel-bar{margin-bottom:10px}
+.rel-bar .rel-label{display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px}
+.rel-bar .rel-track{height:8px;background:#21262d;border-radius:4px;overflow:hidden}
+.rel-bar .rel-fill{height:100%;border-radius:4px;transition:width .5s}
+
+.stat-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.stat-row .stat-name{font-size:13px;color:#8b949e}
+.stat-row .stat-bar-wrap{flex:1;margin:0 12px;height:6px;background:#21262d;border-radius:3px;overflow:hidden}
+.stat-row .stat-bar-fill{height:100%;border-radius:3px;transition:width .5s}
+.stat-row .stat-num{font-size:14px;font-weight:700;width:28px;text-align:right;color:#7ee787}
+
+.club-list{display:flex;flex-direction:column;gap:8px}
+.club-item{padding:10px 14px;background:#0d1117;border-radius:8px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.club-item .club-name{font-weight:600;font-size:15px}
+.club-item .club-info{font-size:12px;color:#8b949e}
+.club-stars{color:#d29922;font-size:12px}
+
+.achievement-grid{display:flex;flex-wrap:wrap;gap:8px}
+.achievement-badge{
+  background:#0d1117;border:1px solid #21262d;border-radius:8px;
+  padding:10px 14px;font-size:12px;text-align:center;
+  opacity:0.4;transition:all .3s;
+}
+.achievement-badge.unlocked{opacity:1;border-color:#d29922;background:rgba(210,153,34,0.08)}
+
+.life-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+.life-item{
+  background:#0d1117;border:1px solid #21262d;border-radius:10px;
+  padding:14px;text-align:center;cursor:pointer;transition:all .2s;
+}
+.life-item:hover{border-color:#30363d;transform:translateY(-1px)}
+.life-item.owned{border-color:#2ea043}
+.life-item .life-icon{font-size:32px;margin-bottom:6px}
+.life-item .life-name{font-size:12px;font-weight:600;color:#e6edf3}
+.life-item .life-price{font-size:11px;color:#8b949e;margin-top:2px}
+
+/* ===== EVENT MODAL ===== */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:100;
+  display:none;justify-content:center;align-items:center;padding:20px;
+}
+.modal-overlay.active{display:flex}
+.modal-card{
+  background:#161b22;border:1px solid #30363d;border-radius:16px;
+  padding:32px;max-width:500px;width:100%;max-height:80vh;overflow-y:auto;
+  animation:modalIn .3s ease;
+}
+@keyframes modalIn{from{opacity:0;transform:scale(0.95) translateY(20px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.modal-card .event-emoji{font-size:48px;text-align:center;margin-bottom:8px}
+.modal-card .event-title{font-size:20px;font-weight:700;text-align:center;margin-bottom:12px}
+.modal-card .event-text{font-size:15px;line-height:1.7;color:#c9d1d9;text-align:center;margin-bottom:24px}
+.modal-card .event-choices{display:flex;flex-direction:column;gap:10px}
+.choice-btn{
+  background:#0d1117;border:1px solid #30363d;border-radius:10px;
+  padding:14px 18px;color:#e6edf3;font-size:14px;cursor:pointer;
+  text-align:left;transition:all .2s;font-family:inherit;
+}
+.choice-btn:hover{border-color:#58a6ff;background:#161b22;transform:translateX(4px)}
+
+.event-effects{margin-top:16px;padding:12px;background:#0d1117;border-radius:8px;display:none;font-size:14px;line-height:1.8}
+.event-effects.show{display:block}
+
+/* ===== SUMMARY / RETIREMENT ===== */
+.summary-card{
+  background:#161b22;border:1px solid #30363d;border-radius:16px;
+  padding:32px;width:100%;max-width:600px;text-align:center;
+}
+.summary-card h2{font-size:28px;margin-bottom:20px}
+.summary-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px;margin-bottom:24px}
+.summary-stat{background:#0d1117;border-radius:10px;padding:14px}
+.summary-stat .sval{font-size:24px;font-weight:700;color:#7ee787}
+.summary-stat .slbl{font-size:11px;color:#8b949e;margin-top:4px}
+.summary-log{text-align:left;max-height:300px;overflow-y:auto;margin-bottom:20px}
+.summary-log li{font-size:13px;padding:6px 0;border-bottom:1px solid #21262d}
+
+.retirement-grade{font-size:64px;font-weight:900;margin-bottom:8px}
+
+.toast{
+  position:fixed;top:20px;right:20px;z-index:200;
+  background:#238636;color:#fff;padding:12px 20px;
+  border-radius:10px;font-size:14px;font-weight:600;
+  animation:slideIn .3s ease;
+  pointer-events:none;
+}
+@keyframes slideIn{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}
+
+/* Transfer negotiation */
+input[type=range]{
+  -webkit-appearance:none;appearance:none;height:6px;
+  background:#21262d;border-radius:3px;outline:none;
+  margin:8px 0;cursor:pointer;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:20px;height:20px;
+  border-radius:50%;background:#2ea043;cursor:pointer;
+  box-shadow:0 0 8px rgba(46,160,67,0.4);
+}
+#tf-response.success{background:rgba(46,160,67,0.15);color:#7ee787;display:block}
+#tf-response.fail{background:rgba(248,81,73,0.15);color:#f85149;display:block}
+#tf-response.counter{background:rgba(210,153,34,0.15);color:#d29922;display:block}
+</style>
+</head>
+<body>
+
+<!-- CREATE SCREEN -->
+<div id="create-screen" class="screen active">
+  <div class="logo">FOOTBALL LIFE</div>
+  <div class="subtitle">Simulador de carrera de futbolista</div>
+  <div class="create-layout">
+    <!-- LEFT: Form -->
+    <div class="create-left">
+      <div class="form-group">
+        <label>Nombre del jugador</label>
+        <input id="cr-name" type="text" placeholder="Ej: Lionel Andrade" maxlength="30">
+      </div>
+      <div class="form-group">
+        <label>País de origen</label>
+        <select id="cr-country">
+          <option value="Argentina">Argentina</option>
+          <option value="Brasil">Brasil</option>
+          <option value="México">México</option>
+          <option value="España">España</option>
+          <option value="Inglaterra">Inglaterra</option>
+          <option value="Francia">Francia</option>
+          <option value="Alemania">Alemania</option>
+          <option value="Italia">Italia</option>
+          <option value="Portugal">Portugal</option>
+          <option value="Países Bajos">Países Bajos</option>
+          <option value="Bélgica">Bélgica</option>
+          <option value="Uruguay">Uruguay</option>
+          <option value="Colombia">Colombia</option>
+          <option value="Chile">Chile</option>
+          <option value="Perú">Perú</option>
+          <option value="Ecuador">Ecuador</option>
+          <option value="Paraguay">Paraguay</option>
+          <option value="Croacia">Croacia</option>
+          <option value="Senegal">Senegal</option>
+          <option value="Ghana">Ghana</option>
+          <option value="Nigeria">Nigeria</option>
+          <option value="Camerún">Camerún</option>
+          <option value="Marruecos">Marruecos</option>
+          <option value="Egipto">Egipto</option>
+          <option value="Corea del Sur">Corea del Sur</option>
+          <option value="Japón">Japón</option>
+          <option value="Estados Unidos">Estados Unidos</option>
+          <option value="Canadá">Canadá</option>
+          <option value="Australia">Australia</option>
+          <option value="Arabia Saudí">Arabia Saudí</option>
+          <option value="Turquía">Turquía</option>
+          <option value="Suecia">Suecia</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Posición seleccionada</label>
+        <input id="cr-pos-display" type="text" readonly style="font-weight:700;color:#7ee787" value="Delantero Centro (DC)">
+      </div>
+      <div id="stats-preview" class="stats-preview"></div>
+      <button class="btn btn-primary" id="btn-start" onclick="handleStart()">Comenzar Carrera</button>
+    </div>
+    <!-- RIGHT: Football Field -->
+    <div class="create-right">
+      <p style="font-size:12px;color:#8b949e;text-align:center">Selecciona tu posición en la cancha</p>
+      <div class="field-container" id="field-container">
+        <!-- Center line -->
+        <div style="position:absolute;left:4%;right:4%;top:50%;border-top:2px solid rgba(255,255,255,0.18)"></div>
+        <!-- Center circle -->
+        <div style="position:absolute;left:50%;top:50%;width:20%;aspect-ratio:1;border:2px solid rgba(255,255,255,0.18);border-radius:50%;transform:translate(-50%,-50%)"></div>
+        <!-- Center spot -->
+        <div style="position:absolute;left:50%;top:50%;width:2%;aspect-ratio:1;background:rgba(255,255,255,0.3);border-radius:50%;transform:translate(-50%,-50%)"></div>
+
+        <!-- Top penalty area (large) -->
+        <div style="position:absolute;left:18%;right:18%;top:4%;height:18%;border:2px solid rgba(255,255,255,0.18);border-top:none"></div>
+        <!-- Top penalty area (small) -->
+        <div style="position:absolute;left:32%;right:32%;top:4%;height:6%;border:2px solid rgba(255,255,255,0.18);border-top:none"></div>
+        <!-- Top penalty spot -->
+        <div style="position:absolute;left:50%;top:12%;width:2%;aspect-ratio:1;background:rgba(255,255,255,0.25);border-radius:50%;transform:translate(-50%,-50%)"></div>
+        <!-- Top arc -->
+        <div style="position:absolute;left:50%;top:22%;width:16%;height:8%;border:2px solid rgba(255,255,255,0.18);border-bottom:none;border-radius:50% 50% 0 0;transform:translate(-50%,-100%)"></div>
+
+        <!-- Bottom penalty area (large) -->
+        <div style="position:absolute;left:18%;right:18%;bottom:4%;height:18%;border:2px solid rgba(255,255,255,0.18);border-bottom:none"></div>
+        <!-- Bottom penalty area (small) -->
+        <div style="position:absolute;left:32%;right:32%;bottom:4%;height:6%;border:2px solid rgba(255,255,255,0.18);border-bottom:none"></div>
+        <!-- Bottom penalty spot -->
+        <div style="position:absolute;left:50%;bottom:12%;width:2%;aspect-ratio:1;background:rgba(255,255,255,0.25);border-radius:50%;transform:translate(-50%,50%)"></div>
+        <!-- Bottom arc -->
+        <div style="position:absolute;left:50%;bottom:22%;width:16%;height:8%;border:2px solid rgba(255,255,255,0.18);border-top:none;border-radius:0 0 50% 50%;transform:translate(-50%,100%)"></div>
+
+        <!-- Position dots - 4-3-3 -->
+        <!-- Attack line -->
+        <div class="pos-dot selected" data-pos="DC" style="top:14%;left:50%" onclick="selectPosition('DC',this)" title="Delantero Centro">DC</div>
+        <div class="pos-dot" data-pos="EI" style="top:19%;left:22%" onclick="selectPosition('EI',this)" title="Extremo Izquierdo">EI</div>
+        <div class="pos-dot" data-pos="ED" style="top:19%;left:78%" onclick="selectPosition('ED',this)" title="Extremo Derecho">ED</div>
+        <!-- Midfield line -->
+        <div class="pos-dot" data-pos="MC" style="top:36%;left:28%" onclick="selectPosition('MC',this)" title="Medio Centro">MC</div>
+        <div class="pos-dot" data-pos="MCD" style="top:40%;left:50%" onclick="selectPosition('MCD',this)" title="Pivote">MCD</div>
+        <div class="pos-dot" data-pos="MCO" style="top:36%;left:72%" onclick="selectPosition('MCO',this)" title="Enganche">MCO</div>
+        <!-- Defense line -->
+        <div class="pos-dot" data-pos="LI" style="top:62%;left:12%" onclick="selectPosition('LI',this)" title="Lateral Izquierdo">LI</div>
+        <div class="pos-dot" data-pos="DFI" style="top:65%;left:35%" onclick="selectPosition('DFI',this)" title="Defensa Central Izq.">DFI</div>
+        <div class="pos-dot" data-pos="DFD" style="top:65%;left:65%" onclick="selectPosition('DFD',this)" title="Defensa Central Der.">DFD</div>
+        <div class="pos-dot" data-pos="LD" style="top:62%;left:88%" onclick="selectPosition('LD',this)" title="Lateral Derecho">LD</div>
+        <!-- GK -->
+        <div class="pos-dot" data-pos="PO" style="top:86%;left:50%" onclick="selectPosition('PO',this)" title="Portero">PO</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN SCREEN -->
+<div id="main-screen" class="screen">
+  <div class="top-bar">
+    <div class="top-info">
+      <div class="top-item" style="font-size:16px;font-weight:700;color:#e6edf3" id="top-name"></div>
+      <div class="top-item">Edad <span id="top-age">16</span></div>
+      <div class="top-ovr" id="top-ovr">67</div>
+      <div class="top-item" id="top-club-name">Sin club</div>
+      <div class="top-item">💰 <span id="top-money">0</span></div>
+      <div class="top-item">👥 <span id="top-followers">0</span></div>
+      <div class="top-item">📝 <span id="top-contract">0a</span></div>
+      <div class="top-item">⚡ <span id="top-discipline">70</span></div>
+      <div class="top-item"><span id="top-role" style="color:#d29922">Titular</span></div>
+      <div class="top-smiley" id="top-mood" title="Moral">😐</div>
+    </div>
+  </div>
+
+  <div style="text-align:center;margin-bottom:12px">
+    <button class="btn btn-advance" onclick="advanceYear()">⏩ Avanzar un año</button>
+  </div>
+
+  <div class="tab-bar">
+    <button class="tab-btn active" data-tab="career">🏟️ Carrera</button>
+    <button class="tab-btn" data-tab="train">🏋️ Entrenar</button>
+    <button class="tab-btn" data-tab="relationships">❤️ Relaciones</button>
+    <button class="tab-btn" data-tab="actions">⚡ Acciones</button>
+    <button class="tab-btn" data-tab="achievements">🏆 Logros</button>
+  </div>
+
+  <div id="tab-career" class="tab-panel active">
+    <div class="section-card">
+      <h3>Historial reciente</h3>
+      <div class="event-log" id="event-log"></div>
+    </div>
+    <div class="section-card">
+      <h3>Personalidad</h3>
+      <div id="personality-display" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+    </div>
+    <div class="section-card">
+      <h3>Atributos</h3>
+      <div id="stats-display"></div>
+    </div>
+    <div class="section-card">
+      <h3>Historial de clubes</h3>
+      <div class="club-list" id="club-history"></div>
+    </div>
+  </div>
+
+  <div id="tab-train" class="tab-panel">
+    <div class="section-card">
+      <h3>Entrenamiento</h3>
+      <p style="color:#8b949e;font-size:13px;margin-bottom:16px">Gasta energía para mejorar atributos. Solo puedes entrenar una vez por año.</p>
+      <div id="train-options"></div>
+      <p style="font-size:12px;color:#8b949e;margin-top:8px" id="train-status">Energía disponible: ✅</p>
+    </div>
+  </div>
+
+  <div id="tab-relationships" class="tab-panel">
+    <div class="section-card" id="relationships-display"></div>
+  </div>
+
+  <div id="tab-actions" class="tab-panel">
+    <div class="section-card">
+      <h3>¿Qué quieres hacer este año?</h3>
+      <p style="color:#8b949e;font-size:12px;margin-bottom:12px">Estas acciones afectan tu carrera. Algunas requieren dinero, fama o cierto nivel.</p>
+      <div id="actions-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px"></div>
+    </div>
+    <div class="section-card">
+      <h3>Tus posesiones</h3>
+      <div class="life-grid" id="life-grid"></div>
+    </div>
+  </div>
+
+  <div id="tab-achievements" class="tab-panel">
+    <div class="section-card">
+      <h3>Logros</h3>
+      <div class="achievement-grid" id="achievements-display"></div>
+    </div>
+  </div>
+</div>
+
+<!-- EVENT MODAL -->
+<div id="event-modal" class="modal-overlay">
+  <div class="modal-card">
+    <div class="event-emoji" id="ev-emoji"></div>
+    <div class="event-title" id="ev-title"></div>
+    <div class="event-text" id="ev-text"></div>
+    <div class="event-choices" id="ev-choices"></div>
+    <div class="event-effects" id="ev-effects"></div>
+    <button class="btn btn-outline btn-small" style="margin-top:12px;width:100%" id="ev-continue" onclick="closeEventResult()" hidden>Cerrar</button>
+  </div>
+</div>
+
+<!-- YEAR SUMMARY MODAL -->
+<div id="summary-modal" class="modal-overlay">
+  <div class="modal-card">
+    <h2 style="text-align:center;font-size:22px;margin-bottom:20px">📅 Resumen del año <span id="sum-year"></span></h2>
+    <div id="sum-events-list" style="text-align:left;font-size:14px;line-height:1.8;margin-bottom:16px"></div>
+    <div id="sum-achievements" style="margin-bottom:12px"></div>
+    <button class="btn btn-primary" onclick="closeSummary()">Continuar</button>
+  </div>
+</div>
+
+<!-- RETIREMENT MODAL -->
+<div id="retirement-modal" class="modal-overlay">
+  <div class="summary-card">
+    <div class="retirement-grade" id="ret-grade"></div>
+    <h2 style="margin-bottom:8px" id="ret-player-name"></h2>
+    <p style="color:#8b949e;margin-bottom:20px">Carrera profesional: <span id="ret-years"></span> años</p>
+    <div class="summary-grid" id="ret-stats"></div>
+    <h3 style="text-align:left;font-size:14px;color:#8b949e;margin-bottom:8px">Línea de tiempo</h3>
+    <ul class="summary-log" id="ret-timeline"></ul>
+    <button class="btn btn-primary" onclick="location.reload()">Nueva Carrera</button>
+  </div>
+</div>
+
+<!-- TRANSFER NEGOTIATION MODAL -->
+<div id="transfer-modal" class="modal-overlay">
+  <div class="modal-card" style="max-width:550px">
+    <h2 style="text-align:center;font-size:20px;margin-bottom:4px" id="tf-club-name">Club Ofertante</h2>
+    <p style="text-align:center;color:#8b949e;font-size:13px;margin-bottom:16px" id="tf-club-info"></p>
+    
+    <div style="background:#0d1117;border-radius:10px;padding:16px;margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+        <span style="font-size:13px">💰 Salario anual</span>
+        <span style="font-weight:700;color:#7ee787" id="tf-salary-val">0</span>
+      </div>
+      <input type="range" id="tf-salary" min="0" max="100" value="50" style="width:100%">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:#8b949e">
+        <span id="tf-salary-min">0</span><span id="tf-salary-max">0</span>
+      </div>
+    </div>
+
+    <div style="background:#0d1117;border-radius:10px;padding:16px;margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+        <span style="font-size:13px">📅 Años de contrato</span>
+        <span style="font-weight:700;color:#79c0ff" id="tf-years-val">3</span>
+      </div>
+      <input type="range" id="tf-years" min="1" max="5" value="3" style="width:100%">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:#8b949e">
+        <span>1 año</span><span>5 años</span>
+      </div>
+    </div>
+
+    <div style="background:#0d1117;border-radius:10px;padding:16px;margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+        <span style="font-size:13px">⭐ Rol en el equipo</span>
+        <span style="font-weight:700;color:#d29922" id="tf-role-val">Titular</span>
+      </div>
+      <input type="range" id="tf-role" min="0" max="4" value="2" style="width:100%">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:#8b949e">
+        <span>Promesa</span><span>Rotación</span><span>Titular</span><span>Importante</span><span>Estrella</span>
+      </div>
+    </div>
+
+    <div style="background:#0d1117;border-radius:10px;padding:16px;margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+        <span style="font-size:13px">💎 Cláusula de rescisión</span>
+        <span style="font-weight:700;color:#a371f7" id="tf-clause-val">Sin cláusula</span>
+      </div>
+      <input type="range" id="tf-clause" min="0" max="100" value="0" style="width:100%">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:#8b949e">
+        <span>Sin cláusula</span><span>Baja</span><span>Alta</span>
+      </div>
+    </div>
+
+    <div id="tf-response" style="text-align:center;padding:10px;border-radius:8px;margin-bottom:12px;display:none;font-size:14px"></div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-primary" id="tf-submit" onclick="submitNegotiation()">Negociar contrato</button>
+      <button class="btn btn-outline" onclick="closeTransferModal()">Rechazar oferta</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast" style="display:none"></div>
+
+<script>
+window.onerror = function(msg, url, line){
+  alert("Error JS linea "+line+": "+msg);
+  return false;
+};
+// ============================================================
+// DATA
+// ============================================================
+const COUNTRIES = [
+  "Argentina","Brasil","México","España","Inglaterra","Francia","Alemania",
+  "Italia","Portugal","Países Bajos","Bélgica","Uruguay","Colombia","Chile",
+  "Perú","Ecuador","Paraguay","Croacia","Senegal","Ghana","Nigeria",
+  "Camerún","Marruecos","Egipto","Corea del Sur","Japón","Estados Unidos",
+  "Canadá","Australia","Arabia Saudí","Turquía","Suecia"
+];
+
+const POSITIONS = {
+  PO:{name:"Portero",stats:{ritmo:-15,tiro:-15,pase:-5,defensa:20,fisico:10,regate:-10}},
+  DFI:{name:"Defensa Central Izq.",stats:{ritmo:3,tiro:-8,pase:2,defensa:18,fisico:12,regate:-5}},
+  DFD:{name:"Defensa Central Der.",stats:{ritmo:3,tiro:-8,pase:2,defensa:18,fisico:12,regate:-5}},
+  LI:{name:"Lateral Izquierdo",stats:{ritmo:14,tiro:-5,pase:8,defensa:10,fisico:5,regate:5}},
+  LD:{name:"Lateral Derecho",stats:{ritmo:14,tiro:-5,pase:8,defensa:10,fisico:5,regate:5}},
+  MC:{name:"Medio Centro",stats:{ritmo:8,tiro:8,pase:12,defensa:8,fisico:8,regate:8}},
+  MCD:{name:"Pivote",stats:{ritmo:2,tiro:2,pase:10,defensa:18,fisico:12,regate:0}},
+  MCO:{name:"Enganche",stats:{ritmo:5,tiro:10,pase:18,defensa:0,fisico:0,regate:15}},
+  EI:{name:"Extremo Izquierdo",stats:{ritmo:18,tiro:10,pase:5,defensa:-8,fisico:0,regate:16}},
+  ED:{name:"Extremo Derecho",stats:{ritmo:18,tiro:10,pase:5,defensa:-8,fisico:0,regate:16}},
+  DC:{name:"Delantero Centro",stats:{ritmo:10,tiro:18,pase:0,defensa:-10,fisico:10,regate:8}}
+};
+
+const CLUBS = [
+  // España (europe)
+  {name:"Madrid CF",league:"La Liga",country:"España",continent:"europe",competition:"Champions League",stars:5,minOverall:80,salaryBase:18000000},
+  {name:"FC Cataluña",league:"La Liga",country:"España",continent:"europe",competition:"Champions League",stars:5,minOverall:82,salaryBase:20000000},
+  {name:"Atlético Capital",league:"La Liga",country:"España",continent:"europe",competition:"Champions League",stars:4,minOverall:76,salaryBase:10000000},
+  {name:"Sevilla FC",league:"La Liga",country:"España",continent:"europe",competition:"Europa League",stars:3,minOverall:70,salaryBase:4000000},
+  {name:"Real Sociedad",league:"La Liga",country:"España",continent:"europe",competition:"Europa League",stars:3,minOverall:72,salaryBase:5000000},
+  {name:"Villarreal",league:"La Liga",country:"España",continent:"europe",competition:"Europa League",stars:3,minOverall:70,salaryBase:3500000},
+  {name:"Real Betis",league:"La Liga",country:"España",continent:"europe",competition:"Conference League",stars:3,minOverall:68,salaryBase:3000000},
+  // Inglaterra (europe)
+  {name:"Manchester Reds",league:"Premier League",country:"Inglaterra",continent:"europe",competition:"Champions League",stars:5,minOverall:78,salaryBase:19000000},
+  {name:"London Blues",league:"Premier League",country:"Inglaterra",continent:"europe",competition:"Champions League",stars:5,minOverall:80,salaryBase:18500000},
+  {name:"North London",league:"Premier League",country:"Inglaterra",continent:"europe",competition:"Champions League",stars:4,minOverall:76,salaryBase:12000000},
+  {name:"Liverpool Reds",league:"Premier League",country:"Inglaterra",continent:"europe",competition:"Champions League",stars:5,minOverall:80,salaryBase:17000000},
+  {name:"Manchester Cityzens",league:"Premier League",country:"Inglaterra",continent:"europe",competition:"Champions League",stars:5,minOverall:82,salaryBase:22000000},
+  {name:"Newcastle Magpies",league:"Premier League",country:"Inglaterra",continent:"europe",competition:"Europa League",stars:4,minOverall:74,salaryBase:9000000},
+  {name:"Tottenham Spurs",league:"Premier League",country:"Inglaterra",continent:"europe",competition:"Europa League",stars:4,minOverall:74,salaryBase:8000000},
+  {name:"Aston Villa",league:"Premier League",country:"Inglaterra",continent:"europe",competition:"Conference League",stars:3,minOverall:70,salaryBase:5000000},
+  // Italia (europe)
+  {name:"Milán Rossoneri",league:"Serie A",country:"Italia",continent:"europe",competition:"Champions League",stars:5,minOverall:78,salaryBase:14000000},
+  {name:"Turín Zebras",league:"Serie A",country:"Italia",continent:"europe",competition:"Champions League",stars:5,minOverall:80,salaryBase:15000000},
+  {name:"Inter Milán",league:"Serie A",country:"Italia",continent:"europe",competition:"Champions League",stars:5,minOverall:80,salaryBase:14500000},
+  {name:"Nápoles Azul",league:"Serie A",country:"Italia",continent:"europe",competition:"Europa League",stars:4,minOverall:76,salaryBase:11000000},
+  {name:"Roma Giallorossi",league:"Serie A",country:"Italia",continent:"europe",competition:"Europa League",stars:4,minOverall:74,salaryBase:7000000},
+  {name:"Lazio Roma",league:"Serie A",country:"Italia",continent:"europe",competition:"Conference League",stars:3,minOverall:70,salaryBase:4000000},
+  // Alemania (europe)
+  {name:"Múnich Baviera",league:"Bundesliga",country:"Alemania",continent:"europe",competition:"Champions League",stars:5,minOverall:80,salaryBase:17000000},
+  {name:"Dortmund Amarillo",league:"Bundesliga",country:"Alemania",continent:"europe",competition:"Europa League",stars:4,minOverall:76,salaryBase:10000000},
+  {name:"Leipzig RB",league:"Bundesliga",country:"Alemania",continent:"europe",competition:"Europa League",stars:4,minOverall:74,salaryBase:8000000},
+  {name:"Leverkusen",league:"Bundesliga",country:"Alemania",continent:"europe",competition:"Europa League",stars:4,minOverall:74,salaryBase:7500000},
+  // Francia (europe)
+  {name:"París Saint",league:"Ligue 1",country:"Francia",continent:"europe",competition:"Champions League",stars:5,minOverall:78,salaryBase:19000000},
+  {name:"Marsella Olímpico",league:"Ligue 1",country:"Francia",continent:"europe",competition:"Europa League",stars:3,minOverall:70,salaryBase:5000000},
+  {name:"Lión Olímpico",league:"Ligue 1",country:"Francia",continent:"europe",competition:"Europa League",stars:3,minOverall:70,salaryBase:4500000},
+  {name:"Mónaco AS",league:"Ligue 1",country:"Francia",continent:"europe",competition:"Europa League",stars:3,minOverall:70,salaryBase:4000000},
+  // Portugal (europe)
+  {name:"Benfica Lisboa",league:"Liga Portugal",country:"Portugal",continent:"europe",competition:"Champions League",stars:4,minOverall:74,salaryBase:7000000},
+  {name:"Porto Dragões",league:"Liga Portugal",country:"Portugal",continent:"europe",competition:"Europa League",stars:4,minOverall:72,salaryBase:6000000},
+  // Países Bajos (europe)
+  {name:"Ajax Ámsterdam",league:"Eredivisie",country:"Países Bajos",continent:"europe",competition:"Europa League",stars:3,minOverall:70,salaryBase:3500000},
+  {name:"PSV Eindhoven",league:"Eredivisie",country:"Países Bajos",continent:"europe",competition:"Conference League",stars:3,minOverall:68,salaryBase:2500000},
+  // Bélgica (europe)
+  {name:"Club Brujas",league:"Pro League",country:"Bélgica",continent:"europe",competition:"Conference League",stars:2,minOverall:64,salaryBase:1200000},
+  // Turquía (europe)
+  {name:"Galatasaray",league:"Super Lig",country:"Turquía",continent:"europe",competition:"Europa League",stars:3,minOverall:70,salaryBase:5000000},
+  // Sudamérica
+  {name:"Buenos Aires Boca",league:"Liga Argentina",country:"Argentina",continent:"americas",competition:"Libertadores",stars:3,minOverall:65,salaryBase:1500000},
+  {name:"Avellaneda Racing",league:"Liga Argentina",country:"Argentina",continent:"americas",competition:"Libertadores",stars:3,minOverall:62,salaryBase:800000},
+  {name:"Rosario Newell",league:"Liga Argentina",country:"Argentina",continent:"americas",competition:"Sudamericana",stars:2,minOverall:58,salaryBase:400000},
+  {name:"Río Flamengo",league:"Brasileirão",country:"Brasil",continent:"americas",competition:"Libertadores",stars:4,minOverall:72,salaryBase:4000000},
+  {name:"São Paulo FC",league:"Brasileirão",country:"Brasil",continent:"americas",competition:"Libertadores",stars:3,minOverall:68,salaryBase:2500000},
+  {name:"Santos FC",league:"Brasileirão",country:"Brasil",continent:"americas",competition:"Sudamericana",stars:3,minOverall:66,salaryBase:1800000},
+  // México (americas)
+  {name:"CDMX Águilas",league:"Liga MX",country:"México",continent:"americas",competition:"Concacaf Champions",stars:3,minOverall:68,salaryBase:3000000},
+  {name:"Guadalajara Chivas",league:"Liga MX",country:"México",continent:"americas",competition:"Concacaf Champions",stars:3,minOverall:66,salaryBase:2500000},
+  {name:"Monterrey Rayados",league:"Liga MX",country:"México",continent:"americas",competition:"Concacaf Champions",stars:3,minOverall:70,salaryBase:3500000},
+  // USA (americas)
+  {name:"Los Ángeles Galaxy",league:"MLS",country:"Estados Unidos",continent:"americas",competition:"Concacaf Champions",stars:2,minOverall:65,salaryBase:4000000},
+  {name:"Inter Miami",league:"MLS",country:"Estados Unidos",continent:"americas",competition:"Concacaf Champions",stars:3,minOverall:68,salaryBase:7000000},
+  // Arabia Saudí (middleeast)
+  {name:"Al-Hilal Riyadh",league:"Saudi Pro League",country:"Arabia Saudí",continent:"middleeast",competition:"AFC Champions",stars:3,minOverall:72,salaryBase:30000000},
+  {name:"Al-Nassr FC",league:"Saudi Pro League",country:"Arabia Saudí",continent:"middleeast",competition:"AFC Champions",stars:3,minOverall:72,salaryBase:28000000},
+  // Cantera
+  {name:"Atlético Banfield",league:"Reservas",country:"Argentina",continent:"americas",competition:"-",stars:1,minOverall:0,salaryBase:50000},
+  {name:"Santos Laguna",league:"Fuerzas Básicas",country:"México",continent:"americas",competition:"-",stars:1,minOverall:0,salaryBase:40000},
+  {name:"Rayo Vallecano B",league:"División Juvenil",country:"España",continent:"europe",competition:"-",stars:1,minOverall:0,salaryBase:60000},
+  {name:"Nottingham Sub-23",league:"Academia",country:"Inglaterra",continent:"europe",competition:"-",stars:1,minOverall:0,salaryBase:55000}
+];
+
+const YOUTH_CLUBS = [
+  {name:"Atlético Banfield",league:"Reservas",country:"Argentina",stars:1,minOverall:0,salaryBase:20000},
+  {name:"Santos Laguna",league:"Fuerzas Básicas",country:"México",stars:1,minOverall:0,salaryBase:15000},
+  {name:"Rayo Vallecano B",league:"División Juvenil",country:"España",stars:1,minOverall:0,salaryBase:25000},
+  {name:"Nottingham Sub-21",league:"Academia",country:"Inglaterra",stars:1,minOverall:0,salaryBase:22000},
+  {name:"São Paulo Sub-20",league:"Base",country:"Brasil",stars:1,minOverall:0,salaryBase:18000},
+  {name:"Boca Juniors Juvenil",league:"Inferiores",country:"Argentina",stars:1,minOverall:0,salaryBase:20000}
+];
+
+const LIFE_ITEMS = [
+  {id:"casa_peq",name:"Casa pequeña",price:150000,icon:"🏠"},
+  {id:"casa_grande",name:"Casa grande",price:800000,icon:"🏡"},
+  {id:"mansión",name:"Mansión",price:5000000,icon:"🏰"},
+  {id:"coche_basico",name:"Coche básico",price:20000,icon:"🚗"},
+  {id:"coche_lujo",name:"Coche de lujo",price:150000,icon:"🏎️"},
+  {id:"superdeportivo",name:"Superdeportivo",price:1000000,icon:"💎"},
+  {id:"yate",name:"Yate",price:2000000,icon:"🛥️"},
+  {id:"jetski",name:"Jetski",price:50000,icon:"🌊"},
+  {id:"mascota",name:"Mascota",price:2000,icon:"🐕"},
+  {id:"coleccion_relojes",name:"Colección relojes",price:500000,icon:"⌚"},
+  {id:"barberia_personal",name:"Barbería personal",price:100000,icon:"💈"},
+  {id:"cine_casa",name:"Cine en casa",price:80000,icon:"🎬"},
+];
+
+// ============================================================
+// STATE
+// ============================================================
+const P = {
+  name:"", country:"Argentina", position:"DC", age:16,
+  overall:0,
+  stats:{ritmo:50,tiro:50,pase:50,defensa:50,fisico:50,regate:50},
+  money:5000, salary:0,
+  clubName:"Sin club", clubStars:0, clubLeague:"", clubCountry:"",
+  morale:60, energyAvailable:true, injured:false, injuryWeeks:0,
+  relationships:{entrenador:60,compañeros:60,pareja:0,familia:70,amigos:60},
+  hasPartner:false, partnerName:"", married:false, hasKids:false, kidNames:[],
+  seasonGoals:0, seasonAssists:0, careerGoals:0, careerAssists:0,
+  careerMatches:0,
+  titles:[], achievements:[],
+  clubHistory:[], timeline:[],
+  ownedItems:[],
+  investments:[], investmentValue:0,
+  yearEvents:[], year:0,
+  nationalTeam:false, worldCupWinner:false, worldCupParticipated:false,
+  retirementReason:"",
+  followers:1000, fameLevel:5, lastEventIds:[],
+  contractYears:0, contractTarget:0, contractWarnings:0, discipline:70, contractMet:true,
+  squadRole:3, releaseClause:0, pendingTransfer:null,
+  personality:{}, lastTags:[]
+};
+
+const STAT_NAMES = {
+  ritmo:{name:"Ritmo",color:"#7ee787"},
+  tiro:{name:"Tiro",color:"#f0883e"},
+  pase:{name:"Pase",color:"#79c0ff"},
+  defensa:{name:"Defensa",color:"#a371f7"},
+  fisico:{name:"Físico",color:"#f85149"},
+  regate:{name:"Regate",color:"#ffa657"}
+};
+
+// ============================================================
+// EVENTS - pool masivo
+// ============================================================
+const ALL_EVENTS = [];
+
+function ev(title, text, emoji, type, options, magnitude){
+  ALL_EVENTS.push({title,text,emoji,type,options,magnitude: magnitude||"medium"});
+}
+
+// PARTIDO
+ev("Final de copa","Es la final de la copa. El partido va 0-0 y en el último minuto te llega un balón en el área. ¿Qué haces?","🏆","match",[
+  {text:"Disparo potente al ángulo",effects:{careerGoals:1,seasonGoals:1, morale:10, money:50000},chance:0.7, failText:"El portero lo detiene. Se van a penales.", failEffects:{morale:-5}},
+  {text:"Pase al compañero mejor colocado",effects:{careerAssists:1,seasonAssists:1, morale:5, money:50000,rel_compañeros:10},chance:0.85, failText:"El compañero falla. La afición te aplaude igual.", failEffects:{morale:-3}},
+  {text:"Intentas regatear al portero",effects:{careerGoals:1,seasonGoals:1, morale:15, money:80000,rel_entrenador:5},chance:0.55, failText:"El portero te lee y te quita el balón. Humillante.", failEffects:{morale:-15}}
+]);
+ev("Clásico eterno","Es el clásico contra tu máximo rival. El ambiente es eléctrico. El marcador está empatado y quedan 10 minutos.","⚔️","match",[
+  {text:"Te sacrificas defendiendo",effects:{careerMatches:1, morale:3,rel_compañeros:8,rel_entrenador:5},chance:0.9, failText:"Te expulsan por una entrada fuerte. La afición rival te abuchea.", failEffects:{morale:-10,rel_entrenador:-10}},
+  {text:"Vas al ataque sin miedo",effects:{careerGoals:1,seasonGoals:1, morale:12,rel_entrenador:8},chance:0.6, failText:"Pierdes el balón y el rival marca en el contraataque.", failEffects:{morale:-20,rel_compañeros:-5}},
+  {text:"Provocas al rival para sacarlo de quicio",effects:{morale:8,rel_compañeros:4},chance:0.5, failText:"El árbitro te saca amarilla y el rival se ríe en tu cara.", failEffects:{morale:-8}}
+]);
+ev("Debut soñado","Es tu primer partido como profesional. Sales al campo y la grada ruge. Los nervios te recorren el cuerpo.","🌟","match",[
+  {text:"Juegas simple y seguro",effects:{morale:5,rel_entrenador:8,rel_compañeros:5,careerMatches:1},chance:0.95, failText:"", failEffects:{}},
+  {text:"Intentas algo espectacular",effects:{careerGoals:1,seasonGoals:1, morale:15,rel_compañeros:10},chance:0.4, failText:"Te resbalas frente a todo el estadio. Se vuelve viral.", failEffects:{morale:-10}},
+  {text:"Pides el balón y lideras al equipo",effects:{morale:10,rel_entrenador:10,rel_compañeros:5,careerMatches:1},chance:0.65, failText:"Nadie te pasa el balón. Te ignoran.", failEffects:{morale:-5}}
+]);
+ev("Remontada histórica","Tu equipo pierde 3-0 al descanso. El entrenador grita en el vestuario. Algo se enciende dentro de ti.","🔥","match",[
+  {text:"Sales con furia a comerte el campo",effects:{careerGoals:2,seasonGoals:2, morale:20,rel_compañeros:15,rel_entrenador:15},chance:0.5, failText:"Te lesionas intentando una chilena imposible. Fuera 2 meses.", failEffects:{injured:true,injuryWeeks:8,morale:-20}},
+  {text:"Motivas a tus compañeros con un discurso",effects:{rel_compañeros:12, morale:10,careerAssists:2,seasonAssists:2},chance:0.7, failText:"Nadie te escucha. Siguen cabizbajos.", failEffects:{morale:-8}},
+  {text:"No haces nada, a ver qué pasa",effects:{morale:0,careerMatches:1},chance:0.3, failText:"No remontan. La prensa dice que fuiste invisible.", failEffects:{morale:-12,rel_entrenador:-10}}
+]);
+ev("Penalti decisivo","Minuto 93. Penalti a favor. Todo el estadio contiene la respiración. El entrenador te señala a ti.","🎯","match",[
+  {text:"Disparo a la escuadra con potencia",effects:{careerGoals:1,seasonGoals:1, morale:15,rel_entrenador:10},chance:0.7, failText:"La mandas a la luna. La afición gime.", failEffects:{morale:-25,rel_entrenador:-15,rel_compañeros:-10}},
+  {text:"Le cedes el penal a un compañero",effects:{rel_compañeros:10, morale:5},chance:0.8, failText:"Tu compañero falla también. Ahora son dos los humillados.", failEffects:{morale:-5}}
+]);
+ev("Hat-trick mágico","Es uno de esos días en los que TODO te sale. Cada balón que tocas termina en gol. La afición corea tu nombre.","🎩","match",[
+  {text:"Sigues a por más goles",effects:{careerGoals:4,seasonGoals:4, morale:25,rel_compañeros:8,rel_entrenador:10},chance:0.7, failText:"El defensa rival te da una patada y te lesiona. Valió la pena.", failEffects:{injured:true,injuryWeeks:3,morale:-5,careerGoals:3,seasonGoals:3}},
+  {text:"Celebras cada gol con humildad",effects:{careerGoals:3,seasonGoals:3, morale:15,rel_compañeros:12,rel_entrenador:12},chance:0.9, failText:"", failEffects:{}}
+]);
+ev("Partido bajo la lluvia","Llueve a cántaros. El campo es un barrizal. El fútbol de toque es imposible. Es guerra.","🌧️","match",[
+  {text:"Juegas físico, a lo que salga",effects:{careerMatches:1, morale:5,rel_entrenador:8},chance:0.6, failText:"Te resbalas y acabas embarrado hasta las cejas. Memes asegurados.", failEffects:{morale:-5}},
+  {text:"Intentas jugar bonito igual",effects:{morale:3},chance:0.3, failText:"El balón se queda encharcado. La grada se ríe.", failEffects:{morale:-8,rel_entrenador:-5}},
+  {text:"Pides el cambio, no te quieres lesionar",effects:{morale:-3,rel_entrenador:-5},chance:0.95, failText:"", failEffects:{}}
+]);
+
+// TRANSFERENCIA
+ev("Oferta millonaria","El teléfono suena. Es tu agente. Un club gigante ofrece una cantidad absurda por tu traspaso.","💰","transfer",[
+  {text:"Aceptas el traspaso inmediatamente",effects:{clubChange:"big"},tag:"Ambicioso",chance:0.98, failText:"Fallas el reconocimiento médico. Qué vergüenza.", failTag:"Decepcionado", failEffects:{morale:-15}},
+  {text:"Pides más dinero en el contrato",effects:{clubChange:"negotiate",money:5000000},tag:"Astuto",chance:0.5, failText:"Se retiran de la negociación. Te tachan de avaricioso.", failTag:"Avaricioso", failEffects:{morale:-10}},
+  {text:"Rechazas. Eres fiel a tu club",effects:{rel_compañeros:15,rel_entrenador:15,morale:10, money:-2000000},tag:"Leal",chance:0.95, failText:"", failEffects:{}}
+]);
+ev("Fichaje sorpresa","Un club que nadie esperaba ha pagado tu cláusula de rescisión. Tu teléfono explota de notificaciones.","📱","transfer",[
+  {text:"Aceptas la aventura",effects:{clubChange:"random"},chance:0.95, failText:"El club se arrepiente a último momento. Te quedas.", failEffects:{morale:-5}},
+  {text:"Te niegas. Quieres triunfar aquí",effects:{rel_compañeros:10, rel_entrenador:5, morale:8},chance:0.9, failText:"", failEffects:{}}
+]);
+ev("Regreso a casa","Tu club de origen (donde empezaste) te quiere de vuelta. Serías el hijo pródigo. El estadio que te vio nacer te espera.","🏠","transfer",[
+  {text:"Vuelves. Es tu destino",effects:{clubChange:"cantera",morale:15,rel_compañeros:10},chance:0.95, failText:"", failEffects:{}},
+  {text:"Tu carrera va en otra dirección. Rechazas",effects:{morale:-3},chance:0.9, failText:"", failEffects:{}}
+]);
+ev("Último baile","Recibes una oferta de una liga lejana. Sueldos astronómicos, pero fútbol de menor nivel. Es la típica oferta para cerrar tu carrera.","🛫","transfer",[
+  {text:"Aceptas. Aseguras tu futuro económico",effects:{clubChange:"retirementLeague",money:25000000,morale:10},chance:0.95, failText:"", failEffects:{}},
+  {text:"Rechazas. Quieres competir al máximo nivel",effects:{morale:8,rel_entrenador:5},chance:0.9, failText:"", failEffects:{}}
+]);
+
+// LESIÓN
+ev("Lesión en el entrenamiento","Un movimiento en falso durante la práctica. Sientes un crujido y el mundo se te viene encima.","🤕","injury",[
+  {text:"Sigues entrenando. No es nada",effects:{morale:5,rel_entrenador:5},chance:0.5, failText:"Te rompes. Varios meses fuera.", failEffects:{injured:true,injuryWeeks:12,morale:-20}},
+  {text:"Paras y vas al médico",effects:{injured:true,injuryWeeks:2,morale:-5},chance:0.95, failText:"", failEffects:{}}
+]);
+ev("Entrada criminal","Un defensa rival entra con los tacos por delante. El estadio entero escucha el impacto. El árbitro ni siquiera saca amarilla.","🦴","injury",[
+  {text:"Te levantas y sigues jugando cojeando",effects:{morale:10,rel_entrenador:10,rel_compañeros:8},chance:0.4, failText:"Te desplomas a los 5 minutos. La lesión es grave.", failEffects:{injured:true,injuryWeeks:16,morale:-25}},
+  {text:"Sales en camilla. Mejor prevenir",effects:{injured:true,injuryWeeks:4,morale:-8},chance:0.95, failText:"", failEffects:{}}
+]);
+ev("Recuperación milagrosa","Llevas semanas lesionado. Pero tu cuerpo responde mejor de lo esperado. Los médicos están sorprendidos.","✨","injury",[
+  {text:"Apuras la recuperación",effects:{injured:true,injuryWeeks:1,morale:8},chance:0.7, failText:"Recaes. Ahora son más semanas.", failEffects:{injured:true,injuryWeeks:8,morale:-15}},
+  {text:"Esperas lo que digan los médicos",effects:{injured:true,injuryWeeks:4,morale:0},chance:0.9, failText:"", failEffects:{}}
+]);
+
+// ENTRENADOR
+ev("Nuevo entrenador","El club despide al entrenador. Llega uno nuevo con ideas diferentes. Tu puesto ya no está garantizado.","👔","coach",[
+  {text:"Le caes bien al nuevo DT desde el día uno",effects:{rel_entrenador:20,morale:10},chance:0.6, failText:"No le gusta tu estilo. Te manda al banquillo.", failEffects:{rel_entrenador:-20,morale:-15}},
+  {text:"Te mantienes neutral, a ver qué pasa",effects:{rel_entrenador:5},chance:0.8, failText:"No te convoca para los próximos partidos.", failEffects:{rel_entrenador:-10,morale:-8}}
+]);
+ev("Conflicto táctico","El entrenador insiste en que juegues de una forma que no va contigo. Discutes con él frente a todo el equipo.","😤","coach",[
+  {text:"Le alzas la voz y te impones",effects:{morale:5,rel_entrenador:-15,rel_compañeros:5},chance:0.5, failText:"Te manda a la grada. No te convoca en semanas.", failEffects:{rel_entrenador:-25,morale:-20,clubChange:"forcedTransfer"}},
+  {text:"Aceptas sus órdenes con resignación",effects:{rel_entrenador:10,morale:-8},chance:0.85, failText:"", failEffects:{}}
+]);
+ev("El DT te elogia públicamente","En rueda de prensa, el entrenador dice que eres el mejor jugador que ha dirigido. Los focos apuntan a ti.","🌟","coach",[
+  {text:"Agradeces con humildad",effects:{morale:10,rel_entrenador:15,rel_compañeros:5},chance:0.95, failText:"", failEffects:{}},
+  {text:"Dices que es gracias a tu talento natural",effects:{morale:12,rel_entrenador:-5,rel_compañeros:-5},chance:0.6, failText:"La prensa te tacha de arrogante. El vestuario se enfría.", failEffects:{rel_compañeros:-15,morale:-10}}
+]);
+
+// SELECCIÓN NACIONAL
+ev("Convocatoria soñada","Llega la lista de la selección nacional. Tu nombre aparece. Vas a representar a tu país. Tu familia llora de emoción.","🇦🇷","national",[
+  {text:"Viajas con orgullo y honor",effects:{morale:20,familia:15},chance:0.95, failText:"", failEffects:{}}
+]);
+ev("Mundial: fase de grupos","Estás en el Mundial. Los ojos del planeta te miran. Tu país entero está paralizado frente al televisor.","🌍","worldcup",[
+  {text:"Juegas cada partido como una final",effects:{careerGoals:2,seasonGoals:2, morale:15,careerMatches:3},chance:0.7, failText:"No pasan de grupos. Vuelven en silencio.", failEffects:{morale:-20}},
+  {text:"Disfrutas la experiencia sin presión",effects:{morale:8,careerMatches:3},chance:0.85, failText:"", failEffects:{}}
+]);
+ev("Mundial: eliminación directa","Octavos de final del Mundial. El partido está 1-1. Quedan 5 minutos. Te llega el balón.","⚽","worldcup",[
+  {text:"Tiro desde fuera del área",effects:{careerGoals:1, morale:25,worldCupGoal:true},chance:0.45, failText:"El balón se va desviado. Luego pierden en penales.", failEffects:{morale:-25}},
+  {text:"Pase filtrado al delantero",effects:{careerAssists:1, morale:15},chance:0.55, failText:"El pase es interceptado. Contraataque y gol del rival. Eliminados.", failEffects:{morale:-20}},
+  {text:"Aguantas el balón en la esquina",effects:{morale:5},chance:0.6, failText:"Pierden igual. Al menos no arriesgaste.", failEffects:{morale:-10}}
+]);
+ev("No convocado","La lista de la selección sale... y tu nombre NO está. Las redes sociales explotan preguntando por qué.","😞","national",[
+  {text:"Llamas al seleccionador para pedir explicaciones",effects:{morale:-8},chance:0.4, failText:"Te cuelga el teléfono. Humillación total.", failEffects:{morale:-20}},
+  {text:"Lo aceptas y te centras en tu club",effects:{morale:-5,rel_entrenador:5},chance:0.9, failText:"", failEffects:{}}
+]);
+ev("Gol en la final del Mundial","Es LA final del Mundial. El partido está empatado. Balón al área, te elevas, y...","👑","worldcup",[
+  {text:"Cabezazo picado al suelo",effects:{careerGoals:1, morale:40,worldCupWinner:true},chance:0.5, failText:"El portero la saca con la punta de los dedos. Pierden en penales.", failEffects:{morale:-30}},
+  {text:"Remates de volea sin pensarlo",effects:{careerGoals:1, morale:40,worldCupWinner:true},chance:0.4, failText:"La mandas a la grada. El país entero se lamenta.", failEffects:{morale:-30}}
+]);
+
+// RELACIONES
+ev("Flechazo en la grada","Después de un partido, una persona entre el público te lanza una mirada que te deja helado. Intercambian números.","💘","relationship",[
+  {text:"La invitas a salir. Podría ser el amor de tu vida",effects:{hasPartner:true,partnerName:randomPartner(), morale:15},chance:0.9, failText:"Te rechaza educadamente. Era solo una fan.", failEffects:{morale:-5}},
+  {text:"Te haces el difícil. Si está destinado, pasará",effects:{morale:2},chance:0.3, failText:"La persona aparece en redes sociales con otro futbolista. Te arrepientes.", failEffects:{morale:-8}}
+]);
+ev("Crisis de pareja","Tu pareja está harta. Nunca estás en casa. Siempre de viaje, siempre entrenando. Te da un ultimátum: el fútbol o yo.","💔","relationship",[
+  {text:"Intentas equilibrar tu vida personal y el fútbol",effects:{hasPartner:true,morale:5,familia:5},chance:0.55, failText:"No funciona. La relación termina entre lágrimas.", failEffects:{hasPartner:false,morale:-15}},
+  {text:"El fútbol es lo primero. Siempre",effects:{hasPartner:false,morale:-10,rel_entrenador:5},chance:0.95, failText:"", failEffects:{}}
+]);
+ev("Boda de ensueño","Tu pareja y tú deciden dar el gran paso. La boda del año. Todos los medios quieren cubrirla.","💒","relationship",[
+  {text:"Boda íntima con familiares y amigos cercanos",effects:{married:true,morale:15,familia:15,money:-50000},chance:0.95, failText:"", failEffects:{}},
+  {text:"Bodón mediático con 500 invitados",effects:{married:true,morale:10,money:-200000},chance:0.8, failText:"Sale mal: tu ex aparece en la ceremonia. Dramón.", failEffects:{married:true,morale:-10,money:-150000}}
+]);
+ev("Vas a ser padre","Tu pareja te da la noticia: está embarazada. Tu vida está a punto de cambiar para siempre.","👶","relationship",[
+  {text:"Lloras de emoción. Serás el mejor padre del mundo",effects:{hasKids:true,kidNames:["Junior"],morale:20,familia:15},chance:0.95, failText:"", failEffects:{}},
+  {text:"Te preocupa que afecte tu carrera. Dudas",effects:{hasKids:true,kidNames:["Bebé"],morale:5,familia:5},chance:0.7, failText:"Tu pareja se enfada por tu reacción. Tensión en casa.", failEffects:{hasKids:true,kidNames:["Bebé"],morale:-10,hasPartner:false}}
+]);
+ev("Escándalo de infidelidad","Una revista publica fotos tuyas en una situación comprometida. Tu teléfono no para de sonar. Tu pareja está furiosa.","📸","relationship",[
+  {text:"Niegas todo. Es un montaje",effects:{morale:-10},chance:0.3, failText:"Hay más pruebas. Te pillan. Divorcio inminente.", failEffects:{hasPartner:false,married:false,morale:-25,rel_compañeros:-10}},
+  {text:"Lo admites y pides perdón públicamente",effects:{morale:-15,rel_entrenador:-5},chance:0.5, failText:"No te perdonan. Te quedas soltero y con mala fama.", failEffects:{hasPartner:false,morale:-20}},
+  {text:"Compras el silencio de la revista",effects:{money:-500000,morale:-5},chance:0.6, failText:"La revista publica igualmente. Pierdes dinero y reputación.", failEffects:{money:-500000,hasPartner:false,morale:-20}}
+]);
+ev("Tu mejor amigo te pide dinero","Un amigo de la infancia aparece de la nada. Está en la ruina. Te pide un préstamo importante.","💸","relationship",[
+  {text:"Le prestas sin condiciones",effects:{money:-100000,amigos:15,morale:8},chance:0.7, failText:"Nunca te lo devuelve. La amistad se rompe.", failEffects:{money:-100000,amigos:-20,morale:-15}},
+  {text:"Le consigues trabajo con tus contactos",effects:{amigos:10,morale:5},chance:0.8, failText:"Lo despiden a la semana. Tu amigo se enfada contigo.", failEffects:{amigos:-10,morale:-5}}
+]);
+ev("Fiesta salvaje","Tus compañeros te arrastran a una fiesta. Hay de todo. La noche se descontrola. Amanece y no sabes dónde estás.","🍾","relationship",[
+  {text:"Te dejas llevar. YOLO",effects:{rel_compañeros:15,morale:12,discipline:-25},tag:"Fiestero",chance:0.6, failText:"Sales en las noticias haciendo el ridículo. El club te multa.", failTag:"Descontrolado", failEffects:{morale:-20,rel_entrenador:-20,money:-50000,discipline:-15}},
+  {text:"Te vas temprano. Eres profesional",effects:{rel_entrenador:5,morale:5,rel_compañeros:-5},tag:"Profesional",chance:0.9, failText:"", failEffects:{}}
+]);
+
+// DRAMA / MORBO
+ev("Apuesta clandestina","Un tipo sospechoso se te acerca en un aparcamiento. Te ofrece dinero por dejarte marcar un gol en propia puerta.","🕵️","drama",[
+  {text:"Aceptas. El dinero es muy tentador",effects:{money:1000000,morale:-20,rel_entrenador:-30,rel_compañeros:-30},chance:0.7, failText:"Te investigan. Escándalo de apuestas. Te suspenden un año.", failEffects:{morale:-40,money:-200000,injured:true,injuryWeeks:52}},
+  {text:"Lo denuncias a las autoridades",effects:{morale:8,rel_entrenador:5,rel_compañeros:5},chance:0.9, failText:"El tipo te amenaza. Vives con miedo unos meses.", failEffects:{morale:-15}}
+]);
+ev("Doping sorpresa","Un control antidoping aleatorio da positivo. Juras que fue un suplemento contaminado. Nadie te cree.","🧪","drama",[
+  {text:"Contratas al mejor abogado deportivo",effects:{money:-200000,morale:-10},chance:0.5, failText:"Te sancionan 2 años. Tu carrera pende de un hilo.", failEffects:{injured:true,injuryWeeks:104,morale:-40,clubChange:"forcedOut"}},
+  {text:"Admites tu error públicamente y pides perdón",effects:{morale:-15,rel_entrenador:-15},chance:0.4, failText:"Te sancionan igual. Al menos fuiste honesto.", failEffects:{injured:true,injuryWeeks:26,morale:-25}}
+]);
+ev("Pelea en el vestuario","Después de una derrota, el vestuario estalla. Tu compañero te echa la culpa frente a todos. Los ánimos se caldean.","👊","drama",[
+  {text:"Le respondes. Esto se resuelve a puñetazos",effects:{morale:-5,rel_compañeros:-15,rel_entrenador:-10},chance:0.4, failText:"Te rompen la nariz. Sales en todos los periódicos.", failEffects:{injured:true,injuryWeeks:2,morale:-20,rel_compañeros:-25}},
+  {text:"Te tragas el orgullo y te disculpas",effects:{morale:-8,rel_compañeros:5,rel_entrenador:5},chance:0.7, failText:"El otro jugador te humilla más. El vestuario se divide.", failEffects:{rel_compañeros:-10,morale:-15}}
+]);
+ev("Se filtra tu salario","Alguien filtra tu contrato. Todos saben cuánto ganas. Tus compañeros te miran distinto. Algunos ganan la mitad que tú.","📄","drama",[
+  {text:"Ofreces pagar una cena de equipo para suavizar las cosas",effects:{money:-50000,rel_compañeros:10,morale:5},chance:0.8, failText:"Algunos lo ven como un soborno. La tensión sigue.", failEffects:{rel_compañeros:-5,morale:-5}},
+  {text:"Dices que te lo mereces y punto",effects:{rel_compañeros:-15,morale:5},chance:0.4, failText:"El vestuario se vuelve contra ti. Te hacen el vacío.", failEffects:{rel_compañeros:-30,morale:-20}}
+]);
+ev("Romance secreto con la prensa","Una periodista deportiva y tú empezáis algo. Pero ella tiene acceso a información privilegiada. El conflicto de intereses es evidente.","🎙️","drama",[
+  {text:"Lo mantienes en secreto. Es peligroso pero emocionante",effects:{morale:10,hasPartner:true,partnerName:"la periodista"},chance:0.5, failText:"Alguien los descubre. Escándalo. Te acusan de filtrar información del club.", failEffects:{hasPartner:false,morale:-25,rel_entrenador:-30}},
+  {text:"Cortas la relación. Tu carrera es más importante",effects:{morale:-5,rel_entrenador:5},chance:0.9, failText:"", failEffects:{}}
+]);
+ev("Tu representante te roba","Descubres que tu agente ha estado desviando dinero de tus contratos. Miles de euros perdidos. Te sientes traicionado.","🐍","drama",[
+  {text:"Lo denuncias y cambias de agente",effects:{money:-300000,morale:-15},chance:0.7, failText:"El juicio se alarga años. Pierdes más dinero en abogados.", failEffects:{money:-500000,morale:-20}},
+  {text:"Lo encaras personalmente",effects:{money:-200000,morale:-10},chance:0.5, failText:"Te amenaza con filtrar secretos tuyos. Pesadilla.", failEffects:{morale:-25}}
+]);
+
+// HUMOR / VIRAL
+ev("Baile viral","Después de marcar un gol, improvisas un baile ridículo. Las cámaras lo captan. A la mañana siguiente eres tendencia mundial.","🕺","humor",[
+  {text:"Abrazas la fama. Creas tu propio challenge de baile",effects:{morale:10,dinero_extra:100000},chance:0.85, failText:"El baile es tan malo que se vuelve un meme de burla. Te llaman 'El robot descoordinado'.", failEffects:{morale:-5}},
+  {text:"Borrón y cuenta nueva. Finges que no pasó",effects:{morale:3},chance:0.7, failText:"Internet nunca olvida. Siguen compartiendo el video años después.", failEffects:{morale:-3}}
+]);
+ev("Invasión animal","Un animal salvaje irrumpe en el campo durante el partido. El juego se detiene. El bicho corretea por el área.","🐿️","humor",[
+  {text:"Intentas atraparlo tú mismo. Héroe del pueblo",effects:{morale:10,rel_compañeros:10},chance:0.5, failText:"El animal te muerde. Acabas en el hospital. Noticia mundial.", failEffects:{injured:true,injuryWeeks:2,morale:5}},
+  {text:"Dejas que los de seguridad se encarguen",effects:{morale:3},chance:0.95, failText:"", failEffects:{}}
+]);
+ev("Entrevista desastrosa","En una entrevista post-partido, dices algo que NO debías decir. El periodista te graba con una sonrisa. Sabes que la has liado.","🎤","humor",[
+  {text:"Intentas arreglarlo con otro comentario",effects:{morale:-5},chance:0.3, failText:"Empeoras la situación. Ahora eres meme y villano.", failEffects:{morale:-15,rel_entrenador:-10,rel_compañeros:-5}},
+  {text:"Pides disculpas inmediatamente en redes sociales",effects:{morale:-3},chance:0.6, failText:"Ya es tarde. El clip se ha viralizado.", failEffects:{morale:-8}}
+]);
+ev("El aficionado infiltrado","Un aficionado salta al campo y corre hacia ti. Quiere tu camiseta... o algo más. La seguridad va tarde.","🏃","humor",[
+  {text:"Le das tu camiseta. Paz y amor",effects:{morale:8,rel_compañeros:5},chance:0.8, failText:"Otros 10 aficionados se lanzan al campo. Se suspende el partido.", failEffects:{morale:-5}},
+  {text:"Lo esquivias como en el fútbol americano",effects:{morale:12,rel_compañeros:8},chance:0.7, failText:"El aficionado se tropieza y te golpea sin querer. Ambos al suelo.", failEffects:{morale:-3}}
+]);
+ev("Confundes al árbitro con un jugador","En un saque de banda, le pasas el balón al árbitro pensando que era tu compañero. El estadio entero estalla en risas.","😂","humor",[
+  {text:"Te ríes de ti mismo. Humildad ante todo",effects:{morale:5,rel_compañeros:5},chance:0.9, failText:"", failEffects:{}},
+  {text:"Le echas la culpa al árbitro por vestirse igual",effects:{morale:3,rel_entrenador:-5},chance:0.4, failText:"El árbitro te saca amarilla por protestar. Doble humillación.", failEffects:{morale:-10,rel_entrenador:-8}}
+]);
+ev("Tu look causa sensación","Llegas al entrenamiento con un nuevo corte de pelo... digamos que arriesgado. Tus compañeros no pueden dejar de mirarte.","💇","humor",[
+  {text:"Te gusta. Es tu nuevo estilo",effects:{morale:8,rel_compañeros:3},chance:0.6, failText:"Los memes sobre tu pelo duran meses. Patrocinadores huyen.", failEffects:{morale:-5,money:-200000}},
+  {text:"Te rapas al día siguiente. Error corregido",effects:{morale:2},chance:0.9, failText:"", failEffects:{}}
+]);
+ev("Celebración épica fallida","Preparaste una celebración especial durante semanas. Llega el gol, corres a la banda... y todo sale mal.","🤸","humor",[
+  {text:"Improvisas sobre la marcha",effects:{morale:5,rel_compañeros:5},chance:0.6, failText:"Acabas en el suelo, enredado en la banderín del córner. Memes para rato.", failEffects:{morale:-5}},
+  {text:"Te quedas quieto. Fin de la celebración",effects:{morale:-3},chance:0.9, failText:"", failEffects:{}}
+]);
+ev("Tu madre tuitea cosas de ti","Tu madre ha descubierto Twitter. Ahora comenta tus partidos... con demasiado entusiasmo. Incluye fotos tuyas de bebé.","👩‍💻","humor",[
+  {text:"Le pides que pare. Con cariño",effects:{familia:-5,morale:3},chance:0.5, failText:"Tu madre se ofende. Drama familiar. No te habla en meses.", failEffects:{familia:-25,morale:-15}},
+  {text:"Retuiteas sus mensajes. Es adorable",effects:{familia:10,morale:8},chance:0.8, failText:"", failEffects:{}}
+]);
+ev("Te roban el coche","Sales del entrenamiento y... tu coche no está. Te lo han robado. Directo a redes sociales a quejarte.","🚗","humor",[
+  {text:"Ofreces recompensa por información",effects:{money:-10000,morale:-8},chance:0.6, failText:"Aparece destrozado en un descampado. El seguro no cubre todo.", failEffects:{money:-30000,morale:-15}},
+  {text:"Compras uno mejor. Dinero llama a dinero",effects:{money:-200000,morale:5},chance:0.9, failText:"", failEffects:{}}
+]);
+
+// VIDA
+ev("Oportunidad de negocio","Un amigo emprendedor te ofrece invertir en su startup. Suena revolucionario, pero las startups son volátiles.","📈","life",[
+  {text:"Inviertes una cantidad moderada",effects:{money:-100000,investmentValue:200000},chance:0.5, failText:"La startup quiebra. Adiós al dinero.", failEffects:{money:-100000,morale:-10}},
+  {text:"Inviertes fuerte. Confías en tu amigo",effects:{money:-500000,investmentValue:1500000},chance:0.3, failText:"Pierdes todo. Tu amigo desaparece del mapa.", failEffects:{money:-500000,morale:-20,amigos:-30}},
+  {text:"Pasas. No es tu mundo",effects:{morale:2},chance:0.95, failText:"", failEffects:{}}
+]);
+ev("Patrocinio millonario","Una gran marca quiere que seas su imagen. Te ofrecen un contrato de patrocinio por varios años.","🤝","life",[
+  {text:"Firmas sin leer la letra pequeña",effects:{money:2000000,morale:10},chance:0.7, failText:"La letra pequeña te obliga a usar sus productos en público. Incluye un disfraz de plátano.", failEffects:{money:2000000,morale:-5}},
+  {text:"Negocias mejores condiciones con tu abogado",effects:{money:1500000,morale:5},chance:0.9, failText:"", failEffects:{}}
+]);
+ev("Donación benéfica","Una ONG te contacta. Quieren que apadrines una causa. Tu imagen pública podría beneficiarse, pero es dinero real.","🎗️","life",[
+  {text:"Donas generosamente. Los niños te adoran",effects:{money:-200000,morale:12,familia:5},chance:0.95, failText:"", failEffects:{}},
+  {text:"Donas algo simbólico",effects:{money:-20000,morale:3},chance:0.9, failText:"Te critican por tacaño. La prensa te compara con otros jugadores.", failEffects:{morale:-8}}
+]);
+
+// RANDOM
+ev("Encuentro con una leyenda","Te cruzas con una leyenda del fútbol en un restaurante. Te reconoce y se acerca a tu mesa.","🤩","random",[
+  {text:"Le pides consejos sobre tu carrera",effects:{morale:10,overall_boost:2},chance:0.9, failText:"", failEffects:{}},
+  {text:"Te haces un selfie y lo subes a redes",effects:{morale:8},chance:0.85, failText:"La foto sale borrosa. La gente piensa que es Photoshop.", failEffects:{morale:-2}}
+]);
+ev("Problemas con Hacienda","Recibes una carta de Hacienda. Te reclaman impuestos no pagados. Al parecer tu antiguo contador hacía magia... mala.","📋","random",[
+  {text:"Pagas y contratas a un contador de verdad",effects:{money:-400000,morale:-8},chance:0.9, failText:"", failEffects:{}},
+  {text:"Intentas pelear la multa en los tribunales",effects:{money:-100000,morale:-5},chance:0.3, failText:"Pierdes el juicio. Pagas el doble.", failEffects:{money:-800000,morale:-20}}
+]);
+ev("Día libre inesperado","El entrenador da el día libre. Tienes 24 horas para ti. ¿Qué haces con tu tiempo?","☀️","random",[
+  {text:"Maratón de videojuegos y pizza",effects:{morale:10,rel_compañeros:3},chance:0.95, failText:"Te duele el estómago al día siguiente. Demasiada pizza.", failEffects:{morale:-2}},
+  {text:"Entrenas por tu cuenta. No hay descanso",effects:{overall_boost:1,morale:3},chance:0.85, failText:"Te agotas. Llegas fundido al siguiente entreno.", failEffects:{morale:-5,injured:true,injuryWeeks:1}}
+]);
+ev("El vecino molesto","Un vecino se queja del ruido que haces en tu mansión. Amenaza con llamar a la policía si no paras tus fiestas.","🏘️","random",[
+  {text:"Le invitas a la próxima fiesta",effects:{morale:5,amigos:5},chance:0.6, failText:"El vecino resulta ser un periodista encubierto. Publica todo.", failEffects:{morale:-10}},
+  {text:"Le ignoras. Es tu casa, tus reglas",effects:{morale:3},chance:0.7, failText:"El vecino organiza una protesta vecinal. Escándalo local.", failEffects:{morale:-8}}
+]);
+
+// --- MÁS EVENTOS DE PARTIDO ---
+ev("Derbi de la ciudad","El derbi. La ciudad se paraliza. Gane quien gane, esto es la guerra. Tu afición lleva meses esperando este día.","🏙️","match",[
+  {text:"Sales a morder desde el minuto uno",effects:{morale:10,careerMatches:1,rel_compañeros:5},chance:0.6, failText:"Te expulsan a los 10 minutos por una entrada durísima. Tu equipo juega con 10.", failEffects:{morale:-15,rel_entrenador:-15,rel_compañeros:-10}},
+  {text:"Juegas con cabeza fría, controlando el ritmo",effects:{morale:5,careerMatches:1,rel_entrenador:8},chance:0.8, failText:"El partido se va 0-0. Aburrido pero sin riesgos.", failEffects:{morale:-3}}
+]);
+ev("Gol olímpico","Cobras un córner. El viento sopla a favor. Le pegas con rosca y... ¡va directo a portería! El estadio contiene el aliento.","🥅","match",[
+  {text:"Buscas el gol olímpico descaradamente",effects:{careerGoals:1,seasonGoals:1, morale:20,rel_compañeros:10},chance:0.2, failText:"El balón se va directamente fuera. La grada se ríe.", failEffects:{morale:-5}},
+  {text:"Centras normal al área",effects:{careerAssists:1,seasonAssists:1, morale:5},chance:0.7, failText:"Despeja la defensa rival. Otra oportunidad perdida.", failEffects:{morale:-2}}
+]);
+ev("Chilena imposible","El balón llega de espaldas a la portería. El tiempo se ralentiza. Tu cuerpo se eleva en el aire. Es ahora o nunca.","🤸","match",[
+  {text:"¡Chilena! A lo que salga",effects:{careerGoals:1,seasonGoals:1, morale:25,rel_compañeros:15},chance:0.3, failText:"Caes de espaldas como un saco de patatas. Fisio urgente.", failEffects:{injured:true,injuryWeeks:6,morale:-15}},
+  {text:"Bajas el balón con el pecho y disparas normal",effects:{careerGoals:1,seasonGoals:1, morale:8},chance:0.6, failText:"El portero lo detiene sin problemas.", failEffects:{morale:-3}}
+]);
+ev("Gol en el último segundo","Minuto 96 de 94. El árbitro ya mira el reloj. Tu equipo lanza un balón desesperado al área. Te llega a ti.","⏰","match",[
+  {text:"Cierras los ojos y le pegas con el alma",effects:{careerGoals:1,seasonGoals:1, morale:20,rel_compañeros:15,rel_entrenador:15},chance:0.4, failText:"El balón se va a la grada. El árbitro pita el final.", failEffects:{morale:-10}},
+  {text:"Intentas controlar y asegurar",effects:{morale:3},chance:0.5, failText:"No te da tiempo. El árbitro pita el final con el balón en tus pies.", failEffects:{morale:-15,rel_entrenador:-10}}
+]);
+ev("Expulsión injusta","El árbitro te saca roja directa por una falta que claramente no era. El estadio ruge de indignación. Estás fuera.","🟥","match",[
+  {text:"Te encaras con el árbitro. Esto es un robo",effects:{morale:-10,rel_entrenador:-5},chance:0.2, failText:"Te sancionan con más partidos por insultar al árbitro.", failEffects:{morale:-20,rel_entrenador:-15,money:-50000}},
+  {text:"Sales en silencio. Tragas tu orgullo",effects:{morale:-5,rel_entrenador:5},chance:0.9, failText:"", failEffects:{}}
+]);
+ev("Debut europeo","Champions League. Suena el himno. Se te pone la piel de gallina. Las cámaras enfocan tu cara y se transmite a 200 países.","⭐","match",[
+  {text:"Disfrutas cada segundo. Es tu sueño",effects:{careerMatches:1, morale:15,rel_entrenador:8},chance:0.85, failText:"Te tiemblan las piernas y fallas pases fáciles. Los nervios te traicionan.", failEffects:{morale:-8}},
+  {text:"Juegas como si fuera un partido cualquiera",effects:{careerMatches:1, morale:8},chance:0.7, failText:"El ritmo de Champions te devora. Sustituido al descanso.", failEffects:{morale:-12,rel_entrenador:-8}}
+]);
+ev("Lesión del portero","El portero se lesiona. Ya no hay cambios. El entrenador te mira. Nadie más quiere ponerse los guantes.","🧤","match",[
+  {text:"Das un paso al frente. Serás el héroe o el villano",effects:{morale:15,rel_entrenador:10,rel_compañeros:15},chance:0.5, failText:"Te meten un gol por debajo de las piernas. Humillante. Pero valiente.", failEffects:{morale:-5}},
+  {text:"Miras al suelo. Que lo haga otro",effects:{rel_entrenador:-8,rel_compañeros:-10,morale:-5},chance:0.95, failText:"", failEffects:{}}
+]);
+
+// --- MÁS DRAMA Y MORBO ---
+ev("Video íntimo filtrado","Alguien filtra un video privado tuyo. Las redes sociales arden. Los patrocinadores llaman preocupados. Tu teléfono no para.","🔞","drama",[
+  {text:"Contratas un equipo legal para eliminar todo de internet",effects:{money:-200000,morale:-20},chance:0.6, failText:"El video ya está en todos lados. Incontrolable. Demandas a quien puedas.", failEffects:{money:-400000,morale:-30}},
+  {text:"Haces un comunicado público admitiendo el error",effects:{morale:-15,rel_entrenador:-5},chance:0.4, failText:"La disculpa pública empeora la situación. Memes por meses.", failEffects:{morale:-25,rel_compañeros:-10}}
+]);
+ev("Hijo secreto","Una mujer aparece en televisión afirmando que tú eres el padre de su hijo. Prueba de ADN en camino. El mundo del fútbol mira.","🧬","drama",[
+  {text:"Exiges la prueba de ADN inmediatamente",effects:{money:-50000,morale:-10},chance:0.5, failText:"Eres el padre. Tu vida cambia para siempre.", failEffects:{hasKids:true,kidNames:["inesperado"],morale:-20,money:-200000}},
+  {text:"Niega todo públicamente y acusas de extorsión",effects:{morale:-5},chance:0.3, failText:"La prueba confirma la paternidad. Ahora también eres un mentiroso público.", failEffects:{hasKids:true,kidNames:["escándalo"],morale:-30,rel_entrenador:-15}}
+]);
+ev("Secuestro express","Salir del entrenamiento se complica. Un coche te cierra el paso. Te suben a empujones. Horas de terror.","🚨","drama",[
+  {text:"Intentas negociar y mantener la calma",effects:{money:-200000,morale:-40},chance:0.5, failText:"Te sueltan igual, pero el trauma te persigue.", failEffects:{morale:-50,injured:true,injuryWeeks:4}},
+  {text:"Intentas escapar en un descuido",effects:{morale:-30},chance:0.2, failText:"Te golpean. El rescate es más caro y acabas lesionado.", failEffects:{morale:-50,injured:true,injuryWeeks:12,money:-500000}}
+]);
+ev("Conflicto con la afición","La grada te abuchea. Cada vez que tocas el balón, silbidos. Algo ha cambiado. Los que te adoraban ahora te odian.","😡","drama",[
+  {text:"Les dedicas un gol callando bocas",effects:{morale:15,rel_compañeros:5},chance:0.4, failText:"No marcas. Los abucheos aumentan. Sales entre lágrimas.", failEffects:{morale:-25}},
+  {text:"Vas a hablar con los líderes de la grada",effects:{morale:5,rel_compañeros:3},chance:0.5, failText:"Te insultan en persona. Todo empeora.", failEffects:{morale:-20}}
+]);
+ev("Amenaza de muerte","Recibes un sobre en tu casa. Dentro, una amenaza. Tu familia está aterrorizada. La policía investiga.","⚠️","drama",[
+  {text:"Refuerzas tu seguridad privada y sigues jugando",effects:{money:-150000,morale:-20},chance:0.8, failText:"", failEffects:{}},
+  {text:"Te tomas un tiempo lejos del fútbol",effects:{morale:-10,injured:true,injuryWeeks:8},chance:0.7, failText:"La pausa te hace perder ritmo. Vuelves peor.", failEffects:{overallPenalty:true}}
+]);
+
+// --- MÁS HUMOR ---
+ev("Te grabas un reality show","Una plataforma te ofrece tu propio reality show. Las cámaras te seguirán 24/7 durante la temporada.","📺","humor",[
+  {text:"Aceptas. Serás el primer futbolista con reality",effects:{money:1500000,morale:15},chance:0.5, failText:"Las cámaras captan una discusión fea con el DT. Te ponen en el mercado.", failEffects:{morale:-20,rel_entrenador:-30,clubChange:"forcedTransfer"}},
+  {text:"Rechazas. Tu vida privada es privada",effects:{morale:5},chance:0.9, failText:"", failEffects:{}}
+]);
+ev("Campaña publicitaria ridícula","Una marca de crema antiarrugas te quiere como imagen. El anuncio es... cuestionable. Tendrás que salir en calzoncillos con crema en la cara.","🧴","humor",[
+  {text:"El dinero es dinero. Aceptas",effects:{money:800000,morale:5},chance:0.6, failText:"El anuncio se vuelve el más parodiado del año. Tu dignidad, perdida.", failEffects:{money:800000,morale:-15}},
+  {text:"Ni por todo el oro del mundo",effects:{morale:8,rel_entrenador:3},chance:0.9, failText:"", failEffects:{}}
+]);
+ev("Tu auto-gol es gol del año","Marcas un gol en propia puerta... pero es TAN espectacular que compite por el Puskás. La ironía duele.","😵","humor",[
+  {text:"Te ríes de ti mismo en redes. Si vas a hacer el ridículo, hazlo bien",effects:{morale:5,rel_compañeros:5},chance:0.7, failText:"La afición rival te saca un cántico. Pasará a la historia.", failEffects:{morale:-10}},
+  {text:"Pides que no se hable más del tema",effects:{morale:-8},chance:0.4, failText:"Cada entrevista te lo recuerda. Será eterno.", failEffects:{morale:-15}}
+]);
+ev("Tu rival te reta en redes","Un jugador rival te dedica un tuit picante antes del partido. Los medios amplifican el mensaje. El duelo está servido.","🐦","humor",[
+  {text:"Respondes con un tuit aún más picante",effects:{morale:8,rel_compañeros:5},chance:0.5, failText:"El tuit se te va de las manos. El club te obliga a borrarlo.", failEffects:{morale:-8,rel_entrenador:-10}},
+  {text:"Lo ignoras. Las palabras se las lleva el viento",effects:{morale:5,rel_entrenador:5},chance:0.8, failText:"El rival te vacila en el campo. Quizás debiste responder.", failEffects:{morale:-5}}
+]);
+ev("Un niño te pide que seas su padrino","Un niño con enfermedad grave tiene como último deseo conocerte. El club organiza el encuentro. Hay cámaras.","🥺","humor",[
+  {text:"Le dedicas todo el día. Fotos, regalos, lágrimas",effects:{morale:20,familia:10,rel_compañeros:5},chance:0.95, failText:"", failEffects:{}},
+  {text:"Vas rápido. Tienes cosas que hacer",effects:{morale:-15,rel_entrenador:-10,rel_compañeros:-10},chance:0.3, failText:"La prensa te destruye. 'Sin corazón', titulan.", failEffects:{morale:-30}}
+]);
+ev("Confundes a tu compañero con un recogepelotas","Le pides el balón con urgencia... pero es un niño recogepelotas. Has estado 5 minutos gritándole instrucciones tácticas.","👦","humor",[
+  {text:"Te disculpas y le regalas tu camiseta",effects:{morale:5,familia:5},chance:0.9, failText:"", failEffects:{}},
+  {text:"Finges que era parte de tu estrategia mental",effects:{morale:3},chance:0.4, failText:"Tus compañeros te imitan durante meses. Nunca lo olvidarán.", failEffects:{morale:-3}}
+]);
+
+// --- MÁS VIDA ---
+ev("Te mudas de país","El club te obliga a mudarte. Nueva ciudad, nuevo idioma, nueva cultura. Tu familia tiene que adaptarse.","🌍","life",[
+  {text:"Abrazas el cambio. Nueva aventura",effects:{morale:10,money:-100000},chance:0.8, failText:"No te adaptas. La nostalgia te come.", failEffects:{morale:-15}},
+  {text:"Te quejas. No querías mudarte",effects:{morale:-10,rel_entrenador:-5},chance:0.5, failText:"El club no se toma bien tu actitud. Relación tensa.", failEffects:{rel_entrenador:-15,morale:-15}}
+]);
+ev("Tu hermano quiere ser futbolista","Tu hermano menor te dice que quiere seguir tus pasos. Te pide que le ayudes a entrar en una academia.","⚽","life",[
+  {text:"Usas tus contactos para meterlo en la mejor cantera",effects:{familia:15,morale:8},chance:0.85, failText:"Tu hermano no tiene talento. Lo rebotan. Te culpa a ti.", failEffects:{familia:-15,morale:-10}},
+  {text:"Le dices que estudie una carrera. El fútbol es muy duro",effects:{familia:-5,morale:2},chance:0.6, failText:"Tu hermano se enfada. Siente que no confías en él.", failEffects:{familia:-20,morale:-8}}
+]);
+ev("Creas tu propia marca de ropa","Decides lanzar tu línea de ropa deportiva. Inviertes dinero y contratas diseñadores. ¿Será un éxito o un fracaso?","👕","life",[
+  {text:"Inviertes fuerte en marketing y calidad",effects:{money:-500000,investmentValue:800000,morale:8},chance:0.5, failText:"La crítica destroza tu primera colección. 'Parece un disfraz'.", failEffects:{money:-500000,morale:-15}},
+  {text:"Haces una tirada pequeña y pruebas el mercado",effects:{money:-100000,investmentValue:150000},chance:0.75, failText:"Pasa sin pena ni gloria.", failEffects:{morale:-3}}
+]);
+ev("Vuelves a estudiar","Con 25 años decides estudiar algo. Gestión deportiva, idiomas... tus compañeros te miran raro. Pero a ti te llena.","📚","life",[
+  {text:"Estudias gestión deportiva para ser directivo al retirarte",effects:{morale:10,overall_boost:1},chance:0.9, failText:"", failEffects:{}},
+  {text:"Estudias filosofía por puro placer",effects:{morale:8},chance:0.85, failText:"La prensa se burla. 'Futbolista filósofo'.", failEffects:{morale:-3}}
+]);
+ev("Compra impulsiva","Ves un coche que te vuelve loco. Es carísimo. Pero... ¿qué es la vida sin un capricho de vez en cuando?","🏎️","life",[
+  {text:"Lo compras. El dinero va y viene",effects:{money:-800000,morale:15},chance:0.9, failText:"", failEffects:{}},
+  {text:"Te contienes. Hay que ahorrar",effects:{morale:-3},chance:0.9, failText:"", failEffects:{}}
+]);
+ev("Vacaciones de lujo","Acaba la temporada. Te mereces un descanso. ¿A dónde vas?","🏖️","life",[
+  {text:"Alquilas un yate en el Mediterráneo con amigos",effects:{money:-200000,morale:15,amigos:10},chance:0.9, failText:"Te haces una foto polémica en el yate. La prensa te critica por ostentoso.", failEffects:{morale:-5}},
+  {text:"Vuelves a tu barrio de origen. Humildad",effects:{morale:10,familia:10,money:-5000},chance:0.95, failText:"", failEffects:{}}
+]);
+ev("Nutricionista obsesivo","El club contrata un nuevo nutricionista. Es un tirano. Prohíbe pizzas, hamburguesas, y hasta el pan. La vida se vuelve triste.","🥗","life",[
+  {text:"Sigues la dieta a rajatabla. Cuerpo de atleta",effects:{overall_boost:1,morale:-5},chance:0.85, failText:"", failEffects:{}},
+  {text:"Haces trampa a escondidas. Unas pizzas clandestinas",effects:{morale:5},chance:0.6, failText:"El nutricionista te pilla. Informe negativo al club.", failEffects:{rel_entrenador:-8,morale:-5}}
+]);
+
+// --- MÁS RANDOM ---
+ev("Escribes tu autobiografía","Una editorial te ofrece un contrato para escribir tus memorias. Pero necesitas un escritor fantasma y muchas anécdotas.","📖","random",[
+  {text:"Aceptas. Cuentas TODO sin filtro",effects:{money:500000,morale:8},chance:0.4, failText:"El libro filtra secretos del vestuario. Tus compañeros te odian.", failEffects:{morale:-25,rel_compañeros:-40,money:500000}},
+  {text:"Escribes una versión edulcorada y políticamente correcta",effects:{money:200000,morale:3},chance:0.85, failText:"El libro es aburrido. No lo lee nadie.", failEffects:{morale:-2}}
+]);
+ev("Te invitan a un podcast famoso","El podcast más escuchado del momento te invita. Quieren polémica. Sabes que intentarán sacarte algo jugoso.","🎙️","random",[
+  {text:"Vas sin filtro. Dices lo que piensas de verdad",effects:{morale:8},chance:0.3, failText:"Dices barbaridades. La federación te sanciona.", failEffects:{morale:-15,rel_entrenador:-20,money:-50000}},
+  {text:"Vas con respuestas preparadas. Profesional",effects:{morale:5},chance:0.85, failText:"Alguna respuesta se te escapa. Nada grave.", failEffects:{morale:-2}}
+]);
+ev("Un tatuaje polémico","Te haces un tatuaje... que no era exactamente lo que pediste. El tatuador entendió mal tu idea. Ahora tienes un delfín en la cara.","🐬","random",[
+  {text:"Te lo quitas con láser. Duele pero es necesario",effects:{money:-5000,morale:-5},chance:0.9, failText:"", failEffects:{}},
+  {text:"Lo adoptas como tu marca personal. Delfín FC",effects:{morale:8,rel_compañeros:5},chance:0.5, failText:"Los aficionados rivales te llaman 'Delfín'. Para siempre.", failEffects:{morale:-10}}
+]);
+ev("Huelga de jugadores","El sindicato convoca huelga. Tus compañeros van a parar. Tú tienes dudas. Necesitas el dinero pero también apoyar a los tuyos.","✊","random",[
+  {text:"Te unes a la huelga. Solidaridad",effects:{rel_compañeros:15,morale:8,money:-50000},chance:0.75, failText:"La huelga fracasa. Todos pierden dinero y tiempo.", failEffects:{money:-50000,morale:-10}},
+  {text:"Sigues entrenando. Tú pasas de política",effects:{rel_entrenador:8,rel_compañeros:-20,morale:-3},chance:0.5, failText:"Te llaman esquiro. El vestuario te hace el vacío.", failEffects:{rel_compañeros:-35,morale:-20}}
+]);
+ev("Predicción de un vidente","Un vidente callejero te para. Dice que ve grandeza en tu futuro, pero una sombra oscura se acerca. Te pide dinero para revelar más.","🔮","random",[
+  {text:"Le pagas. Curiosidad mató al gato",effects:{money:-5000,morale:5},chance:0.4, failText:"Sus predicciones no se cumplen. Te estafó.", failEffects:{morale:-5}},
+  {text:"Te ríes y sigues tu camino",effects:{morale:3},chance:0.9, failText:"", failEffects:{}}
+]);
+ev("Tu equipo gana la liga","Último partido de liga. Dependen de sí mismos. Una victoria y son campeones. El estadio es una caldera.","🏆","match",[
+  {text:"Juegas el partido de tu vida. Sin presión",effects:{careerMatches:1,morale:20,rel_compañeros:15,rel_entrenador:15,titles:["Campeón de liga ("+P.age+")"]},chance:0.7, failText:"Empatan. El otro resultado les da el título igual. Campeones sufriendo.", failEffects:{morale:10,titles:["Campeón de liga ("+P.age+")"]}},
+  {text:"Administras la ventaja. Juego conservador",effects:{careerMatches:1,morale:15,rel_entrenador:10,winTitle:"liga"},chance:0.85, failText:"", failEffects:{}}
+]);
+ev("Goleada histórica","Tu equipo mete 8 goles. Es una paliza histórica. La afición rival abandona el estadio al descanso.","🔨","match",[
+  {text:"Sigues metiendo goles sin piedad",effects:{careerGoals:3,seasonGoals:3, morale:20,rel_entrenador:10},chance:0.7, failText:"El rival se enfada y empieza a dar patadas. Acabas lesionado.", failEffects:{injured:true,injuryWeeks:4,morale:-5,careerGoals:1,seasonGoals:1}},
+  {text:"Bajas el ritmo. No hay que humillar",effects:{careerGoals:1,seasonGoals:1, morale:8,rel_compañeros:5, followers:5000},chance:0.9, failText:"", failEffects:{}}
+]);
+
+// --- EVENTOS CON FAMA/SEGUIDORES ---
+ev("Entrevista polémica","Un periodista te pregunta sobre política. Si respondes, puede ser un escándalo. Si te callas, te tachan de tibio. La fama lo magnifica todo.","🎤","drama",[
+  {text:"Das tu opinión sincera sin filtro",effects:{morale:8, followers:80000},chance:0.4, failText:"Tu opinión enfurece a millones. Pierdes patrocinadores y seguidores.", failEffects:{morale:-15, followers:-200000, money:-200000}},
+  {text:"'No voy a hablar de eso, vine a jugar fútbol'",effects:{morale:3, rel_entrenador:5},chance:0.85, failText:"Todos lo olvidan rápido.", failEffects:{followers:-5000}}
+]);
+ev("Tu propio videojuego","Una desarrolladora quiere hacer un videojuego sobre tu vida. Incluye momentos icónicos, entrevistas y hasta un minijuego de tus bailes.","🎮","life",[
+  {text:"Colaboras de cerca. Quieres que sea perfecto",effects:{money:3000000, followers:200000, morale:12},chance:0.75, failText:"El juego recibe críticas mixtas. 'Gráficos de PS2', dicen.", failEffects:{money:1000000, followers:-30000}},
+  {text:"Solo prestas tu imagen y cobras",effects:{money:800000, followers:30000},chance:0.9, failText:"", failEffects:{}}
+]);
+ev("Te nominan al Balón de Oro","Estás en la lista de los mejores del mundo. La gala es en París. Cámaras, flashes, leyendas del fútbol. Tu corazón late a mil.","🏅","match",[
+  {text:"Preparas un discurso emotivo por si acaso",effects:{morale:15, followers:500000},chance:0.3, failText:"No ganas. Tu discurso se filtra y es un poco cringe.", failEffects:{morale:-5, followers:50000}},
+  {text:"Vas a disfrutar. Ganar o no, ya eres historia",effects:{morale:10, followers:200000, money:200000},chance:0.8, failText:"", failEffects:{}}
+]);
+ev("Lesión grave en directo","Un partido transmitido a millones. Una entrada te destroza la rodilla. El silencio en el estadio es ensordecedor. Las redes estallan.","🏥","injury",[
+  {text:"Sonríes a la cámara mientras te llevan en camilla",effects:{morale:-5, followers:100000, injured:true, injuryWeeks:12},chance:0.8, failText:"La lesión es peor de lo esperado. Fuera toda la temporada.", failEffects:{injured:true,injuryWeeks:40,morale:-25, followers:-50000}},
+  {text:"Lloras de frustración. Es tu carrera",effects:{morale:-15, injured:true, injuryWeeks:12, followers:50000},chance:0.75, failText:"", failEffects:{injured:true,injuryWeeks:12}}
+]);
+ev("Racha goleadora","Llevas 10 goles en 8 partidos. Eres la sensación de la liga. Los memes te comparan con aliens y dioses. No puedes fallar ahora.","🔥","match",[
+  {text:"Sigues tu instinto asesino frente al arco",effects:{careerGoals:5,seasonGoals:5, morale:20, followers:300000},chance:0.6, failText:"Te lesionas por sobrecarga. Tu cuerpo dijo basta.", failEffects:{injured:true,injuryWeeks:6,careerGoals:1,seasonGoals:1,morale:-10}},
+  {text:"Dosificas. Prefieres cuidarte para toda la temporada",effects:{careerGoals:2,seasonGoals:2, morale:8, followers:80000},chance:0.85, failText:"", failEffects:{}}
+]);
+ev("Patrocinio de bebida energética","Una marca de bebidas te ofrece ser su rostro global. El contrato incluye anuncios, eventos y tu cara en latas por todo el mundo.","🥤","life",[
+  {text:"Firmas. El cheque es gordo",effects:{money:5000000, followers:150000, morale:8},chance:0.85, failText:"La bebida resulta ser horrible. Memes sobre su sabor inundan redes.", failEffects:{money:5000000, followers:-50000}},
+  {text:"Primero la pruebas. Salud ante todo",effects:{money:3000000, morale:5, followers:50000},chance:0.7, failText:"No te gusta el sabor. Rechazas educadamente.", failEffects:{morale:-2}}
+]);
+ev("Rivalidad explosiva","Un delantero rival declara que eres 'un jugador sobrevalorado'. Los medios huelen sangre. El próximo partido contra ellos será una guerra.","🥊","drama",[
+  {text:"Respondes en redes: 'Que hable en la cancha'",effects:{morale:8, followers:100000, rel_compañeros:5},chance:0.55, failText:"En el partido él marca un hat-trick. Tu silencio ahora duele el doble.", failEffects:{morale:-20, followers:-80000}},
+  {text:"Ignoras. Madurez ante todo",effects:{morale:3, rel_entrenador:5},chance:0.7, failText:"La prensa dice que 'te escondiste'. Te llaman cobarde.", failEffects:{morale:-8, followers:-20000}}
+]);
+ev("Tu canción viral","Un DJ samplea un audio tuyo gritando en la cancha y lo convierte en un hit de discoteca. Suena en todas las radios. No sabes si reír o llorar.","🎵","humor",[
+  {text:"Bailas el remix en tu próxima celebración de gol",effects:{morale:12, followers:300000, money:100000},chance:0.75, failText:"El baile sale regulín. Pero igual la gente lo ama.", failEffects:{morale:5, followers:100000}},
+  {text:"Pides que retiren la canción. No te gusta",effects:{morale:-3, followers:-30000},chance:0.3, failText:"La canción se vuelve aún más viral por la polémica. Efecto Streisand.", failEffects:{followers:50000, morale:-5}}
+]);
+ev("Se filtra tu grupo de WhatsApp","Alguien filtra conversaciones privadas tuyas con amigos. Hay chistes internos, quejas sobre el DT y algún meme subido de tono.","💬","drama",[
+  {text:"Admites que son tuyas y pides disculpas",effects:{morale:-10, rel_entrenador:-10, followers:-50000},chance:0.5, failText:"El DT no acepta tus disculpas. Te manda al banquillo indefinidamente.", failEffects:{rel_entrenador:-30, morale:-20}},
+  {text:"Dices que es falso. Un montaje",effects:{morale:-5},chance:0.35, failText:"Sale el metadato que confirma la autenticidad. Ahora eres mentiroso además.", failEffects:{morale:-25, followers:-100000, rel_entrenador:-20}}
+]);
+ev("Problemas de apuestas","Sale a la luz que apostaste en partidos... pero no en los tuyos. Aun así, la federación investiga. El escándalo es enorme.","🎰","drama",[
+  {text:"Cooperas totalmente con la investigación",effects:{morale:-8, followers:-30000},chance:0.6, failText:"Aun así te sancionan varios partidos. Mancha en tu expediente.", failEffects:{morale:-20, money:-300000, followers:-100000,injured:true,injuryWeeks:8}},
+  {text:"Contratas al mejor abogado y luchas",effects:{money:-500000, morale:-10},chance:0.35, failText:"Pierdes el caso. Sanción ejemplar. Tu carrera tiembla.", failEffects:{injured:true,injuryWeeks:26,morale:-35,money:-1000000,clubChange:"forcedOut"}}
+]);
+ev("Fiesta de campeones","¡Ganaron el título! El vestuario es una locura. Champán, música, bailes. Esto quedará para la historia.","🍾","match",[
+  {text:"Celebras hasta que salga el sol. ¡Campeones!",effects:{morale:25, rel_compañeros:15, followers:200000, winTitle:"trofeo"},chance:0.8, failText:"La resaca te dura 3 días. El DT no está contento.", failEffects:{morale:15, rel_entrenador:-5, winTitle:"trofeo"}},
+  {text:"Celebración moderada. Ya habrá tiempo de festejar",effects:{morale:10, rel_entrenador:5, winTitle:"trofeo", followers:50000},chance:0.9, failText:"", failEffects:{}}
+]);
+ev("Tu familia en el ojo público","Un familiar tuyo hace declaraciones polémicas en TV. Dicen cosas que te dejan en evidencia. Tu DM explota.","👨‍👩‍👦","drama",[
+  {text:"Llamas a tu familiar y arreglan las cosas en privado",effects:{familia:10, morale:-5},chance:0.7, failText:"Tu familiar vuelve a hablar en TV. Incontrolable.", failEffects:{familia:-15, morale:-15, followers:-40000}},
+  {text:"Haces un comunicado desmarcándote de sus palabras",effects:{familia:-20, morale:-8, followers:-10000},chance:0.55, failText:"Tu familiar se ofende. Pelea familiar en redes. Espectáculo público.", failEffects:{familia:-35, morale:-20, followers:-80000}}
+]);
+ev("Ola de calor en el partido","Juegan a 40°C. Los jugadores se arrastran. El árbitro para el partido para hidratación. Un infierno.","🥵","match",[
+  {text:"Aguantas como un guerrero hasta el final",effects:{morale:8, rel_entrenador:10, careerMatches:1},chance:0.6, failText:"Te desmayas en el minuto 80. Golpe de calor.", failEffects:{injured:true,injuryWeeks:1,morale:-5}},
+  {text:"Pides el cambio. Tu salud primero",effects:{morale:-3, rel_entrenador:-3},chance:0.9, failText:"", failEffects:{}}
+]);
+ev("Reconocimiento de la afición rival","Paradójicamente, la afición rival te ovaciona después de un partidazo. Se ponen de pie. Ni tú te lo crees.","👏","match",[
+  {text:"Aplaudes de vuelta. Respeto mutuo",effects:{morale:20, followers:150000, rel_entrenador:8},chance:0.9, failText:"", failEffects:{}},
+  {text:"Los ignoras. Sigues siendo su enemigo",effects:{morale:5, rel_compañeros:5, followers:20000},chance:0.65, failText:"Tu afición te critica por no ser más humilde.", failEffects:{morale:-5, followers:-10000}}
+]);
+ev("Llamada de un club histórico","Un club LEGENDARIO te llama personalmente. El presidente en persona. Quieren que seas el eje de su proyecto. Es difícil decir que no.","📞","transfer",[
+  {text:"Aceptas. Es una oportunidad única en la vida",effects:{clubChange:"big", followers:500000, morale:15, money:5000000},chance:0.9, failText:"", failEffects:{}},
+  {text:"Rechazas. Tu lealtad vale más",effects:{rel_compañeros:20, rel_entrenador:15, morale:12, followers:100000},chance:0.8, failText:"El presidente filtra que lo rechazaste. Tu afición te ama aún más.", failEffects:{followers:50000}}
+]);
+ev("Invitación a la Met Gala","Recibes una invitación a la Met Gala. El evento más exclusivo del mundo. Necesitas un outfit que rompa internet.","✨","life",[
+  {text:"Vas con un diseñador top. Quieres ser portada",effects:{money:-200000, followers:300000, morale:10},chance:0.7, failText:"Tu outfit es destrozado por la crítica de moda. Memes asegurados.", failEffects:{money:-200000, followers:-20000}},
+  {text:"Vas sencillo. No necesitas llamar la atención",effects:{money:-20000, followers:50000, morale:8},chance:0.85, failText:"", failEffects:{}}
+]);
+ev("Hackeo masivo de tu cuenta","Tu cuenta de redes sociales es hackeada. Publican cosas horribles. Pierdes seguidores. Es una pesadilla.","🔓","drama",[
+  {text:"Contratas expertos en ciberseguridad y denuncias",effects:{money:-50000, morale:-15, followers:-100000},chance:0.65, failText:"Tardan semanas en recuperar la cuenta. El daño ya está hecho.", failEffects:{money:-100000, morale:-20, followers:-300000}},
+  {text:"Ignoras el problema. 'Ya se arreglará solo'",effects:{morale:-5},chance:0.2, failText:"La cuenta sigue hackeada meses. Tus fans se preocupan.", failEffects:{morale:-15, followers:-500000}}
+]);
+
+// --- EVENTOS PEQUEÑOS (cotidianos, sin drama exagerado) ---
+ev("Día de spa","El club organiza un día de recuperación en un spa. Sauna, masajes, piscina. Tus músculos lo agradecen.","🧖","random",[
+  {text:"Aprovechas cada segundo de relax",effects:{morale:8,fisico:2},chance:0.95, failText:"", failEffects:{}},
+  {text:"Te escapas temprano. Prefieres entrenar",effects:{morale:2, rel_entrenador:3},chance:0.85, failText:"", failEffects:{}}
+],"small");
+ev("El utilero nuevo","Llega un utilero nuevo al club. Es un personaje. Tiene apodos para todos y siempre trae caramelos.","👴","random",[
+  {text:"Te haces su amigo. Es sabio el señor",effects:{morale:5, rel_compañeros:3},chance:0.95, failText:"", failEffects:{}},
+  {text:"Lo ignoras. Solo es el utilero",effects:{morale:1},chance:0.7, failText:"Tus botines aparecen sin cordones un día. Karma.", failEffects:{morale:-3}}
+],"small");
+ev("Partido amistoso benéfico","Un partido amistoso por una causa noble. Sin presión, solo buena vibra. Hasta los rivales sonríen.","🎗️","match",[
+  {text:"Juegas relajado y haces un par de goles",effects:{careerGoals:2,seasonGoals:2, morale:8, followers:5000},chance:0.9, failText:"", failEffects:{}},
+  {text:"Dejas que los niños del equipo rival metan gol",effects:{morale:12, followers:20000},chance:0.95, failText:"", failEffects:{}}
+],"small");
+ev("Tormenta eléctrica","Se suspende el entrenamiento por una tormenta. Todos corren al vestuario empapados. Risas y café caliente.","⛈️","random",[
+  {text:"Te quedas en el vestuario contando historias",effects:{morale:5, rel_compañeros:8},chance:0.95, failText:"", failEffects:{}},
+  {text:"Aprovechas para ver videos tácticos solo",effects:{morale:2, rel_entrenador:5},chance:0.9, failText:"", failEffects:{}}
+],"small");
+ev("Menú nuevo en la cantina","El club cambia el menú del comedor. Ahora hay sushi y quinoa. Tus compañeros protestan. Quieren su milanesa.","🍱","humor",[
+  {text:"Pruebas el sushi. Está bueno",effects:{morale:3, fisico:1},chance:0.95, failText:"", failEffects:{}},
+  {text:"Te unes a la protesta. ¡Devuelvan la milanga!",effects:{rel_compañeros:5, morale:4},chance:0.85, failText:"El nutricionista te mira feo el resto del mes.", failEffects:{rel_entrenador:-3}}
+],"small");
+ev("Firma de autógrafos","Después del entrenamiento, un grupo de niños te espera en la puerta. Quieren autógrafos, fotos, abrazos.","✍️","random",[
+  {text:"Te quedas hasta firmar el último autógrafo",effects:{morale:10, followers:10000, familia:5},chance:0.95, failText:"", failEffects:{}},
+  {text:"Firmas un par y te vas. Estás cansado",effects:{morale:2, followers:-2000},chance:0.6, failText:"Los niños tuitean que eres grosero. Mini polémica.", failEffects:{morale:-5, followers:-8000}}
+],"small");
+ev("Rediseñan el uniforme","El club presenta los nuevos uniformes. Son... diferentes. Rayas diagonales, colores flúor. Las redes estallan.","👕","humor",[
+  {text:"Dices que te encantan en la presentación oficial",effects:{morale:5, money:20000, rel_entrenador:3},chance:0.85, failText:"Tus compañeros te dicen lambiscón.", failEffects:{rel_compañeros:-5}},
+  {text:"Pones cara de '¿esto es en serio?' en la foto",effects:{morale:3},chance:0.55, failText:"La foto se hace viral. Memes por semanas.", failEffects:{morale:-3, followers:-5000}}
+],"small");
+ev("Cumpleaños en el vestuario","Es tu cumpleaños. El vestuario te recibe con un pastel, globos y la típica broma de huevos y harina.","🎂","random",[
+  {text:"Te dejas bañar de harina. Tradición es tradición",effects:{morale:10, rel_compañeros:10},chance:0.95, failText:"", failEffects:{}},
+  {text:"Escapas antes de que te agarren",effects:{morale:5, rel_compañeros:3},chance:0.7, failText:"Te atrapan igual en el estacionamiento. Peor porque corriste.", failEffects:{morale:8, rel_compañeros:8}}
+],"small");
+ev("El utilero te regala algo","El viejo utilero te da un amuleto 'de la suerte' que usaba otro jugador histórico. Es un llavero ridículo.","🍀","random",[
+  {text:"Lo usas en cada partido. No hay que tentar al destino",effects:{morale:5, ritmo:1, overall_boost:1},chance:0.8, failText:"", failEffects:{}},
+  {text:"Lo guardas en un cajón. Crees en el trabajo, no en amuletos",effects:{morale:0},chance:0.9, failText:"", failEffects:{}}
+],"small");
+ev("El bus se descompone","De camino al estadio, el bus del equipo se descompone. Quedan varados en medio de la nada.","🚌","humor",[
+  {text:"Improvisas un partidito en el pasto con tus compañeros",effects:{morale:8, rel_compañeros:8, followers:5000},chance:0.9, failText:"", failEffects:{}},
+  {text:"Te sientas a esperar. Revisas el celular",effects:{morale:1},chance:0.8, failText:"Llegan tarde al estadio. Multa del club.", failEffects:{money:-5000}}
+],"small");
+ev("Cántico personal","La afición ha creado un cántico nuevo... sobre ti. La letra es absurda. Habla de tu peinado y tu forma de correr.","🎶","humor",[
+  {text:"Te encanta. Pides que la canten más fuerte",effects:{morale:15, followers:30000},chance:0.9, failText:"", failEffects:{}},
+  {text:"Es ridícula. Pides que la cambien",effects:{morale:-5, followers:-10000},chance:0.4, failText:"Ahora cantan una versión aún más ridícula. Te trolean.", failEffects:{morale:-3}}
+],"small");
+ev("Videojuego con compañeros","Organizas un torneo de videojuegos con el equipo. Compiten por el honor y una pizza.","🎮","random",[
+  {text:"Ganas el torneo. Eres el campeón virtual también",effects:{morale:8, rel_compañeros:5},chance:0.7, failText:"Pierdes en primera ronda. Tus compañeros te vacilan sin piedad.", failEffects:{morale:-3, rel_compañeros:5}},
+  {text:"Haces de comentarista. Eres mejor narrando que jugando",effects:{morale:6, rel_compañeros:8},chance:0.85, failText:"", failEffects:{}}
+],"small");
+ev("Descuento en la tienda","La tienda del club pone todo al 50%. Hora de renovar el guardarropa deportivo.","🏪","life",[
+  {text:"Compras media tienda. Para toda la familia",effects:{money:-2000, familia:5, morale:4},chance:0.95, failText:"", failEffects:{}},
+  {text:"Nada. Prefieres ropa de marca",effects:{morale:0},chance:0.9, failText:"", failEffects:{}}
+],"small");
+ev("El pasto está perfecto","Llegas al entreno y el césped está impecable. Recién cortado, rayas perfectas. Da gusto jugar.","🌿","random",[
+  {text:"Juegas inspirado. Buen pasto, buen fútbol",effects:{morale:5, pase:1},chance:0.95, failText:"", failEffects:{}},
+  {text:"Ni lo notas. Hierba es hierba",effects:{morale:1},chance:0.9, failText:"", failEffects:{}}
+],"small");
+ev("Nuevo patrocinador local","Una panadería local quiere patrocinarte. Pagan poco pero ofrecen pan gratis de por vida.","🥖","life",[
+  {text:"Aceptas. El pan es sagrado",effects:{money:15000, morale:6, familia:3},chance:0.95, failText:"", failEffects:{}},
+  {text:"Rechazas amablemente. Tu imagen vale más",effects:{morale:2},chance:0.8, failText:"La panadería tuitea que eres un creído.", failEffects:{followers:-3000,morale:-3}}
+],"small");
+ev("Broma de compañeros","Tus compañeros te esconden los botines antes del partido. Buscas desesperado. Todos se ríen.","👟","humor",[
+  {text:"Te ríes. Les harás una broma peor después",effects:{morale:8, rel_compañeros:10},chance:0.95, failText:"Tu broma de vuelta sale fatal. Acabas tú mojado.", failEffects:{morale:5, rel_compañeros:8}},
+  {text:"Te enojas. No está bien bromear antes de un partido",effects:{morale:-5, rel_compañeros:-10},chance:0.3, failText:"Tus compañeros te tachan de amargado por semanas.", failEffects:{rel_compañeros:-15, morale:-8}}
+],"small");
+ev("Siesta reparadora","Tienes 3 horas libres entre comidas. ¿Dormir o hacer algo productivo?","😴","random",[
+  {text:"Siestón. El cuerpo lo pide",effects:{morale:8, fisico:2},chance:0.95, failText:"", failEffects:{}},
+  {text:"Ves videos de tu próximo rival. Profesional",effects:{morale:3, defensa:1},chance:0.85, failText:"Te duermes viendo los videos. Era muy aburrido el rival.", failEffects:{morale:2}}
+],"small");
+ev("Te piden una foto en el súper","Estás comprando cereal y un fan te reconoce. Te pide foto. Estás en pijama.","📸","humor",[
+  {text:"Posas como si estuvieras en alfombra roja",effects:{morale:5, followers:3000},chance:0.9, failText:"La foto sale horrible. La sube igual.", failEffects:{morale:-2}},
+  {text:"Mejor no. 'Estoy de incógnito', dices",effects:{morale:2},chance:0.7, failText:"El fan tuitea que eres grosero.", failEffects:{followers:-2000}}
+],"small");
+ev("Clase de idiomas","El club ofrece clases de inglés/italiano/alemán. Nunca está de más aprender.","📚","random",[
+  {text:"Te apuntas. Políglota en proceso",effects:{morale:5, overall_boost:1},chance:0.9, failText:"Te cuesta. Pero algo aprendes.", failEffects:{morale:3}},
+  {text:"Pasas. Ya te cuesta hasta el español",effects:{morale:2},chance:0.75, failText:"En una entrevista internacional no entiendes nada. Silencio incómodo.", failEffects:{morale:-5}}
+],"small");
+ev("Snapchat con filtro ridículo","Un compañero te graba en Snapchat con el filtro de perro. Es tan ridículo que se hace viral.","🐶","humor",[
+  {text:"Le sigues el juego y haces más caras",effects:{morale:8, rel_compañeros:5, followers:10000},chance:0.9, failText:"", failEffects:{}},
+  {text:"Pides que lo borre. Vergüenza ajena",effects:{morale:2},chance:0.5, failText:"Tu compañero lo sube igual. No puedes controlar internet.", failEffects:{morale:-3, followers:5000}}
+],"small");
+
+// --- CONTRATO / DISCIPLINA ---
+ev("Llegas tarde al entrenamiento","El tráfico te jugó una mala pasada. Llegas 30 minutos tarde. El DT te mira con cara de pocos amigos.","⏰","random",[
+  {text:"Pides disculpas sinceras y te pones a entrenar el doble",effects:{rel_entrenador:5, discipline:5, morale:-3},chance:0.85, failText:"El DT igual te pone a correr vueltas extra.", failEffects:{morale:-5, discipline:3}},
+  {text:"Pones excusa. 'El despertador no sonó'",effects:{rel_entrenador:-10, discipline:-10, morale:-5},chance:0.3, failText:"El DT no te cree. Te multan.", failEffects:{money:-5000,rel_entrenador:-20,discipline:-15}}
+],"small");
+ev("Rumores de traspaso","Los medios dicen que otro club está interesado en ti. Tu agente te llama. ¿Le dices que escuche ofertas?","📰","transfer",[
+  {text:"Que escuche. Nunca está de más saber",effects:{morale:5},chance:0.5, failText:"Tu club se entera y se molesta. '¿No estás contento aquí?'", failEffects:{rel_entrenador:-15,morale:-10}},
+  {text:"Soy fiel a mi club. Que no escuche nada",effects:{rel_entrenador:10,rel_compañeros:8,morale:5},chance:0.85, failText:"", failEffects:{}}
+]);
+ev("Reunión con la directiva","Te citan en las oficinas del club. Traje y corbata. Quieren hablar de tu futuro. Tu corazón late fuerte.","💼","random",[
+  {text:"Escuchas atentamente sus expectativas",effects:{rel_entrenador:10,morale:5,discipline:10},chance:0.85, failText:"Sus expectativas son altísimas. Te meten presión.", failEffects:{morale:-8}},
+  {text:"Pides un aumento. Crees que te lo mereces",effects:{money:500000,rel_entrenador:-5},chance:0.4, failText:"La directiva se ofende. '¿Con qué resultados?'", failEffects:{rel_entrenador:-15,morale:-15}}
+]);
+ev("Pretemporada intensa","El preparador físico tiene un plan de pretemporada brutal. Triple sesión, arena, cuestas. Tus piernas tiemblan.","🏃","random",[
+  {text:"Das el 110%. Quieres llegar fino a la temporada",effects:{fisico:2,ritmo:1, morale:-3, discipline:15},chance:0.85, failText:"Te lesionas por sobrecarga. Típico de pretemporada.", failEffects:{injured:true,injuryWeeks:2,morale:-10}},
+  {text:"Te dosificas. Sin pasarse",effects:{fisico:1, morale:2},chance:0.7, failText:"El PF te acusa de vago.", failEffects:{rel_entrenador:-5,discipline:-5}}
+]);
+ev("Multa por indisciplina","El club te multa por romper el código de conducta. Al parecer tu última publicación en redes no gustó.","💸","drama",[
+  {text:"Pagas la multa y borras la publicación",effects:{money:-30000, morale:-5, discipline:5},chance:0.85, failText:"Internet ya hizo captura. No se borra nunca.", failEffects:{morale:-8}},
+  {text:"Apelas la multa. Es injusta",effects:{morale:-3},chance:0.3, failText:"La directiva se enoja más. Doble multa.", failEffects:{money:-60000,rel_entrenador:-15}}
+]);
+ev("Trabajo táctico extra","El DT te pide que te quedes después del entrenamiento para trabajar táctica. Solo tú y él. Es una oportunidad.","📋","random",[
+  {text:"Te quedas sin dudarlo. Aprendizaje puro",effects:{rel_entrenador:15, overall_boost:1, morale:5, discipline:10},chance:0.9, failText:"", failEffects:{}},
+  {text:"Estás cansado. Otro día, profe",effects:{rel_entrenador:-10, morale:-2, discipline:-8},chance:0.35, failText:"El DT se lo toma a mal. 'No tienes hambre'.", failEffects:{rel_entrenador:-20,morale:-10}}
+]);
+ev("Plan de rendimiento","El club te presenta un plan de objetivos para esta temporada. Metas claras, bonos por cumplirlas.","🎯","random",[
+  {text:"Firmas motivado. Este año es TU año",effects:{morale:10, overall_boost:1, money:100000, discipline:15},chance:0.8, failText:"No cumples ni la mitad de los objetivos. Te descuentan del sueldo.", failEffects:{money:-50000,morale:-10}},
+  {text:"Lo lees por encima. Mucha presión",effects:{morale:2, rel_entrenador:-5},chance:0.6, failText:"Tu falta de compromiso se nota en el campo.", failEffects:{rel_entrenador:-10,discipline:-10}}
+]);
+function randomBetween(a,b){return Math.floor(Math.random()*(b-a+1))+a}
+function pick(arr){return arr[Math.floor(Math.random()*arr.length)]}
+function clamp(v,min,max){return Math.max(min,Math.min(max,v))}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+
+function randomPartner(){
+  const names = ["Valentina","Sofía","Camila","Isabella","Luciana","Mariana","Renata","Daniela","Andrea","Carolina","Alejandro","Mateo","Sebastián","Nicolás","Diego"];
+  return pick(names);
+}
+
+function getOverall(){
+  const s = P.stats;
+  const base = (s.ritmo+s.tiro+s.pase+s.defensa+s.fisico+s.regate)/6;
+  const pos = POSITIONS[P.position];
+  const bonus = (pos.stats.ritmo+pos.stats.tiro+pos.stats.pase+pos.stats.defensa+pos.stats.fisico+pos.stats.regate)/6;
+  return Math.round(base + bonus*0.3);
+}
+
+function refreshOverall(){
+  P.overall = getOverall();
+  document.getElementById("top-ovr").textContent = P.overall;
+  const ovr = P.overall;
+  if(ovr>=90) document.getElementById("top-ovr").style.color="#ffd700";
+  else if(ovr>=80) document.getElementById("top-ovr").style.color="#7ee787";
+  else if(ovr>=70) document.getElementById("top-ovr").style.color="#79c0ff";
+  else document.getElementById("top-ovr").style.color="#e6edf3";
+}
+
+function updateUI(){
+  document.getElementById("top-name").textContent = P.name;
+  document.getElementById("top-age").textContent = P.age;
+  document.getElementById("top-club-name").textContent = P.clubName + (P.clubStars>0?" ⭐".repeat(P.clubStars):"");
+  document.getElementById("top-money").textContent = formatMoney(P.money);
+  document.getElementById("top-followers").textContent = formatFollowers(P.followers);
+  document.getElementById("top-contract").textContent = P.contractYears+"a";
+  document.getElementById("top-discipline").textContent = P.discipline;
+  document.getElementById("top-discipline").style.color = P.discipline>=60?"#7ee787":P.discipline>=30?"#d29922":"#f85149";
+  const roleNames = ["Promesa","Rotación","Titular","Importante","Estrella"];
+  document.getElementById("top-role").textContent = roleNames[P.squadRole]||"Titular";
+  document.getElementById("top-role").style.color = P.squadRole>=4?"#ffd700":P.squadRole>=3?"#7ee787":P.squadRole>=2?"#79c0ff":"#8b949e";
+  renderPersonality();
+  const moods = {
+    80:"😄",60:"😊",40:"😐",20:"😟",0:"😢"
+  };
+  let moodEmoji = "😐";
+  for(const [k,v] of Object.entries(moods)){
+    if(P.morale>=parseInt(k)){moodEmoji=v;break}
+  }
+  if(P.morale<0) moodEmoji = "😢";
+  document.getElementById("top-mood").textContent = moodEmoji;
+  document.getElementById("top-mood").title = "Moral: "+P.morale;
+  refreshOverall();
+  renderStats();
+  renderRelationships();
+  renderTrainOptions();
+  renderClubHistory();
+  renderLifeItems();
+  renderActions();
+  renderAchievements();
+  document.getElementById("train-status").textContent = P.energyAvailable ? "Energía disponible: ✅" : "Energía disponible: ❌";
+}
+
+function formatMoney(n){
+  if(n>=1000000000) return "€"+(n/1000000000).toFixed(1)+"B";
+  if(n>=1000000) return "€"+(n/1000000).toFixed(1)+"M";
+  if(n>=1000) return "€"+(n/1000).toFixed(0)+"K";
+  return "€"+n;
+}
+
+function formatFollowers(n){
+  if(n>=1000000000) return (n/1000000000).toFixed(1)+"B";
+  if(n>=1000000) return (n/1000000).toFixed(1)+"M";
+  if(n>=1000) return (n/1000).toFixed(0)+"K";
+  return n+"";
+}
+
+function getFame(){
+  const f = P.followers;
+  if(f>=500000000) return 100;
+  if(f>=100000000) return 80;
+  if(f>=10000000) return 60;
+  if(f>=2000000) return 40;
+  if(f>=100000) return 25;
+  if(f>=20000) return 10;
+  if(f>=5000) return 5;
+  return 1;
+}
+
+function showToast(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.style.display = "block";
+  t.style.animation = "none";
+  t.offsetHeight;
+  t.style.animation = "slideIn .3s ease";
+  setTimeout(()=>{t.style.display="none"},3000);
+}
+
+function switchTab(tab){
+  try{
+    document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
+    document.querySelectorAll(".tab-panel").forEach(p=>p.classList.remove("active"));
+    const btn = document.querySelector(`.tab-btn[data-tab="${tab}"]`);
+    if(btn) btn.classList.add("active");
+    const panel = document.getElementById(`tab-${tab}`);
+    if(panel) panel.classList.add("active");
+  }catch(e){alert("Error tabs: "+e.message)}
+}
+
+// ============================================================
+// CREATE SCREEN
+// ============================================================
+let selectedPosition = "DC";
+
+function selectPosition(pos, el){
+  try{
+    selectedPosition = pos;
+    document.querySelectorAll(".pos-dot").forEach(d=>d.classList.remove("selected"));
+    el.classList.add("selected");
+    const names = {
+      PO:"Portero (PO)",DFI:"Defensa Central Izquierdo (DFI)",DFD:"Defensa Central Derecho (DFD)",
+      LI:"Lateral Izquierdo (LI)",LD:"Lateral Derecho (LD)",MC:"Medio Centro (MC)",
+      MCD:"Pivote (MCD)",MCO:"Enganche (MCO)",EI:"Extremo Izquierdo (EI)",
+      ED:"Extremo Derecho (ED)",DC:"Delantero Centro (DC)"
+    };
+    document.getElementById("cr-pos-display").value = names[pos];
+    refreshPreviewStats();
+  }catch(e){alert("Error selectPosition: "+e.message)}
+}
+
+function initCreateScreen(){
+  const sel = document.getElementById("cr-country");
+  sel.value = pick(COUNTRIES);
+  refreshPreviewStats();
+}
+
+function refreshPreviewStats(){
+  const pos = selectedPosition || "DC";
+  const container = document.getElementById("stats-preview");
+  const base = {ritmo:50,tiro:50,pase:50,defensa:50,fisico:50,regate:50};
+  const mods = POSITIONS[pos].stats;
+  container.innerHTML = "";
+  for(const [k,v] of Object.entries(base)){
+    const val = clamp(v+mods[k]+randomBetween(-5,5),1,99);
+    const badge = document.createElement("div");
+    badge.className = "stat-badge";
+    badge.innerHTML = `<span style="font-size:10px">${STAT_NAMES[k].name}</span><span class="val">${val}</span>`;
+    container.appendChild(badge);
+  }
+}
+
+// ============================================================
+// START GAME
+// ============================================================
+function handleStart(){
+  try{
+    const name = document.getElementById("cr-name").value.trim();
+    if(!name){showToast("Pon un nombre a tu jugador");return}
+  P.name = name;
+  P.country = document.getElementById("cr-country").value;
+  P.position = selectedPosition || "DC";
+  P.age = 16;
+  P.money = 5000;
+  P.salary = 0;
+  P.clubName = "Sin club";
+  P.clubStars = 0;
+  const posMod = POSITIONS[P.position].stats;
+  for(const k of Object.keys(P.stats)){
+    P.stats[k] = clamp(50 + posMod[k] + randomBetween(-8,8), 20, 75);
+  }
+  P.morale = 60;
+  P.energyAvailable = true;
+  P.injured = false;
+  P.relationships = {entrenador:60,compañeros:60,pareja:0,familia:70,amigos:60};
+  P.hasPartner = false; P.married = false; P.hasKids = false; P.kidNames = [];
+  P.seasonGoals = 0; P.seasonAssists = 0; P.careerGoals = 0; P.careerAssists = 0;
+  P.careerMatches = 0;
+  P.titles = []; P.achievements = [];
+  P.clubHistory = []; P.timeline = [];
+  P.ownedItems = []; P.investments = []; P.investmentValue = 0;
+  P.yearEvents = []; P.year = 0;
+  P.nationalTeam = false; P.worldCupWinner = false; P.worldCupParticipated = false;
+  P.retirementReason = "";
+  P.yearEvents = [];
+  P.followers = randomBetween(500,3000);
+  P.fameLevel = getFame();
+  P.lastEventIds = [];
+  P.contractYears = 1;
+  P.contractTarget = 3;
+  P.contractWarnings = 0;
+  P.discipline = 70;
+  P.contractMet = true;
+  P.squadRole = 2;
+  P.releaseClause = 0;
+  P.personality = {};
+  P.lastTags = [];
+  P.timeline.push(`Edad 16: Comienza su carrera futbolística en ${P.country}`);
+
+  document.getElementById("create-screen").classList.remove("active");
+  document.getElementById("main-screen").classList.add("active");
+
+  assignYouthClub();
+  updateUI();
+  checkAchievements();
+  }catch(e){alert("Error al iniciar el juego: "+e.message)}
+}
+
+function assignYouthClub(){
+  // Direct country → youth club mapping using existing clubs
+  let youthClubName;
+  const c = P.country;
+  if(c==="Argentina") youthClubName = pick(["Atlético Banfield","Boca Juniors Juvenil"]);
+  else if(c==="Brasil") youthClubName = "São Paulo Sub-20";
+  else if(c==="México") youthClubName = "Santos Laguna";
+  else if(c==="España") youthClubName = "Rayo Vallecano B";
+  else if(c==="Inglaterra") youthClubName = "Nottingham Sub-21";
+  // Other countries get a nearby regional club
+  else if(["Uruguay","Paraguay","Chile","Perú","Bolivia","Ecuador","Colombia","Venezuela"].includes(c))
+    youthClubName = pick(["Atlético Banfield","São Paulo Sub-20"]);
+  else if(["Italia","Francia","Alemania","Portugal","Países Bajos","Bélgica","Croacia","Suecia","Turquía"].includes(c))
+    youthClubName = pick(["Rayo Vallecano B","Nottingham Sub-21"]);
+  else if(["Japón","Corea del Sur","Australia","China","India"].includes(c))
+    youthClubName = "Santos Laguna";
+  else if(["Senegal","Ghana","Nigeria","Camerún","Marruecos","Egipto","Costa de Marfil"].includes(c))
+    youthClubName = "São Paulo Sub-20";
+  else if(["Estados Unidos","Canadá"].includes(c))
+    youthClubName = "Santos Laguna";
+  else if(["Arabia Saudí","Emiratos Árabes","Catar"].includes(c))
+    youthClubName = "Atlético Banfield";
+  else
+    youthClubName = pick(["Rayo Vallecano B","Nottingham Sub-21"]);
+
+  const youthClub = YOUTH_CLUBS.find(y=>y.name===youthClubName) || pick(YOUTH_CLUBS);
+  P.clubName = youthClub.name;
+  P.clubLeague = youthClub.league;
+  P.clubCountry = youthClub.country;
+  P.clubStars = youthClub.stars;
+  P.salary = youthClub.salaryBase;
+  P.clubHistory.push({name:youthClub.name,league:youthClub.league,country:youthClub.country,stars:youthClub.stars,age:P.age,goals:0,assists:0,matches:0});
+  P.contractYears = 1;
+  P.contractTarget = randomBetween(2,5);
+  P.contractWarnings = 0;
+  P.discipline = 70;
+  P.squadRole = 2;
+  P.releaseClause = 0;
+  P.timeline.push(`Edad ${P.age}: Ficha por ${youthClub.name} (${youthClub.league})`);
+  document.getElementById("event-log").innerHTML = `<div class="event-log-item pos"><strong>⚽ ¡Bienvenido a Football Life!</strong><br>Comienzas tu carrera en <strong>${youthClub.name}</strong> (${youthClub.league}, ${youthClub.country}).<br>📝 Contrato: ${P.contractYears} año · 💰 ${formatMoney(P.salary)}/año · ⭐ Rol: Titular<br>Tienes 16 años y todo un futuro por delante.</div>`;
+}
+
+// ============================================================
+// EVENT SYSTEM
+// ============================================================
+function getEligibleEvents(){
+  const eligible = [];
+  const currentClub = CLUBS.find(c=>c.name===P.clubName);
+  const clubContinent = currentClub?currentClub.continent:"europe";
+  const clubComp = currentClub?currentClub.competition:"-";
+  const t = (e)=>(e.title||"")+(e.text||"");
+  for(const e of ALL_EVENTS){
+    let ok = true;
+    // Basic type filters
+    if(e.type==="transfer" && P.clubStars>=5) ok = false;
+    if(e.type==="worldcup") ok = false;
+    if(e.type==="national" && P.age<18) ok = false;
+    if(e.type==="relationship" && P.age<18) ok = false;
+    if(e.type==="injury" && P.injured) ok = false;
+    if(e.type==="drama" && P.age<20 && t(e).includes("Apuesta")) ok = false;
+    // Continent/competition filtering
+    if(e.continent && e.continent!==clubContinent) ok = false;
+    if(e.competition && e.competition!==clubComp) ok = false;
+
+    // ---- COHERENCE: strict filters by player situation ----
+    const M = P.money;
+    const F = P.followers;
+    const A = P.age;
+    const O = P.overall;
+    const CS = P.clubStars;
+    const S = P.salary;
+    const title = t(e);
+
+    // RELATIONSHIP gates
+    if(title.includes("pareja")||title.includes("Crisis de")||title.includes("infidelidad")||title.includes("Boda")||title.includes("padre")||title.includes("Romance"))
+      if(!P.hasPartner && A<22) ok=false;
+
+    // AGE gates - events that need maturity/experience
+    if(title.includes("Video íntimo")||title.includes("Doping")||title.includes("Apuesta")) if(A<22) ok=false;
+    if(title.includes("hermano quiere")||title.includes("Vuelves a estudiar")) if(A<20) ok=false;
+    if(title.includes("representante")) if(A<20) ok=false;
+    if(title.includes("Fiesta salvaje")) if(A<18) ok=false;
+    if(title.includes("Entrevista polémica")) if(A<20) ok=false;
+    if(title.includes("Romance")||title.includes("Se filtra tu")) if(A<20) ok=false;
+    if(title.includes("Hackeo")||title.includes("canción viral")) if(F<20000) ok=false;
+    if(title.includes("Secuestro")||title.includes("Amenaza")) if(F<200000) ok=false;
+
+    // WEALTH gates - need actual money
+    if(title.includes("Mansión")||title.includes("mansión")||title.includes("Superdeportivo")||title.includes("Yate"))
+      if(M<500000) ok=false;
+    if(title.includes("colección")||title.includes("lujo")) if(M<100000) ok=false;
+    if(title.includes("Compras")||title.includes("Compra")||title.includes("coche")) if(M<80000) ok=false;
+    if(title.includes("Donación")) if(M<50000) ok=false;
+    if(title.includes("negocio")||title.includes("Inviertes")||title.includes("startup")) if(M<80000) ok=false;
+    if(title.includes("te roban el coche")) if(M<30000) ok=false;
+    if(title.includes("abogado")||title.includes("Multa")) if(M<20000) ok=false;
+
+    // FAME gates - need followers
+    if(title.includes("Patrocinio millonario")) if(F<50000 && O<78) ok=false;
+    if(title.includes("videojuego")) if(F<100000 || O<75) ok=false;
+    if(title.includes("Met Gala")) if(F<300000) ok=false;
+    if(title.includes("Nominan al Balón")||title.includes("Balón de Oro")) if(O<82) ok=false;
+    if(title.includes("Racha goleadora")) if(O<70) ok=false;
+    if(title.includes("Hat-trick")||title.includes("Hat trick")) if(O<55) ok=false;
+    if(title.includes("Llamada de un club histórico")) if(O<78) ok=false;
+    if(title.includes("Reconocimiento de la afición rival")) if(O<72) ok=false;
+
+    // CAREER STAGE gates
+    if(title.includes("Debut soñado")||title.includes("Debut europeo")) if(A>22) ok=false;
+    if(title.includes("Debut europeo")||title.includes("Champions")) if(CS<3) ok=false;
+    if(title.includes("Regreso a casa")) if(A<22) ok=false;
+    if(title.includes("Último baile")||title.includes("Arabia")) if(A<28) ok=false;
+    if(title.includes("confundes al árbitro")||title.includes("tu madre tuitea")) {} // Universal, always OK
+
+    // MONEY ABSOLUTE gates - event text mentions € amounts
+    const txt = e.text||"";
+    if(txt.includes("€80M")||txt.includes("€50M")) if(O<80) ok=false;
+    if(txt.includes("€10M")||txt.includes("€5M")) if(CS<3 && O<70) ok=false;
+    if(txt.includes("€1M")||txt.includes("€2M")||txt.includes("€3M")) if(S<500000) ok=false;
+    if(txt.includes("€800K")||txt.includes("€500K")||txt.includes("millonario")) if(S<100000) ok=false;
+    if(txt.includes("€200K")||txt.includes("€100K")) if(S<30000) ok=false;
+
+    if(ok) eligible.push(e);
+  }
+  if(eligible.length===0) eligible.push(...ALL_EVENTS.filter(e=>e.type==="random"||e.type==="humor"));
+  return eligible;
+}
+
+let currentEventIndex = 0;
+let currentYearEvents = [];
+let currentEventResolved = false;
+
+function advanceYear(){
+  if(P.retirementReason){return}
+  if(document.getElementById("event-modal").classList.contains("active")) return;
+  if(document.getElementById("summary-modal").classList.contains("active")) return;
+
+  currentYearEvents = [];
+  P.age++;
+  P.year++;
+  P.seasonGoals = 0;
+  P.seasonAssists = 0;
+  P.energyAvailable = true;
+
+  // Passive follower growth proportional to current followers
+  const fScale = Math.max(0.5, Math.sqrt(Math.max(100,P.followers)/5000));
+  P.followers += Math.floor(randomBetween(200,2000) * fScale);
+  if(P.morale<30) P.followers -= Math.floor(randomBetween(500,3000) * fScale);
+  if(P.overall>=85) P.followers += Math.floor(randomBetween(3000,15000) * fScale);
+  if(P.squadRole>=4) P.followers += Math.floor(randomBetween(5000,25000) * fScale);
+  if(P.squadRole<=0) P.followers -= Math.floor(randomBetween(1000,5000) * fScale);
+  P.fameLevel = getFame();
+  P.followers = Math.max(0, P.followers);
+
+  // Age-based degradation
+  if(P.age >= 30){
+    const drops = Math.floor((P.age-29)/2);
+    for(let i=0;i<drops;i++){
+      const keys = Object.keys(P.stats);
+      const k = pick(keys);
+      P.stats[k] = Math.max(10, P.stats[k]-randomBetween(1,3));
+    }
+  }
+
+  // Injury recovery
+  if(P.injured){
+    P.injuryWeeks--;
+    if(P.injuryWeeks<=0){
+      P.injured = false;
+      P.timeline.push(`Edad ${P.age}: Se recupera de su lesión`);
+    } else {
+      P.timeline.push(`Edad ${P.age}: Sigue lesionado (${P.injuryWeeks} semanas restantes)`);
+    }
+  }
+
+  // Passive income
+  P.money += Math.floor(P.salary);
+  if(P.investmentValue > 0){
+    const roi = Math.floor(P.investmentValue * (Math.random()*0.15 - 0.02));
+    P.money += roi;
+  }
+
+  // Club upgrade/downgrade based on overall
+  if(!P.injured && P.clubStars>0 && P.age<35){
+    checkClubOffers();
+  }
+
+  // Debut event - first year professional
+  if(P.age===17 && P.careerMatches===0){
+    currentYearEvents.push({title:"Debut profesional",text:"Es tu primer partido como profesional. La camiseta te pesa distinto. La grada ruge. Hoy dejas de ser un juvenil.",emoji:"🌟",type:"match",options:[
+      {text:"Juegas simple y seguro. No quieres cagarla",effects:{careerMatches:3, morale:8, rel_entrenador:8, followers:5000},tag:"Prudente",chance:0.85, failText:"Los nervios te traicionan. Pero al menos debutaste.", failEffects:{careerMatches:1, morale:-5}},
+      {text:"Vas a por todas. Si debutas, que sea con gol",effects:{careerMatches:3, careerGoals:1, seasonGoals:1, morale:15, followers:20000},tag:"Valiente",chance:0.45, failText:"Intentaste demasiado. Casi metes un gol en propia.", failEffects:{careerMatches:1, morale:-8}},
+      {text:"Disfrutas el momento. Esto es lo que soñaste de niño",effects:{careerMatches:3, morale:12, rel_entrenador:5},tag:"Soñador",chance:0.9, failText:"", failEffects:{}}
+    ]});
+  }
+  if(P.age>=18 && !P.injured && P.overall>=65 && Math.random()<0.4){
+    P.nationalTeam = true;
+    P.timeline.push(`Edad ${P.age}: Convocado por la selección de ${P.country}`);
+    checkAchievements();
+  }
+
+  // World Cup logic (every 4 years: ages 18,22,26,30,34)
+  if([18,22,26,30,34].includes(P.age) && P.nationalTeam && P.overall>=70){
+    P.worldCupParticipated = true;
+    P.timeline.push(`Edad ${P.age}: Participa en el Mundial con ${P.country}`);
+    const wcEvent = ALL_EVENTS.find(e=>e.type==="worldcup"&&e.title.includes("grupos"));
+    if(wcEvent) currentYearEvents.push(wcEvent);
+    // Semifinal/final chance
+    if(P.overall>=80 && Math.random()<0.5){
+      const deep = ALL_EVENTS.find(e=>e.type==="worldcup"&&e.title.includes("eliminación"));
+      if(deep) currentYearEvents.push(deep);
+    }
+    if(P.overall>=85 && Math.random()<0.35){
+      const final = ALL_EVENTS.find(e=>e.type==="worldcup"&&e.title.includes("final"));
+      if(final) currentYearEvents.push(final);
+    }
+  }
+
+  // Generate random events with magnitude system
+  const eligible = getEligibleEvents();
+  let filtered = eligible.filter(e=>!P.lastEventIds.includes(e.title));
+  if(filtered.length<10) filtered = [...eligible];
+  const big = shuffle(filtered.filter(e=>e.magnitude==="big"));
+  const med = shuffle(filtered.filter(e=>e.magnitude==="medium"||!e.magnitude));
+  const small = shuffle(filtered.filter(e=>e.magnitude==="small"));
+  const picked = [];
+  const usedTypes = new Set();
+
+  function tryPickFrom(arr, max, maxTypeCount){
+    for(const e of arr){
+      if(picked.length>=max) break;
+      if(P.lastEventIds.includes(e.title) && filtered.length>20) continue;
+      const typeCount = picked.filter(p=>p.type===e.type).length;
+      if(typeCount>=maxTypeCount) continue;
+      if(e.type!=="match" && e.type!=="random" && typeCount>=1) continue;
+      picked.push(e);
+      usedTypes.add(e.type);
+      P.lastEventIds.push(e.title);
+      if(P.lastEventIds.length>20) P.lastEventIds.shift();
+    }
+  }
+
+  tryPickFrom(big, 1, 1);   // Max 1 big event
+  tryPickFrom(med, 3, 2);   // Max 3 medium events, 2 of same type
+  tryPickFrom(small, 5, 3); // Max 5 small events
+  while(picked.length<3 && (big.length+med.length+small.length>picked.length)){
+    const rest = shuffle([...big,...med,...small]).filter(e=>!picked.includes(e));
+    if(rest.length===0) break;
+    picked.push(rest[0]);
+  }
+  if(picked.length===0) picked.push(ALL_EVENTS.find(e=>e.type==="random")||ALL_EVENTS[0]);
+
+  currentYearEvents = [...picked, ...currentYearEvents];
+  if(currentYearEvents.length===0) currentYearEvents.push(ALL_EVENTS.find(e=>e.type==="random"));
+
+  // Simple contract countdown - no performance targets to kick you out
+  if(P.clubStars>0){
+    P.contractYears--;
+    
+    if(P.contractYears<=0){
+      // Always offer renewal, club quality affects chance of other offers
+      P.contractYears = P.clubStars>=5?randomBetween(2,4):randomBetween(1,3);
+      P.salary += Math.floor(P.salary*0.15);
+      if(P.squadRole<4 && P.overall>=70 && Math.random()<0.3) P.squadRole++;
+      P.timeline.push(`Edad ${P.age}: Renovó contrato por ${P.contractYears} años (${formatMoney(P.salary)}/año)`);
+      const roleNames = ["Promesa","Rotación","Titular","Importante","Estrella"];
+      currentYearEvents.push({title:"Renovación de contrato",text:`Terminó tu contrato y el club te ofrece renovar por ${P.contractYears} años con aumento a ${formatMoney(P.salary)}/año como ${roleNames[P.squadRole]}.`,emoji:"📝",type:"random",options:[
+        {text:"Firmas la renovación",effects:{morale:10,followers:20000},chance:0.95,failText:"",failEffects:{}},
+        {text:"Pides más dinero. Te sientes valioso",effects:{money:Math.floor(P.salary*0.5),followers:30000},chance:0.5,failText:"El club se ofende y retira la oferta. Quedas libre.",failEffects:{clubChange:"forcedTransfer",morale:-10}},
+        {text:"No renuevas. Buscas nuevos horizontes",effects:{clubChange:"random",followers:50000},chance:0.8,failText:"Nadie te ofrece contrato. Te arrepientes.",failEffects:{clubName:"Sin club",salary:0,clubStars:0,morale:-30,followers:-50000}}
+      ]});
+    }
+  }
+
+  // Discipline: decays slightly each year (toward 50 center)
+  if(P.discipline>50) P.discipline -= randomBetween(1,5);
+  else if(P.discipline<50) P.discipline += randomBetween(1,5);
+  P.discipline = clamp(P.discipline,0,100);
+  if(P.age >= 34 && Math.random() < (P.age-33)*0.25){
+    P.retirementReason = "edad";
+    showRetirement();
+    return;
+  }
+  if(P.overall < 30 && P.age >= 30){
+    P.retirementReason = "declive";
+    showRetirement();
+    return;
+  }
+
+  currentEventIndex = 0;
+  P.yearEvents = [];
+  showNextEvent();
+}
+
+function showNextEvent(){
+  if(currentEventIndex >= currentYearEvents.length){
+    showYearSummary();
+    return;
+  }
+  const event = currentYearEvents[currentEventIndex];
+  currentEventResolved = false;
+  const modal = document.getElementById("event-modal");
+  document.getElementById("ev-emoji").textContent = event.emoji;
+  document.getElementById("ev-title").textContent = event.title;
+  document.getElementById("ev-text").textContent = event.text;
+  document.getElementById("ev-continue").hidden = true;
+  document.getElementById("ev-effects").classList.remove("show");
+  
+  const choicesDiv = document.getElementById("ev-choices");
+  choicesDiv.innerHTML = "";
+  if(event.options){
+    event.options.forEach((opt,i)=>{
+      const btn = document.createElement("button");
+      btn.className = "choice-btn";
+      btn.textContent = (i+1)+". "+opt.text;
+      btn.onclick = ()=>resolveEvent(event,opt);
+      choicesDiv.appendChild(btn);
+    });
+  } else {
+    const btn = document.createElement("button");
+    btn.className = "choice-btn";
+    btn.textContent = "Continuar";
+    btn.onclick = ()=>resolveEvent(event,null);
+    choicesDiv.appendChild(btn);
+  }
+  modal.classList.add("active");
+}
+
+function resolveEvent(event, option){
+  if(currentEventResolved) return;
+  currentEventResolved = true;
+
+  const effectsDiv = document.getElementById("ev-effects");
+  const choicesDiv = document.getElementById("ev-choices");
+  choicesDiv.querySelectorAll("button").forEach(b=>b.disabled=true);
+
+  if(!option){
+    // No choice event
+    currentEventIndex++;
+    document.getElementById("ev-continue").hidden = false;
+    effectsDiv.classList.add("show");
+    effectsDiv.innerHTML = "<span style='color:#7ee787'>✓ Suceso registrado</span>";
+    P.yearEvents.push({title:event.title,text:event.text,result:"neutral"});
+    document.getElementById("event-log").insertAdjacentHTML("afterbegin",
+      `<div class="event-log-item neutral"><strong>${event.emoji} ${event.title}</strong><br>${event.text}</div>`);
+    updateUI();
+    return;
+  }
+
+  // Determine success
+  const success = Math.random() < option.chance;
+  let effectsHTML = "";
+  let resultClass = "neutral";
+
+  if(success){
+    resultClass = "pos";
+    // Auto-derive personality tag from effects if not specified
+    let tag = option.tag;
+    if(!tag && option.effects){
+      const e = option.effects;
+      if(e.discipline>=8) tag = "Disciplinado";
+      else if(e.discipline<=-10) tag = "Fiestero";
+      else if(e.clubChange==="big") tag = "Ambicioso";
+      else if(e.rel_entrenador>=10) tag = "Profesional";
+      else if(e.money>=5000000) tag = "Astuto";
+      else if(e.rel_compañeros>=8) tag = "Compañero";
+      else if(e.familia>=8) tag = "Familiar";
+      else if(e.morale>=15) tag = "Motivado";
+      else if(e.injured) tag = "Sacrificado";
+      else if(e.careerGoals>=2) tag = "Goleador";
+      else tag = "Decidido";
+    }
+    tag = tag || "Decidido";
+    P.personality[tag] = (P.personality[tag]||0)+1;
+    P.lastTags.push(tag);
+    if(P.lastTags.length>10) P.lastTags.shift();
+    effectsHTML = `<span style='color:#7ee787'>✓ ${tag}</span><br>`;
+
+    // Apply success effects
+    if(option.effects){
+      const e = option.effects;
+      if(e.careerGoals) P.careerGoals += e.careerGoals;
+      if(e.seasonGoals) P.seasonGoals += e.seasonGoals;
+      if(e.careerAssists) P.careerAssists += e.careerAssists;
+      if(e.seasonAssists) P.seasonAssists += e.seasonAssists;
+      if(e.careerMatches) P.careerMatches += e.careerMatches;
+      if(e.morale) P.morale = clamp(P.morale+e.morale,0,100);
+      if(e.money){P.money += e.money;effectsHTML+=`💰 ${formatMoney(e.money)}<br>`}
+      if(e.rel_entrenador){P.relationships.entrenador=clamp(P.relationships.entrenador+e.rel_entrenador,0,100);effectsHTML+=`👔 Relación DT: ${e.rel_entrenador>0?'+':''}${e.rel_entrenador}<br>`}
+      if(e.rel_compañeros){P.relationships.compañeros=clamp(P.relationships.compañeros+e.rel_compañeros,0,100);effectsHTML+=`🤝 Relación compañeros: ${e.rel_compañeros>0?'+':''}${e.rel_compañeros}<br>`}
+      if(e.familia){P.relationships.familia=clamp(P.relationships.familia+e.familia,0,100);effectsHTML+=`👨‍👩‍👦 Relación familiar: ${e.familia>0?'+':''}${e.familia}<br>`}
+      if(e.amigos){P.relationships.amigos=clamp(P.relationships.amigos+e.amigos,0,100);effectsHTML+=`👥 Amigos: ${e.amigos>0?'+':''}${e.amigos}<br>`}
+      if(e.overall_boost){for(const k of Object.keys(P.stats)){P.stats[k]=clamp(P.stats[k]+1,1,99)};effectsHTML+="📈 Atributos +1<br>"}
+      if(e.investmentValue){P.investmentValue+=e.investmentValue;P.investments.push({name:"Startup",value:e.investmentValue});effectsHTML+="📊 Inversión realizada<br>"}
+      if(e.worldCupWinner){P.worldCupWinner=true;P.titles.push(`Copa del Mundo (${P.age})`);effectsHTML+="🏆 ¡GANASTE EL MUNDIAL!<br>"}
+      if(e.worldCupGoal) effectsHTML+="⚽ Gol en el Mundial<br>";
+      if(e.followers){
+        const scale = Math.max(0.3, Math.min(8, Math.sqrt(Math.max(100,P.followers)/5000)));
+        const gained = Math.floor(Math.abs(e.followers) * scale) * (e.followers>0?1:-1);
+        P.followers += gained;
+        P.followers = Math.max(0, P.followers);
+        P.fameLevel = getFame();
+        effectsHTML+=`👥 ${gained>=0?'+':''}${formatFollowers(Math.abs(gained))} seguidores<br>`;
+      }
+      if(e.discipline){P.discipline=clamp(P.discipline+e.discipline,0,100);effectsHTML+=`⚡ Disciplina ${e.discipline>0?'+':''}${e.discipline}<br>`}
+      if(e.hasPartner && !P.hasPartner){P.hasPartner=true;P.partnerName=e.partnerName||randomPartner();effectsHTML+=`💘 Nueva pareja: ${P.partnerName}<br>`}
+      if(e.hasKids && !P.hasKids){P.hasKids=true;P.kidNames=e.kidNames||["Junior"];effectsHTML+="👶 ¡Has sido padre!<br>"}
+      if(e.married && !P.married){P.married=true;effectsHTML+="💒 ¡Te has casado!<br>"}
+      if(e.dinero_extra){P.money+=e.dinero_extra;effectsHTML+=`💰 Bono: ${formatMoney(e.dinero_extra)}<br>`}
+      if(e.clubChange){
+        if(e.clubChange==="big") transferToBigClub();
+        else if(e.clubChange==="random") transferRandomClub();
+        else if(e.clubChange==="cantera") transferToYouthClub();
+        else if(e.clubChange==="forcedTransfer"){
+          if(P.contractYears<=0){transferRandomClub();effectsHTML+="🔄 Traspaso forzado<br>"}
+          else{effectsHTML+="⚠️ El club te pone transferible pero tu contrato sigue vigente<br>";P.contractWarnings++;P.morale-=5}
+        }
+        else if(e.clubChange==="forcedOut"){
+          if(P.contractYears<=0){P.clubName="Sin club";P.salary=0;P.clubStars=0;effectsHTML+="⚠️ Te quedas sin club<br>"}
+          else{effectsHTML+="⚠️ Tu contrato te protege. El club no puede echarte sin indemnización.<br>";P.contractWarnings++}
+        }
+        else if(e.clubChange==="retirementLeague") transferToRetirementLeague();
+        else if(e.clubChange==="negotiate") transferToBigClub();
+      }
+      if(e.injured){P.injured=true;P.injuryWeeks=e.injuryWeeks||4;effectsHTML+=`🤕 Lesión: ${P.injuryWeeks} semanas<br>`}
+      if(e.titles){e.titles.forEach(t=>{P.titles.push(t);effectsHTML+=`🏆 ${t}<br>`})}
+      if(e.winTitle){const t="Campeón de liga ("+P.age+")";P.titles.push(t);effectsHTML+=`🏆 ${t}<br>`}
+      if(e.overallPenalty){for(const k of Object.keys(P.stats)){P.stats[k]=Math.max(10,P.stats[k]-5)};effectsHTML+="📉 Atributos -5 (declive)<br>"}
+    }
+  } else {
+    // FAIL
+    resultClass = "neg";
+    let failTag = option.failTag;
+    if(!failTag && option.failEffects){
+      const fe = option.failEffects;
+      if(fe.discipline<=-10) failTag = "Fiestero";
+      else if(fe.rel_entrenador<=-15) failTag = "Conflictivo";
+      else if(fe.morale<=-20) failTag = "Decepcionado";
+      else if(fe.injured) failTag = "Imprudente";
+      else if(fe.money<=-100000) failTag = "Derrochador";
+      else if(fe.rel_compañeros<=-10) failTag = "Antipático";
+      else if(fe.hasPartner===false) failTag = "Infiel";
+      else if(fe.familia<=-15) failTag = "Distante";
+      else failTag = "Ingenuo";
+    }
+    failTag = failTag || "Ingenuo";
+    P.personality[failTag] = (P.personality[failTag]||0)+1;
+    P.lastTags.push(failTag);
+    if(P.lastTags.length>10) P.lastTags.shift();
+    effectsHTML = option.failText ? `<span style='color:#f85149'>✗ ${failTag}: ${option.failText}</span><br>` : "";
+    if(option.failEffects){
+      const fe = option.failEffects;
+      if(fe.morale) P.morale = clamp(P.morale+fe.morale,0,100);
+      if(fe.money){P.money+=fe.money;effectsHTML+=`💰 ${formatMoney(fe.money)}<br>`}
+      if(fe.rel_entrenador){P.relationships.entrenador=clamp(P.relationships.entrenador+fe.rel_entrenador,0,100)}
+      if(fe.rel_compañeros){P.relationships.compañeros=clamp(P.relationships.compañeros+fe.rel_compañeros,0,100)}
+      if(fe.familia){P.relationships.familia=clamp(P.relationships.familia+fe.familia,0,100)}
+      if(fe.amigos){P.relationships.amigos=clamp(P.relationships.amigos+fe.amigos,0,100)}
+      if(fe.injured){P.injured=true;P.injuryWeeks=fe.injuryWeeks||4;effectsHTML+=`🤕 Lesión: ${P.injuryWeeks} semanas<br>`}
+      if(fe.hasPartner===false){P.hasPartner=false;P.married=false;effectsHTML+="💔 Relación terminada<br>"}
+      if(fe.hasPartner===true && !P.hasPartner){P.hasPartner=true;P.partnerName=fe.partnerName||randomPartner()}
+      if(fe.hasKids===true && !P.hasKids){P.hasKids=true;P.kidNames=fe.kidNames||["Junior"]}
+      if(fe.married===true && !P.married){P.married=true}
+      if(fe.careerGoals) P.careerGoals += fe.careerGoals;
+      if(fe.seasonGoals) P.seasonGoals += fe.seasonGoals;
+      if(fe.careerAssists) P.careerAssists += fe.careerAssists;
+      if(fe.seasonAssists) P.seasonAssists += fe.seasonAssists;
+      if(fe.careerMatches) P.careerMatches += fe.careerMatches;
+      if(fe.worldCupWinner){P.worldCupWinner=true;P.titles.push(`Copa del Mundo (${P.age})`)}
+      if(fe.clubChange==="forcedTransfer"){
+        if(P.contractYears<=0){transferRandomClub();effectsHTML+="🔄 Traspaso forzado<br>"}
+        else{P.contractWarnings++;effectsHTML+="⚠️ El club te pone transferible pero tienes contrato<br>"}
+      }
+      if(fe.clubChange==="forcedOut"){
+        if(P.contractYears<=0){P.clubName="Sin club";P.salary=0;P.clubStars=0;effectsHTML+="⚠️ Te quedas sin club<br>"}
+        else{effectsHTML+="⚠️ Contrato vigente. No pueden echarte sin causa.<br>"}
+      }
+      if(fe.investmentValue){P.investmentValue+=fe.investmentValue}
+      if(fe.dinero_extra){P.money+=fe.dinero_extra}
+      if(fe.followers){
+        const scale = Math.max(0.3, Math.min(8, Math.sqrt(Math.max(100,P.followers)/5000)));
+        const gained = Math.floor(Math.abs(fe.followers) * scale) * (fe.followers>0?1:-1);
+        P.followers += gained;
+        P.followers = Math.max(0, P.followers);
+        P.fameLevel = getFame();
+        effectsHTML+=`👥 ${gained>=0?'+':''}${formatFollowers(Math.abs(gained))} seguidores<br>`;
+      }
+      if(fe.discipline){P.discipline=clamp(P.discipline+fe.discipline,0,100);effectsHTML+=`⚡ Disciplina ${fe.discipline>0?'+':''}${fe.discipline}<br>`}
+      if(fe.overall_boost){for(const k of Object.keys(P.stats)){P.stats[k]=clamp(P.stats[k]+1,1,99)}}
+      if(fe.titles){fe.titles.forEach(t=>{P.titles.push(t);effectsHTML+=`🏆 ${t}<br>`})}
+      if(fe.winTitle){const t="Campeón de liga ("+P.age+")";P.titles.push(t);effectsHTML+=`🏆 ${t}<br>`}
+      if(fe.overallPenalty){for(const k of Object.keys(P.stats)){P.stats[k]=Math.max(10,P.stats[k]-5)};effectsHTML+="📉 Atributos -5 (declive)<br>"}
+    }
+  }
+
+  // If no effects or text were shown, add fallback
+  if(!effectsHTML || effectsHTML.trim()==="") effectsHTML = "<span style='color:#8b949e'>Sin consecuencias inmediatas</span><br>";
+  effectsDiv.classList.add("show");
+  effectsDiv.innerHTML = effectsHTML;
+  document.getElementById("ev-continue").hidden = false;
+
+  P.yearEvents.push({title:event.title,text:option.text,result:resultClass==="pos"?"positive":resultClass==="neg"?"negative":"neutral"});
+  document.getElementById("event-log").insertAdjacentHTML("afterbegin",
+    `<div class="event-log-item ${resultClass}"><strong>${event.emoji} ${event.title}:</strong> ${option.text} ${success?'✅':'❌'}</div>`);
+
+  updateUI();
+  checkAchievements();
+}
+
+function closeEventResult(){
+  document.getElementById("event-modal").classList.remove("active");
+  currentEventIndex++;
+  setTimeout(showNextEvent,200);
+}
+
+function closeEventModal(){
+  document.getElementById("event-modal").classList.remove("active");
+}
+
+// ============================================================
+// TRANSFERS
+// ============================================================
+function transferToBigClub(){
+  const bigClubs = CLUBS.filter(c=>c.stars>=4 && c.minOverall<=P.overall+2 && c.name!==P.clubName);
+  if(bigClubs.length===0){
+    transferRandomClub();
+    return;
+  }
+  const club = pick(bigClubs);
+  doTransfer(club);
+}
+
+function transferRandomClub(){
+  const options = CLUBS.filter(c=>c.minOverall<=P.overall && c.name!==P.clubName && c.stars>=2);
+  if(options.length===0) return;
+  const club = pick(options);
+  doTransfer(club);
+}
+
+function transferToYouthClub(){
+  const youth = CLUBS.filter(c=>c.stars<=1 && c.name!==P.clubName);
+  if(youth.length===0) return;
+  doTransfer(pick(youth));
+}
+
+function transferToRetirementLeague(){
+  const retClubs = CLUBS.filter(c=>c.country==="Arabia Saudí"||c.country==="Estados Unidos");
+  if(retClubs.length===0) return;
+  doTransfer(pick(retClubs));
+}
+
+function checkClubOffers(){
+  if(P.clubStars===0) return;
+  const betterClubs = CLUBS.filter(c=>c.stars>P.clubStars && c.minOverall<=P.overall+3 && c.name!==P.clubName);
+  if(betterClubs.length>0 && Math.random()<0.35){
+    const club = pick(betterClubs);
+    doTransfer(club);
+    P.timeline.push(`Edad ${P.age}: Fichado por ${club.name} (${club.league})`);
+  }
+}
+
+function doTransfer(club){
+  openNegotiation(club);
+}
+
+function openNegotiation(club){
+  P.pendingTransfer = club;
+  const modal = document.getElementById("transfer-modal");
+  
+  // Fun headline based on club comparison
+  let headline = "", subHead = "";
+  const clubNameBig = `<strong style="font-size:22px;color:#e6edf3">${club.name}</strong> <span style="color:#d29922">${"⭐".repeat(club.stars)}</span>`;
+  if(P.clubStars>0 && club.stars>P.clubStars) {
+    headline = "🔥 ¡TE QUIEREN ROBAR!";
+    subHead = `${clubNameBig}<br>Un club MÁS GRANDE que ${P.clubName} viene a por ti`;
+  } else if(P.clubStars>0 && club.stars===P.clubStars) {
+    headline = "🤝 OFERTA DE RIVAL DIRECTO";
+    subHead = `${clubNameBig}<br>Quieren ficharte de ${P.clubName}`;
+  } else {
+    headline = "📋 OFERTA DE CONTRATO";
+    subHead = `${clubNameBig}`;
+  }
+  document.getElementById("tf-club-name").innerHTML = headline;
+  document.getElementById("tf-club-info").innerHTML = `${subHead}<br><span style="font-size:13px">${club.league} · ${club.country}</span>`;
+
+  const baseSalary = club.salaryBase;
+  const minSal = Math.floor(baseSalary*0.5);
+  const maxSal = Math.floor(baseSalary*(P.overall>=85?3:2));
+  document.getElementById("tf-salary").min = 0;
+  document.getElementById("tf-salary").max = 100;
+  document.getElementById("tf-salary").value = 50;
+  document.getElementById("tf-salary-min").textContent = formatMoney(minSal);
+  document.getElementById("tf-salary-max").textContent = formatMoney(maxSal);
+  document.getElementById("tf-salary-val").textContent = formatMoney(Math.floor(baseSalary*1.2));
+
+  document.getElementById("tf-years").value = 3;
+  document.getElementById("tf-years-val").textContent = "3";
+  document.getElementById("tf-role").value = 2;
+  document.getElementById("tf-role-val").textContent = "Titular";
+  document.getElementById("tf-clause").value = 0;
+  document.getElementById("tf-clause-val").textContent = "Sin cláusula";
+  document.getElementById("tf-response").style.display = "none";
+  document.getElementById("tf-response").className = "";
+
+  document.getElementById("tf-salary").oninput = updateNegValues;
+  document.getElementById("tf-years").oninput = updateNegValues;
+  document.getElementById("tf-role").oninput = updateNegValues;
+  document.getElementById("tf-clause").oninput = updateNegValues;
+
+  updateNegValues();
+  modal.classList.add("active");
+}
+
+function updateNegValues(){
+  const club = P.pendingTransfer;
+  if(!club) return;
+  const baseSalary = club.salaryBase;
+  const minSal = Math.floor(baseSalary*0.5);
+  const maxSal = Math.floor(baseSalary*(P.overall>=85?3:2));
+
+  const pct = parseInt(document.getElementById("tf-salary").value)/100;
+  const salary = Math.floor(minSal + (maxSal-minSal)*pct);
+  document.getElementById("tf-salary-val").textContent = formatMoney(salary);
+
+  const years = parseInt(document.getElementById("tf-years").value);
+  document.getElementById("tf-years-val").textContent = years;
+
+  const roles = ["Promesa","Rotación","Titular","Importante","Estrella"];
+  const role = roles[parseInt(document.getElementById("tf-role").value)];
+  document.getElementById("tf-role-val").textContent = role;
+
+  const clausePct = parseInt(document.getElementById("tf-clause").value)/100;
+  const clause = clausePct>0?formatMoney(Math.floor(salary*years*(1+clausePct))):"Sin cláusula";
+  document.getElementById("tf-clause-val").textContent = clause;
+}
+
+function submitNegotiation(){
+  const club = P.pendingTransfer;
+  if(!club) return;
+  const baseSalary = club.salaryBase;
+  const minSal = Math.floor(baseSalary*0.5);
+  const maxSal = Math.floor(baseSalary*(P.overall>=85?3:2));
+  const pct = parseInt(document.getElementById("tf-salary").value)/100;
+  const salary = Math.floor(minSal + (maxSal-minSal)*pct);
+  const years = parseInt(document.getElementById("tf-years").value);
+  const role = parseInt(document.getElementById("tf-role").value);
+  const clausePct = parseInt(document.getElementById("tf-clause").value)/100;
+
+  // Club evaluates the demand
+  const expectedSalary = Math.floor(baseSalary*1.2);
+  const greed = salary/expectedSalary; // >1 = asking too much
+  const roleNames = ["Promesa","Rotación","Titular","Importante","Estrella"];
+  const roleBonus = role>=3?0:role>=2?0.1:0.2; // Lower role = club happier
+
+  if(greed > 1.8+roleBonus){
+    // Too greedy, club withdraws
+    document.getElementById("tf-response").className = "fail";
+    document.getElementById("tf-response").style.display = "block";
+    document.getElementById("tf-response").textContent = "❌ El club retira la oferta. 'Tus exigencias son desproporcionadas.'";
+    document.getElementById("tf-submit").disabled = true;
+    document.getElementById("tf-submit").textContent = "Oferta retirada";
+    setTimeout(()=>{
+      document.getElementById("transfer-modal").classList.remove("active");
+      document.getElementById("tf-submit").disabled = false;
+      document.getElementById("tf-submit").textContent = "Negociar contrato";
+      P.pendingTransfer = null;
+    },2000);
+    return;
+  } else if(greed > 1.3+roleBonus){
+    // Counter offer
+    const counter = Math.floor(expectedSalary*(1.1-roleBonus));
+    document.getElementById("tf-response").className = "counter";
+    document.getElementById("tf-response").style.display = "block";
+    document.getElementById("tf-response").innerHTML = `🔄 Contraoferta del club: ${formatMoney(counter)}/año por ${years} años. <br><button class="btn btn-small btn-primary" style="margin-top:8px" onclick="acceptCounter(${counter},${years},${role},${clausePct})">Aceptar contraoferta</button>`;
+    document.getElementById("tf-submit").disabled = true;
+    document.getElementById("tf-submit").textContent = "Esperando respuesta...";
+    return;
+  }
+
+  // Accepted!
+  finalizeTransfer(club, salary, years, role, clausePct);
+}
+
+function acceptCounter(salary, years, role, clausePct){
+  const club = P.pendingTransfer;
+  if(!club) return;
+  finalizeTransfer(club, salary, years, role, clausePct);
+}
+
+function finalizeTransfer(club, salary, years, role, clausePct){
+  const oldClub = P.clubName;
+  P.clubName = club.name;
+  P.clubLeague = club.league;
+  P.clubCountry = club.country;
+  P.clubStars = club.stars;
+  P.salary = salary;
+  P.contractYears = years;
+  P.squadRole = role;
+  P.releaseClause = clausePct>0?Math.floor(salary*years*(1+clausePct)):0;
+  P.contractWarnings = 0;
+  P.discipline = 70;
+  P.contractMet = true;
+  const pos = P.position;
+  if(pos==="PO") P.contractTarget = randomBetween(5,15);
+  else if(pos==="DC") P.contractTarget = randomBetween(10,25);
+  else if(pos==="EI"||pos==="ED") P.contractTarget = randomBetween(8,20);
+  else if(pos==="MCO") P.contractTarget = randomBetween(5,15);
+  else if(pos==="MC"||pos==="MCD") P.contractTarget = randomBetween(3,12);
+  else P.contractTarget = randomBetween(5,10);
+  P.clubHistory.push({name:club.name,league:club.league,country:club.country,stars:club.stars,age:P.age,goals:P.seasonGoals,assists:P.seasonAssists,matches:Math.floor(P.careerMatches/30)});
+  const roleNames = ["Promesa","Rotación","Titular","Importante","Estrella"];
+  P.timeline.push(`Edad ${P.age}: Fichado por ${club.name}. Rol: ${roleNames[role]}, ${formatMoney(salary)}/año, ${years} años`);
+  document.getElementById("transfer-modal").classList.remove("active");
+  document.getElementById("tf-submit").disabled = false;
+  document.getElementById("tf-submit").textContent = "Negociar contrato";
+  P.pendingTransfer = null;
+  const oldStars = P.clubHistory.length>1?P.clubHistory[P.clubHistory.length-2]?.stars:0;
+  const prevClub = P.clubHistory.length>1?P.clubHistory[P.clubHistory.length-2]?.name:"Sin club";
+  
+  let toastMsg = "";
+  if(club.stars>oldStars && oldStars>0){
+    toastMsg = `🔥 ¡TE ROBÓ ${club.name.toUpperCase()}! De ${prevClub} a ${club.name} · ${formatMoney(salary)}/año ⭐${club.stars}`;
+  } else if(club.stars>=4){
+    toastMsg = `⭐ ¡Fichaje TOP! ${club.name} · ${formatMoney(salary)}/año · ${club.league}`;
+  } else {
+    toastMsg = `📝 Fichado por ${club.name} · ${formatMoney(salary)}/año · ${years} años`;
+  }
+  if(P.releaseClause>0) toastMsg += ` · 💎 Cláusula: ${formatMoney(P.releaseClause)}`;
+  showToast(toastMsg);
+  
+  // Show a confirm modal
+  document.getElementById("tf-response").className = "success";
+  document.getElementById("tf-response").innerHTML = `✅ <strong>¡Fichaje confirmado!</strong><br><br>🏟️ <strong>${club.name}</strong> ⭐${club.stars}<br>🏆 ${club.league} · ${club.country}<br>💰 ${formatMoney(salary)}/año · 📅 ${years} años<br>⭐ Rol: ${roleNames[role]}<br>${P.releaseClause>0?`💎 Cláusula: ${formatMoney(P.releaseClause)}<br>`:""}<br><span style="font-size:12px;color:#8b949e">Puedes cerrar esta ventana</span>`;
+  document.getElementById("tf-response").style.display = "block";
+  document.getElementById("tf-submit").disabled = true;
+  document.getElementById("tf-submit").textContent = "✓ Firmado";
+  updateUI();
+  checkAchievements();
+}
+
+function closeTransferModal(){
+  document.getElementById("transfer-modal").classList.remove("active");
+  document.getElementById("tf-submit").disabled = false;
+  document.getElementById("tf-submit").textContent = "Negociar contrato";
+  P.pendingTransfer = null;
+  showToast("Oferta rechazada");
+}
+
+// ============================================================
+// YEAR SUMMARY
+// ============================================================
+function showYearSummary(){
+  document.getElementById("sum-year").textContent = P.age;
+  const list = document.getElementById("sum-events-list");
+  list.innerHTML = "";
+  if(P.yearEvents.length===0){
+    list.innerHTML = "<p style='color:#8b949e'>Un año tranquilo sin grandes sucesos.</p>";
+  } else {
+    P.yearEvents.forEach(ev=>{
+      const emoji = ev.result==="positive"?"✅":ev.result==="negative"?"❌":"➖";
+      list.innerHTML += `<p>${emoji} <strong>${ev.title}:</strong> ${ev.text}</p>`;
+    });
+  }
+
+  // Achievements during summary
+  const achDiv = document.getElementById("sum-achievements");
+  achDiv.innerHTML = "";
+  const newAchs = checkAchievements();
+  if(newAchs.length>0){
+    achDiv.innerHTML = "<h3 style='color:#d29922;margin-bottom:8px'>🏆 Nuevos logros</h3>";
+    newAchs.forEach(a=>{achDiv.innerHTML+=`<p>⭐ ${a}</p>`});
+  }
+
+  document.getElementById("summary-modal").classList.add("active");
+}
+
+function closeSummary(){
+  document.getElementById("summary-modal").classList.remove("active");
+  currentYearEvents = [];
+  P.yearEvents = [];
+  updateUI();
+
+  // Retirement age
+  if(P.age >= 38 && Math.random()<0.6){
+    P.retirementReason = "edad avanzada";
+    showRetirement();
+  }
+}
+
+// ============================================================
+// TRAINING
+// ============================================================
+function renderTrainOptions(){
+  const div = document.getElementById("train-options");
+  div.innerHTML = "";
+  if(!P.energyAvailable){
+    div.innerHTML = "<p style='color:#8b949e;font-size:13px'>Ya entrenaste este año. Espera al próximo año.</p>";
+    return;
+  }
+  for(const [k,v] of Object.entries(STAT_NAMES)){
+    const btn = document.createElement("button");
+    btn.className = "btn btn-outline";
+    btn.style.cssText = "width:100%;margin-bottom:8px;text-align:left;display:flex;justify-content:space-between";
+    btn.innerHTML = `<span>${v.name}</span><span style='color:${v.color}'>${P.stats[k]} → ${Math.min(99,P.stats[k]+randomBetween(1,3))}</span>`;
+    btn.onclick = ()=>{
+      const gain = randomBetween(1,3);
+      P.stats[k] = Math.min(99, P.stats[k]+gain);
+      P.energyAvailable = false;
+      P.timeline.push(`Edad ${P.age}: Entrenó ${v.name} (+${gain})`);
+      showToast(`¡${v.name} +${gain}!`);
+      updateUI();
+    };
+    div.appendChild(btn);
+  }
+}
+
+// ============================================================
+// RELATIONSHIPS
+// ============================================================
+function renderRelationships(){
+  const div = document.getElementById("relationships-display");
+  div.innerHTML = "<h3>Tus relaciones</h3>";
+  const rels = [
+    {key:"entrenador",name:"Entrenador",icon:"👔",color:"#f0883e"},
+    {key:"compañeros",name:"Compañeros",icon:"🤝",color:"#79c0ff"},
+    {key:"pareja",name:P.hasPartner?("Pareja: "+P.partnerName):"Pareja",icon:"❤️",color:"#f85149"},
+    {key:"familia",name:"Familia",icon:"👨‍👩‍👦",color:"#7ee787"},
+    {key:"amigos",name:"Amigos",icon:"👥",color:"#a371f7"},
+  ];
+  rels.forEach(r=>{
+    const val = P.relationships[r.key];
+    const barColor = val>70?"#7ee787":val>40?"#d29922":"#f85149";
+    div.innerHTML += `
+      <div class="rel-bar">
+        <div class="rel-label"><span>${r.icon} ${r.name}</span><span>${val}</span></div>
+        <div class="rel-track"><div class="rel-fill" style="width:${val}%;background:${barColor}"></div></div>
+      </div>
+    `;
+  });
+  if(P.hasKids && P.kidNames.length>0){
+    div.innerHTML += `<p style='margin-top:8px;font-size:13px;color:#8b949e'>👶 Hijos: ${P.kidNames.join(", ")}</p>`;
+  }
+}
+
+// ============================================================
+// STATS
+// ============================================================
+function renderPersonality(){
+  const div = document.getElementById("personality-display");
+  if(!div) return;
+  const tags = P.personality || {};
+  const sorted = Object.entries(tags).sort((a,b)=>b[1]-a[1]).slice(0, 8);
+  div.innerHTML = "";
+  if(sorted.length===0){
+    div.innerHTML = "<span style='font-size:12px;color:#8b949e'>Tu personalidad se definirá con tus decisiones...</span>";
+    return;
+  }
+  sorted.forEach(([tag, count])=>{
+    const color = count>=5?"#7ee787":count>=3?"#d29922":"#8b949e";
+    div.innerHTML += `<span style="background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:6px 12px;font-size:12px;color:${color};font-weight:600">${tag} x${count}</span>`;
+  });
+}
+
+function renderStats(){
+  const div = document.getElementById("stats-display");
+  div.innerHTML = "";
+  for(const [k,v] of Object.entries(STAT_NAMES)){
+    const val = P.stats[k];
+    let color = v.color;
+    if(val>=90) color="#ffd700";
+    div.innerHTML += `
+      <div class="stat-row">
+        <span class="stat-name">${v.name}</span>
+        <div class="stat-bar-wrap"><div class="stat-bar-fill" style="width:${val}%;background:${v.color}"></div></div>
+        <span class="stat-num" style="color:${val>=90?'#ffd700':v.color}">${val}</span>
+      </div>
+    `;
+  }
+  div.innerHTML += `
+    <div style="margin-top:12px;display:flex;justify-content:space-between;font-size:12px;color:#8b949e">
+      <span>Goles temporada: ${P.seasonGoals}</span>
+      <span>Asistencias: ${P.seasonAssists}</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:#8b949e">
+      <span>Goles carrera: ${P.careerGoals}</span>
+      <span>Asistencias: ${P.careerAssists}</span>
+    </div>
+  `;
+}
+
+// ============================================================
+// CLUB HISTORY
+// ============================================================
+function renderClubHistory(){
+  const div = document.getElementById("club-history");
+  div.innerHTML = "";
+  if(P.clubHistory.length===0){
+    div.innerHTML = "<p style='color:#8b949e'>Sin historial de clubes aún.</p>";
+    return;
+  }
+  P.clubHistory.forEach(c=>{
+    div.innerHTML += `
+      <div class="club-item">
+        <div>
+          <div class="club-name">${c.name}</div>
+          <div class="club-info">${c.league} · ${c.country} · Edad ${c.age}</div>
+        </div>
+        <div class="club-stars">${"⭐".repeat(c.stars)}</div>
+      </div>
+    `;
+  });
+}
+
+// ============================================================
+// LIFE ITEMS
+// ============================================================
+function renderLifeItems(){
+  const div = document.getElementById("life-grid");
+  if(!div) return;
+  div.innerHTML = "";
+  LIFE_ITEMS.forEach(item=>{
+    const owned = P.ownedItems.includes(item.id);
+    const card = document.createElement("div");
+    card.className = "life-item"+(owned?" owned":"");
+    card.innerHTML = `
+      <div class="life-icon">${item.icon}</div>
+      <div class="life-name">${item.name}</div>
+      <div class="life-price">${owned?'✅ Adquirido':formatMoney(item.price)}</div>
+    `;
+    if(!owned){
+      card.onclick = ()=>{
+        if(P.money>=item.price){
+          P.money -= item.price;
+          P.ownedItems.push(item.id);
+          showToast(`¡${item.name} comprado!`);
+          updateUI();
+        } else {
+          showToast("No tienes suficiente dinero");
+        }
+      };
+    }
+    div.appendChild(card);
+  });
+}
+
+// ============================================================
+// ACTIONS SYSTEM
+// ============================================================
+const ACTIONS = [
+  // Siempre disponibles
+  {id:"llamar_familia",name:"Llamar a la familia",icon:"📞",desc:"Una videollamada con tu familia te recarga el alma.",eff:{familia:5,morale:5},cost:0,req:{}},
+  {id:"leer_tactica",name:"Estudiar táctica",icon:"📖",desc:"Analizas partidos de tu próximo rival. Siempre se aprende algo.",eff:{discipline:8,overall_boost:1},cost:0,req:{}},
+  {id:"descansar",name:"Día de descanso",icon:"😴",desc:"Te tomas el día libre. Recuperas energía mental y física.",eff:{morale:8,discipline:-3},cost:0,req:{}},
+  {id:"sesion_gym",name:"Gimnasio extra",icon:"💪",desc:"Una hora más en el gym nunca hace daño.",eff:{fisico:2,morale:-2,discipline:10},cost:0,req:{}},
+  // Pequeño costo
+  {id:"cena_equipo",name:"Invitar cena al equipo",icon:"🍽️",desc:"Pagas la cena para todo el equipo. Gran gesto.",eff:{rel_compañeros:15,morale:8},cost:5000,req:{money:5000}},
+  {id:"fiesta_amigos",name:"Fiesta con amigos",icon:"🎉",desc:"Una noche de fiesta con tus amigos de toda la vida.",eff:{morale:12,amigos:10,discipline:-20},cost:3000,req:{money:3000,age:18}},
+  {id:"curso_idiomas",name:"Curso de idiomas",icon:"🗣️",desc:"Aprender inglés/italiano te abre puertas en el fútbol.",eff:{overall_boost:1,discipline:5},cost:8000,req:{money:8000}},
+  // Nivel medio (18+, algo de fama o dinero)
+  {id:"influencer_colab",name:"Colaborar con influencer",icon:"📱",desc:"Un influencer local graba contenido contigo. Ganas exposición.",eff:{followers:8000,morale:8},cost:5000,req:{money:5000,age:18}},
+  {id:"sesion_fotos",name:"Sesión de fotos",icon:"📸",desc:"Una revista deportiva te hace un reportaje fotográfico.",eff:{followers:15000,morale:6},cost:10000,req:{money:10000,age:18}},
+  {id:"stream_twitch",name:"Stream en Twitch",icon:"🎮",desc:"Juegas en vivo con fans. Cercanía + seguidores.",eff:{followers:20000,morale:10,amigos:5},cost:2000,req:{money:2000,age:18}},
+  {id:"entrevista_radio",name:"Entrevista en radio local",icon:"🎙️",desc:"Charlas con una radio deportiva. Te conocen más.",eff:{followers:10000,rel_entrenador:3},cost:0,req:{age:18}},
+  {id:"evento_benefico",name:"Evento benéfico",icon:"🤝",desc:"Asistes a una gala benéfica. Donas algo simbólico.",eff:{morale:10,familia:8,followers:15000},cost:15000,req:{money:15000,age:18}},
+  // Alto nivel (fama/dinero)
+  {id:"anuncio_marca",name:"Anuncio para marca",icon:"📺",desc:"Una marca local te paga por aparecer en su publicidad.",eff:{money:150000,followers:30000,morale:5},cost:0,req:{followers:50000}},
+  {id:"invertir_negocio",name:"Invertir en negocio",icon:"💼",desc:"Inviertes en un restaurante de un amigo emprendedor.",eff:{investmentValue:150000,morale:8},cost:80000,req:{money:80000}},
+  {id:"viaje_lujo",name:"Viaje de lujo",icon:"🌴",desc:"Una semana en un resort 5 estrellas. Recargas pilas.",eff:{morale:20,amigos:8},cost:50000,req:{money:50000}},
+  {id:"comprar_ropa_lujo",name:"Renovar guardarropa",icon:"👔",desc:"Ropa de diseñador. Hay que verse bien ante las cámaras.",eff:{morale:8,followers:5000},cost:25000,req:{money:25000}},
+  // Especiales
+  {id:"terapia",name:"Ir a terapia",icon:"🧘",desc:"Un psicólogo deportivo te ayuda con la presión.",eff:{morale:15,discipline:10},cost:12000,req:{money:12000}},
+  {id:"patrocinar_torneo",name:"Patrocinar torneo juvenil",icon:"🏆",desc:"Pagas un torneo en tu barrio. Los niños te aman.",eff:{followers:25000,familia:12,morale:15},cost:30000,req:{money:30000,followers:80000}},
+];
+
+function checkActionReq(action){
+  const r = action.req;
+  if(r.money && P.money<r.money) return `Necesitas ${formatMoney(r.money)}`;
+  if(r.age && P.age<r.age) return `Debes tener ${r.age} años`;
+  if(r.followers && P.followers<r.followers) return `Necesitas ${formatFollowers(r.followers)} seguidores`;
+  if(r.overall && P.overall<r.overall) return `Necesitas ${r.overall}+ de overall`;
+  return null;
+}
+
+function doAction(action){
+  const block = checkActionReq(action);
+  if(block){showToast("❌ "+block);return}
+  if(action.cost>0){
+    P.money -= action.cost;
+  }
+  const e = action.eff;
+  if(e.morale) P.morale = clamp(P.morale+e.morale,0,100);
+  if(e.discipline) P.discipline = clamp(P.discipline+e.discipline,0,100);
+  if(e.familia) P.relationships.familia = clamp(P.relationships.familia+e.familia,0,100);
+  if(e.amigos) P.relationships.amigos = clamp(P.relationships.amigos+e.amigos,0,100);
+  if(e.rel_entrenador) P.relationships.entrenador = clamp(P.relationships.entrenador+e.rel_entrenador,0,100);
+  if(e.rel_compañeros) P.relationships.compañeros = clamp(P.relationships.compañeros+e.rel_compañeros,0,100);
+  if(e.fisico) P.stats.fisico = clamp(P.stats.fisico+e.fisico,1,99);
+  if(e.overall_boost) for(const k of Object.keys(P.stats)) P.stats[k]=clamp(P.stats[k]+1,1,99);
+  if(e.followers){
+    const scale = Math.max(0.3, Math.min(6, Math.sqrt(Math.max(100,P.followers)/5000)));
+    const g = Math.floor(e.followers*scale);
+    P.followers += g;
+    P.followers = Math.max(0,P.followers);
+  }
+  if(e.investmentValue) P.investmentValue += e.investmentValue;
+  if(e.money) P.money += e.money;
+  P.timeline.push(`Edad ${P.age}: ${action.desc}`);
+  showToast(`✅ ${action.name}: ¡Hecho!`);
+  updateUI();
+}
+
+function renderActions(){
+  const div = document.getElementById("actions-grid");
+  if(!div) return;
+  div.innerHTML = "";
+  ACTIONS.forEach(a=>{
+    const block = checkActionReq(a);
+    const locked = !!block;
+    const card = document.createElement("div");
+    card.style.cssText = `background:#0d1117;border:1px solid ${locked?'#21262d':'#30363d'};border-radius:10px;padding:14px;text-align:center;cursor:${locked?'default':'pointer'};transition:all .2s;opacity:${locked?'0.5':'1'}`;
+    card.innerHTML = `<div style="font-size:28px;margin-bottom:4px">${a.icon}</div><div style="font-size:13px;font-weight:600;margin-bottom:4px">${a.name}</div><div style="font-size:10px;color:#8b949e;margin-bottom:6px">${a.desc}</div>${a.cost>0?`<div style="font-size:11px;color:#d29922">${formatMoney(a.cost)}</div>`:''}${locked?`<div style="font-size:10px;color:#f85149;margin-top:4px">🔒 ${block}</div>`:''}`;
+    card.onmouseenter = function(){if(!locked){card.style.borderColor="#2ea043";card.style.transform="translateY(-2px)"}};
+    card.onmouseleave = function(){if(!locked){card.style.borderColor="#30363d";card.style.transform="translateY(0)"}};
+    if(!locked) card.onclick = ()=>doAction(a);
+    div.appendChild(card);
+  });
+}
+
+// ============================================================
+// ACHIEVEMENTS
+// ============================================================
+const ACHIEVEMENTS = [
+  {id:"debut",name:"Debut profesional",desc:"Juega tu primer partido",emoji:"⭐"},
+  {id:"first_goal",name:"Primer gol",desc:"Marca tu primer gol profesional",emoji:"⚽"},
+  {id:"hattrick",name:"Hat-trick",desc:"Marca 3 goles en un partido",emoji:"🎩"},
+  {id:"transfer_big",name:"Fichaje estrella",desc:"Ficha por un club de 5 estrellas",emoji:"💎"},
+  {id:"worldcup",name:"Mundialista",desc:"Participa en una Copa del Mundo",emoji:"🌍"},
+  {id:"worldcup_win",name:"Campeón del Mundo",desc:"Gana la Copa del Mundo",emoji:"🏆"},
+  {id:"millionaire",name:"Millonario",desc:"Acumula €10M",emoji:"💰"},
+  {id:"rich",name:"Forrado",desc:"Acumula €50M",emoji:"💎"},
+  {id:"love",name:"Enamorado",desc:"Encuentra pareja",emoji:"💘"},
+  {id:"parent",name:"Padre",desc:"Ten un hijo",emoji:"👶"},
+  {id:"loyal",name:"One Club Man",desc:"Permanece 10+ años en el mismo club",emoji:"🏠"},
+  {id:"top_ovr",name:"Clase Mundial",desc:"Alcanza 90+ de overall",emoji:"👑"},
+  {id:"legend",name:"Leyenda",desc:"Alcanza 95+ de overall",emoji:"🌟"},
+  {id:"rich_arab",name:"Petrodólares",desc:"Ficha por un club de Arabia Saudí",emoji:"🛢️"},
+  {id:"goal_100","name":"Centenario","desc":"Marca 100 goles en tu carrera","emoji":"💯"},
+  {id:"retire_rich","name":"Retiro dorado","desc":"Retírate con más de €100M","emoji":"🏖️"},
+];
+
+function checkAchievements(){
+  const newAchs = [];
+  for(const ach of ACHIEVEMENTS){
+    if(P.achievements.includes(ach.id)) continue;
+    let earned = false;
+    switch(ach.id){
+      case "debut": if(P.careerMatches>0) earned=true; break;
+      case "first_goal": if(P.careerGoals>0) earned=true; break;
+      case "hattrick": if(P.seasonGoals>=3) earned=true; break;
+      case "transfer_big": if(P.clubStars>=5) earned=true; break;
+      case "worldcup": if(P.worldCupParticipated) earned=true; break;
+      case "worldcup_win": if(P.worldCupWinner) earned=true; break;
+      case "millionaire": if(P.money>=10000000) earned=true; break;
+      case "rich": if(P.money>=50000000) earned=true; break;
+      case "love": if(P.hasPartner) earned=true; break;
+      case "parent": if(P.hasKids) earned=true; break;
+      case "loyal": if(P.clubHistory.some(c=>c.age&&(P.age-c.age)>=10)) earned=true; break;
+      case "top_ovr": if(P.overall>=90) earned=true; break;
+      case "legend": if(P.overall>=95) earned=true; break;
+      case "rich_arab": if(P.clubCountry==="Arabia Saudí") earned=true; break;
+      case "goal_100": if(P.careerGoals>=100) earned=true; break;
+      case "retire_rich": if(P.retirementReason && P.money>=100000000) earned=true; break;
+    }
+    if(earned){
+      P.achievements.push(ach.id);
+      newAchs.push(ach.name);
+      showToast(`🏆 Logro: ${ach.name}`);
+      P.timeline.push(`Edad ${P.age}: Logro desbloqueado - ${ach.name}`);
+    }
+  }
+  return newAchs;
+}
+
+function renderAchievements(){
+  const div = document.getElementById("achievements-display");
+  div.innerHTML = "";
+  ACHIEVEMENTS.forEach(ach=>{
+    const unlocked = P.achievements.includes(ach.id);
+    div.innerHTML += `
+      <div class="achievement-badge ${unlocked?'unlocked':''}">
+        <div style="font-size:24px">${ach.emoji}</div>
+        <div style="font-weight:600;margin-top:4px">${ach.name}</div>
+        <div style="font-size:10px;color:#8b949e">${ach.desc}</div>
+      </div>
+    `;
+  });
+}
+
+// ============================================================
+// RETIREMENT
+// ============================================================
+function showRetirement(){
+  document.getElementById("event-modal").classList.remove("active");
+  document.getElementById("summary-modal").classList.remove("active");
+
+  const modal = document.getElementById("retirement-modal");
+  document.getElementById("ret-player-name").textContent = P.name + " ("+P.country+")";
+  document.getElementById("ret-years").textContent = P.age - 16;
+
+  // Grade
+  let grade = "C", gradeEmoji = "🥉";
+  if(P.worldCupWinner){grade="S";gradeEmoji="👑"}
+  else if(P.overall>=90){grade="A";gradeEmoji="⭐"}
+  else if(P.overall>=80){grade="B";gradeEmoji="🌟"}
+  else if(P.careerGoals>=50){grade="B";gradeEmoji="🌟"}
+  document.getElementById("ret-grade").textContent = gradeEmoji;
+
+  const statsDiv = document.getElementById("ret-stats");
+  statsDiv.innerHTML = `
+    <div class="summary-stat"><div class="sval">${P.overall}</div><div class="slbl">Overall máx</div></div>
+    <div class="summary-stat"><div class="sval">${P.careerGoals}</div><div class="slbl">Goles totales</div></div>
+    <div class="summary-stat"><div class="sval">${P.careerAssists}</div><div class="slbl">Asistencias</div></div>
+    <div class="summary-stat"><div class="sval">${P.clubHistory.length}</div><div class="slbl">Clubes</div></div>
+    <div class="summary-stat"><div class="sval">${formatMoney(P.money)}</div><div class="slbl">Fortuna final</div></div>
+    <div class="summary-stat"><div class="sval">${P.titles.length}</div><div class="slbl">Títulos</div></div>
+    <div class="summary-stat"><div class="sval">${P.achievements.length}/${ACHIEVEMENTS.length}</div><div class="slbl">Logros</div></div>
+    <div class="summary-stat"><div class="sval">${P.age}</div><div class="slbl">Edad retiro</div></div>
+  `;
+
+  // Titles
+  if(P.titles.length>0){
+    statsDiv.innerHTML += `<div style="grid-column:1/-1;margin-top:8px;font-size:13px;text-align:left"><strong>🏆 Títulos:</strong> ${P.titles.join(", ")}</div>`;
+  }
+
+  const timelineDiv = document.getElementById("ret-timeline");
+  timelineDiv.innerHTML = "";
+  P.timeline.forEach(t=>{
+    timelineDiv.innerHTML += `<li>${t}</li>`;
+  });
+
+  checkAchievements();
+  modal.classList.add("active");
+}
+
+// ============================================================
+// INIT
+// ============================================================
+function init(){
+  try{
+    initCreateScreen();
+    // Attach tab click handlers
+    document.querySelectorAll(".tab-btn").forEach(btn=>{
+      btn.addEventListener("click", function(){
+        switchTab(this.getAttribute("data-tab"));
+      });
+    });
+  }catch(e){
+    alert("Error al iniciar: "+e.message);
+  }
+}
+init();
+</script>
+</body>
+</html>
