@@ -1731,18 +1731,13 @@ function advanceYear(){
     checkClubOffers();
   }
 
-  // Debut event - first year professional
-  if(P.age===17 && P.careerMatches===0){
-    currentYearEvents.push({title:"Debut profesional",text:"Es tu primer partido como profesional. La camiseta te pesa distinto. La grada ruge. Hoy dejas de ser un juvenil.",emoji:"🌟",type:"match",options:[
+  // Debut event - only when first reaching a professional club
+  if(P.clubStars>=2 && P.careerMatches===0 && P.age>=17){
+    currentYearEvents.push({title:"Debut profesional",text:"Es tu primer partido en el fútbol profesional de verdad. La camiseta te pesa distinto. La grada ruge. Hoy dejas de ser un juvenil.",emoji:"🌟",type:"match",magnitude:"big",options:[
       {text:"Juegas simple y seguro. No quieres cagarla",effects:{careerMatches:3, morale:8, rel_entrenador:8, followers:5000},tag:"Prudente",chance:0.85, failText:"Los nervios te traicionan. Pero al menos debutaste.", failEffects:{careerMatches:1, morale:-5}},
       {text:"Vas a por todas. Si debutas, que sea con gol",effects:{careerMatches:3, careerGoals:1, seasonGoals:1, morale:15, followers:20000},tag:"Valiente",chance:0.45, failText:"Intentaste demasiado. Casi metes un gol en propia.", failEffects:{careerMatches:1, morale:-8}},
       {text:"Disfrutas el momento. Esto es lo que soñaste de niño",effects:{careerMatches:3, morale:12, rel_entrenador:5},tag:"Soñador",chance:0.9, failText:"", failEffects:{}}
     ]});
-  }
-  if(P.age>=18 && !P.injured && P.overall>=65 && Math.random()<0.4){
-    P.nationalTeam = true;
-    P.timeline.push(`Edad ${P.age}: Convocado por la selección de ${P.country}`);
-    checkAchievements();
   }
 
   // World Cup logic (every 4 years: ages 18,22,26,30,34)
@@ -1814,14 +1809,18 @@ function advanceYear(){
     return sa-sb;
   });
 
-  // Simple contract countdown - no performance targets to kick you out
+  // Contract countdown - only if not just signed this year
   if(P.clubStars>0){
-    P.contractYears--;
+    if(!P.contractJustSigned){
+      P.contractYears--;
+    }
+    P.contractJustSigned = false;
     
     if(P.contractYears<=0){
       // Always offer renewal, club quality affects chance of other offers
       P.contractYears = P.clubStars>=5?randomBetween(2,4):randomBetween(1,3);
       P.salary += Math.floor(P.salary*0.15);
+      P.contractJustSigned = true; // Don't count this year for new contract
       if(P.squadRole<4 && P.overall>=70 && Math.random()<0.3) P.squadRole++;
       P.timeline.push(`Edad ${P.age}: Renovó contrato por ${P.contractYears} años (${formatMoney(P.salary)}/año)`);
       const roleNames = ["Promesa","Rotación","Titular","Importante","Estrella"];
@@ -2314,6 +2313,7 @@ function finalizeTransfer(club, salary, years, role, clausePct){
   document.getElementById("tf-submit").disabled = false;
   document.getElementById("tf-submit").textContent = "Negociar contrato";
   P.pendingTransfer = null;
+  P.contractJustSigned = true; // Don't decrement contract same year
   const oldStars = P.clubHistory.length>1?P.clubHistory[P.clubHistory.length-2]?.stars:0;
   const prevClub = P.clubHistory.length>1?P.clubHistory[P.clubHistory.length-2]?.name:"Sin club";
   
@@ -2772,7 +2772,7 @@ function checkAchievements(){
     if(P.achievements.includes(ach.id)) continue;
     let earned = false;
     switch(ach.id){
-      case "debut": if(P.careerMatches>0) earned=true; break;
+      case "debut": if(P.careerMatches>0 && P.clubStars>=2) earned=true; break;
       case "first_goal": if(P.careerGoals>0) earned=true; break;
       case "hattrick": if(P.seasonGoals>=3) earned=true; break;
       case "transfer_big": if(P.clubStars>=5) earned=true; break;
