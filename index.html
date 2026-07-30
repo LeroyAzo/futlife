@@ -1169,7 +1169,7 @@ ev("Creas tu propia marca de ropa","Decides lanzar tu línea de ropa deportiva. 
   {text:"Inviertes fuerte en marketing y calidad",effects:{money:-500000,investmentValue:800000,morale:8},chance:0.5, failText:"La crítica destroza tu primera colección. 'Parece un disfraz'.", failEffects:{money:-500000,morale:-15}},
   {text:"Haces una tirada pequeña y pruebas el mercado",effects:{money:-100000,investmentValue:150000},chance:0.75, failText:"Pasa sin pena ni gloria.", failEffects:{morale:-3}}
 ]);
-ev("Vuelves a estudiar","Con 25 años decides estudiar algo. Gestión deportiva, idiomas... tus compañeros te miran raro. Pero a ti te llena.","📚","life",[
+ev("Vuelves a estudiar","Decides estudiar algo. Gestión deportiva, idiomas... tus compañeros te miran raro. Pero a ti te llena.","📚","life",[
   {text:"Estudias gestión deportiva para ser directivo al retirarte",effects:{morale:10,overall_boost:1},chance:0.9, failText:"", failEffects:{}},
   {text:"Estudias filosofía por puro placer",effects:{morale:8},chance:0.85, failText:"La prensa se burla. 'Futbolista filósofo'.", failEffects:{morale:-3}}
 ]);
@@ -1737,7 +1737,7 @@ function getEligibleEvents(){
     if(e.continent && e.continent!==clubContinent) ok = false;
     if(e.competition && e.competition!==clubComp) ok = false;
 
-    // ---- COHERENCE: strict filters by player situation ----
+    // ---- COHERENCE: strict filters ----
     const M = P.money;
     const F = P.followers;
     const A = P.age;
@@ -1746,9 +1746,19 @@ function getEligibleEvents(){
     const S = P.salary;
     const title = t(e);
 
-    // RELATIONSHIP gates
-    if(title.includes("pareja")||title.includes("Crisis de")||title.includes("infidelidad")||title.includes("Boda")||title.includes("padre")||title.includes("Romance"))
-      if(!P.hasPartner && A<22) ok=false;
+    // NO CLUB gates - block match/coach/transfer/injury events without a club
+    if(CS===0 && ["match","coach","transfer","injury","national"].includes(e.type)) ok = false;
+
+    // CONTINENT-CLUB gates - block continent-specific events
+    const clubContComp = (currentClub?.competition||"").toLowerCase();
+    if(title.includes("Debut europeo")||title.includes("Champions League")) 
+      if(!clubContComp.includes("champions")&&!clubContComp.includes("europa")) ok=false;
+
+    // RELATIONSHIP gates - require actual partner
+    if(title.includes("pareja")||title.includes("Crisis de")||title.includes("infidelidad")||
+       title.includes("Boda")||title.includes("padre")||title.includes("Romance")||
+       title.includes("Hijo secreto"))
+      if(!P.hasPartner) ok=false;
 
     // AGE gates - events that need maturity/experience
     if(title.includes("Video íntimo")||title.includes("Doping")||title.includes("Apuesta")) if(A<22) ok=false;
@@ -1781,25 +1791,27 @@ function getEligibleEvents(){
     if(title.includes("Reconocimiento de la afición rival")) if(O<72) ok=false;
 
     // CAREER STAGE gates
-    if(title.includes("Debut soñado")||title.includes("Debut europeo")) if(A>22) ok=false;
+    if(title.includes("Debut soñado")||title.includes("Debut europeo")) if(A>22||P.careerMatches>5) ok=false;
     if(title.includes("Debut europeo")||title.includes("Champions")) if(CS<3) ok=false;
     if(title.includes("Regreso a casa")) if(A<22) ok=false;
     if(title.includes("Último baile")||title.includes("Arabia")) if(A<28) ok=false;
     if(title.includes("confundes al árbitro")||title.includes("tu madre tuitea")) {} // Universal, always OK
 
-    // MONEY ABSOLUTE gates - event text mentions € amounts
-    const txt = e.text||"";
-    if(txt.includes("€80M")||txt.includes("€50M")) if(O<80) ok=false;
-    if(txt.includes("€10M")||txt.includes("€5M")) if(CS<3 && O<70) ok=false;
-    if(txt.includes("€1M")||txt.includes("€2M")||txt.includes("€3M")) if(S<500000||M<100000) ok=false;
-    if(txt.includes("€800K")||txt.includes("€500K")||txt.includes("millonario")) if(M<100000) ok=false;
-    if(txt.includes("€400K")||txt.includes("€200K")||txt.includes("€100K")) if(M<20000) ok=false;
-    if(txt.includes("€50K")||txt.includes("€30K")) if(M<4000) ok=false;
-    // Check option effects for money loss the player can't afford
+    // MONEY gates for event effects - check ALL options for large money amounts
     const opts = e.options||[];
     for(const opt of opts){
-      if(opt.effects?.money && opt.effects.money<0 && M < Math.abs(opt.effects.money)) ok=false;
-      if(opt.failEffects?.money && opt.failEffects.money<0 && M < Math.abs(opt.failEffects.money)) ok=false;
+      if(opt.effects?.money){
+        const amt = opt.effects.money;
+        if(amt>5000000 && S<2000000) ok=false;
+        if(amt>2000000 && S<500000) ok=false;
+        if(amt<-200000 && M<Math.abs(amt)*2) ok=false;
+        if(amt<-50000 && M<Math.abs(amt)*1.5) ok=false;
+      }
+      if(opt.failEffects?.money){
+        const amt = opt.failEffects.money;
+        if(amt<-200000 && M<Math.abs(amt)*2) ok=false;
+        if(amt<-50000 && M<Math.abs(amt)*1.5) ok=false;
+      }
     }
 
     // Events that should only happen ONCE
@@ -2156,7 +2168,7 @@ function resolveEvent(event, option){
         effectsHTML+=`👥 ${gained>=0?'+':''}${formatFollowers(Math.abs(gained))} seguidores<br>`;
       }
       if(e.discipline){P.discipline=clamp(P.discipline+e.discipline,0,100);effectsHTML+=`⚡ Disciplina ${e.discipline>0?'+':''}${e.discipline}<br>`}
-      if(e.hasPartner && !P.hasPartner){P.hasPartner=true;P.partnerName=e.partnerName||randomPartner();effectsHTML+=`💘 Nueva pareja: ${P.partnerName}<br>`}
+      if(e.hasPartner && !P.hasPartner){P.hasPartner=true;P.partnerName=e.partnerName||randomPartner();P.relationships.pareja=65;effectsHTML+=`💘 Nueva pareja: ${P.partnerName}<br>`}
       if(e.hasKids && !P.hasKids){P.hasKids=true;P.kidNames=e.kidNames||["Junior"];effectsHTML+="👶 ¡Has sido padre!<br>"}
       if(e.married && !P.married){P.married=true;effectsHTML+="💒 ¡Te has casado!<br>"}
       if(e.dinero_extra){P.money+=e.dinero_extra;effectsHTML+=`💰 Bono: ${formatMoney(e.dinero_extra)}<br>`}
@@ -2214,7 +2226,7 @@ function resolveEvent(event, option){
       if(fe.familia){P.relationships.familia=clamp(P.relationships.familia+fe.familia,0,100)}
       if(fe.amigos){P.relationships.amigos=clamp(P.relationships.amigos+fe.amigos,0,100)}
       if(fe.injured){P.injured=true;P.injuryWeeks=fe.injuryWeeks||4;effectsHTML+=`🤕 Lesión: ${P.injuryWeeks} semanas<br>`}
-      if(fe.hasPartner===false){P.hasPartner=false;P.married=false;effectsHTML+="💔 Relación terminada<br>"}
+      if(fe.hasPartner===false){P.hasPartner=false;P.married=false;P.relationships.pareja=0;effectsHTML+="💔 Relación terminada<br>"}
       if(fe.hasPartner===true && !P.hasPartner){P.hasPartner=true;P.partnerName=fe.partnerName||randomPartner()}
       if(fe.hasKids===true && !P.hasKids){P.hasKids=true;P.kidNames=fe.kidNames||["Junior"]}
       if(fe.married===true && !P.married){P.married=true}
@@ -2301,8 +2313,13 @@ function transferRandomClub(){
 }
 
 function transferToYouthClub(){
-  const youth = CLUBS.filter(c=>c.stars<=1 && c.name!==P.clubName);
-  if(youth.length===0) return;
+  const youth = CLUBS.filter(c=>c.stars<=2 && c.name!==P.clubName && c.country===P.clubHistory[0]?.country);
+  if(youth.length===0){
+    const any = CLUBS.filter(c=>c.stars<=2 && c.name!==P.clubName);
+    if(any.length===0) return;
+    doTransfer(pick(any));
+    return;
+  }
   doTransfer(pick(youth));
 }
 
@@ -2947,7 +2964,7 @@ function checkAchievements(){
       case "rich": if(P.money>=50000000) earned=true; break;
       case "love": if(P.hasPartner) earned=true; break;
       case "parent": if(P.hasKids) earned=true; break;
-      case "loyal": if(P.clubHistory.some(c=>c.age&&(P.age-c.age)>=10)) earned=true; break;
+      case "loyal": if(P.clubHistory.length>=1){const last= P.clubHistory[P.clubHistory.length-1]; if(last.age&&(P.age-last.age)>=10) earned=true;} break;
       case "top_ovr": if(P.overall>=90) earned=true; break;
       case "legend": if(P.overall>=95) earned=true; break;
       case "rich_arab": if(P.clubCountry==="Arabia Saudí") earned=true; break;
