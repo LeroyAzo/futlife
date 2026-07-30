@@ -1995,17 +1995,11 @@ function advanceYear(){
     P.contractJustSigned = false;
     
     if(P.contractYears<=0){
-      // Always offer renewal, club quality affects chance of other offers
-      P.contractYears = P.clubStars>=5?randomBetween(2,4):randomBetween(1,3);
-      P.salary += Math.floor(P.salary*0.15);
-      P.contractJustSigned = true; // Don't count this year for new contract
-      if(P.squadRole<4 && P.overall>=70 && Math.random()<0.3) P.squadRole++;
-      P.timeline.push(`Edad ${P.age}: Renovó contrato por ${P.contractYears} años (${formatMoney(P.salary)}/año)`);
-      const roleNames = ["Promesa","Rotación","Titular","Importante","Estrella"];
-      currentYearEvents.push({title:"Renovación de contrato",text:`Terminó tu contrato y el club te ofrece renovar por ${P.contractYears} años con aumento a ${formatMoney(P.salary)}/año como ${roleNames[P.squadRole]}.`,emoji:"📝",type:"random",options:[
-        {text:"Firmas la renovación",effects:{morale:10,followers:20000},chance:0.95,failText:"",failEffects:{}},
-        {text:"Pides más dinero. Te sientes valioso",effects:{money:Math.floor(P.salary*0.5),followers:30000},chance:0.5,failText:"El club se ofende y retira la oferta. Quedas libre.",failEffects:{clubChange:"forcedTransfer",morale:-10}},
-        {text:"No renuevas. Buscas nuevos horizontes",effects:{freeAgent:true,followers:50000},chance:0.8,failText:"Nadie te ofrece contrato. Te arrepientes.",failEffects:{clubName:"Sin club",salary:0,clubStars:0,morale:-30,followers:-50000}}
+      // Push renewal negotiation event - opens transfer modal as "renewal"
+      P.contractJustSigned = true;
+      currentYearEvents.push({title:"Renovación de contrato",text:`Tu contrato con ${P.clubName} ha terminado. ¿Qué quieres hacer?`,emoji:"📝",type:"contract",options:[
+        {text:"Negociar renovación",effects:{renewalNegotiation:true},chance:0.95, failText:"", failEffects:{}},
+        {text:"No renuevas. Buscar nuevos horizontes",effects:{freeAgent:true,followers:50000},chance:0.8,failText:"Nadie te ofrece contrato. Te arrepientes.",failEffects:{clubName:"Sin club",salary:0,clubStars:0,morale:-30,followers:-50000}}
       ]});
     }
   }
@@ -2193,6 +2187,9 @@ function resolveEvent(event, option){
       if(e.freeAgent){
         P.clubName = "Agente libre"; P.clubStars = 0; P.salary = 0; P.contractYears = 0;
         showFreeAgentPicker(); return;
+      }
+      if(e.renewalNegotiation){
+        openRenewalNegotiation(); return;
       }
       if(e.titles){e.titles.forEach(t=>{P.titles.push(t);effectsHTML+=`🏆 ${t}<br>`;P.seasonWonTitle=true})}
       if(e.winTitle){const t="Campeón de liga ("+P.age+")";P.titles.push(t);effectsHTML+=`🏆 ${t}<br>`;P.seasonWonTitle=true}
@@ -2527,6 +2524,54 @@ function closeTransferModal(){
   document.getElementById("tf-submit").textContent = "Negociar contrato";
   P.pendingTransfer = null;
   showToast("Oferta rechazada");
+}
+
+function openRenewalNegotiation(){
+  const currentClub = CLUBS.find(c=>c.name===P.clubName);
+  if(!currentClub){showToast("Error: no se encontró tu club");return}
+  P.pendingTransfer = currentClub;
+  P.pendingTransfer.isRenewal = true;
+  
+  const modal = document.getElementById("transfer-modal");
+  document.getElementById("tf-club-name").innerHTML = "📝 ¿QUIERES RENOVAR?";
+  document.getElementById("tf-club-info").innerHTML = `<strong style="font-size:18px">${P.clubName}</strong> ${"⭐".repeat(P.clubStars)}<br><span style="font-size:13px">${P.clubLeague} · ${P.clubCountry}</span>`;
+  
+  // Base salary for renewal = current salary
+  const baseSalary = P.salary;
+  const minSal = Math.max(0, Math.floor(baseSalary*0.8));
+  const maxSal = Math.floor(baseSalary*2);
+  document.getElementById("tf-salary").min = 0;
+  document.getElementById("tf-salary").max = 100;
+  document.getElementById("tf-salary").value = 55;
+  document.getElementById("tf-salary-min").textContent = formatMoney(minSal);
+  document.getElementById("tf-salary-max").textContent = formatMoney(maxSal);
+  document.getElementById("tf-salary-val").textContent = formatMoney(Math.floor(baseSalary*1.15));
+  
+  document.getElementById("tf-years").value = 3;
+  document.getElementById("tf-years-val").textContent = "3";
+  document.getElementById("tf-role").value = P.squadRole;
+  const roleNames = ["Promesa","Rotación","Titular","Importante","Estrella"];
+  document.getElementById("tf-role-val").textContent = roleNames[P.squadRole];
+  document.getElementById("tf-clause").value = 0;
+  document.getElementById("tf-clause-val").textContent = "Sin cláusula";
+  document.getElementById("tf-response").style.display = "none";
+  document.getElementById("tf-response").className = "";
+  
+  document.getElementById("tf-salary").oninput = updateNegValues;
+  document.getElementById("tf-years").oninput = updateNegValues;
+  document.getElementById("tf-role").oninput = updateNegValues;
+  document.getElementById("tf-clause").oninput = updateNegValues;
+  
+  document.querySelector("#transfer-modal .btn-outline").textContent = "No renovar (agente libre)";
+  document.querySelector("#transfer-modal .btn-outline").onclick = function(){
+    document.getElementById("transfer-modal").classList.remove("active");
+    P.clubName = "Sin club"; P.salary = 0; P.clubStars = 0; P.contractYears = 0;
+    showFreeAgentPicker();
+  };
+  document.getElementById("tf-submit").onclick = submitNegotiation;
+  
+  updateNegValues();
+  modal.classList.add("active");
 }
 
 function showFreeAgentPicker(){
