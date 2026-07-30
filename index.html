@@ -280,7 +280,17 @@ input[type=range]::-webkit-slider-thumb{
         <input id="cr-name" type="text" placeholder="Ej: Lionel Andrade" maxlength="30">
       </div>
       <div class="form-group">
-        <label>País de origen</label>
+        <label>Club de cantera</label>
+        <select id="cr-cantera">
+          <option value="random">🎲 Aleatorio (según tu país)</option>
+          <option value="Atlético Banfield">🇦🇷 Atlético Banfield (Argentina)</option>
+          <option value="Boca Juniors Juvenil">🇦🇷 Boca Juniors Juvenil (Argentina)</option>
+          <option value="São Paulo Sub-20">🇧🇷 São Paulo Sub-20 (Brasil)</option>
+          <option value="Santos Laguna">🇲🇽 Santos Laguna (México)</option>
+          <option value="Rayo Vallecano B">🇪🇸 Rayo Vallecano B (España)</option>
+          <option value="Nottingham Sub-21">🏴󠁧󠁢󠁥󠁮󠁧󠁿 Nottingham Sub-21 (Inglaterra)</option>
+        </select>
+      </div>
         <select id="cr-country">
           <option value="Argentina">Argentina</option>
           <option value="Brasil">Brasil</option>
@@ -1480,6 +1490,7 @@ function handleStart(){
   P.name = name;
   P.country = document.getElementById("cr-country").value;
   P.position = selectedPosition || "DC";
+  P.selectedCantera = document.getElementById("cr-cantera").value;
   P.age = 16;
   P.money = 5000;
   P.salary = 0;
@@ -1530,9 +1541,14 @@ function handleStart(){
 }
 
 function assignYouthClub(){
-  let youthClubName;
-  const c = P.country;
-  if(c==="Argentina") youthClubName = pick(["Atlético Banfield","Boca Juniors Juvenil"]);
+  let youthClub;
+  // If player chose a specific cantera, use it directly
+  if(P.selectedCantera && P.selectedCantera!=="random"){
+    youthClub = YOUTH_CLUBS.find(y=>y.name===P.selectedCantera) || pick(YOUTH_CLUBS);
+  } else {
+    let youthClubName;
+    const c = P.country;
+    if(c==="Argentina") youthClubName = pick(["Atlético Banfield","Boca Juniors Juvenil"]);
   else if(c==="Brasil") youthClubName = "São Paulo Sub-20";
   else if(c==="México") youthClubName = "Santos Laguna";
   else if(c==="España") youthClubName = "Rayo Vallecano B";
@@ -1552,7 +1568,8 @@ function assignYouthClub(){
   else
     youthClubName = pick(["Rayo Vallecano B","Nottingham Sub-21"]);
 
-  const youthClub = YOUTH_CLUBS.find(y=>y.name===youthClubName) || pick(YOUTH_CLUBS);
+    youthClub = YOUTH_CLUBS.find(y=>y.name===youthClubName) || pick(YOUTH_CLUBS);
+  }
   P.clubName = youthClub.name;
   P.clubLeague = youthClub.league;
   P.clubCountry = youthClub.country;
@@ -1645,9 +1662,16 @@ function getEligibleEvents(){
     const txt = e.text||"";
     if(txt.includes("€80M")||txt.includes("€50M")) if(O<80) ok=false;
     if(txt.includes("€10M")||txt.includes("€5M")) if(CS<3 && O<70) ok=false;
-    if(txt.includes("€1M")||txt.includes("€2M")||txt.includes("€3M")) if(S<500000) ok=false;
-    if(txt.includes("€800K")||txt.includes("€500K")||txt.includes("millonario")) if(S<100000) ok=false;
-    if(txt.includes("€200K")||txt.includes("€100K")) if(S<30000) ok=false;
+    if(txt.includes("€1M")||txt.includes("€2M")||txt.includes("€3M")) if(S<500000||M<100000) ok=false;
+    if(txt.includes("€800K")||txt.includes("€500K")||txt.includes("millonario")) if(M<100000) ok=false;
+    if(txt.includes("€400K")||txt.includes("€200K")||txt.includes("€100K")) if(M<20000) ok=false;
+    if(txt.includes("€50K")||txt.includes("€30K")) if(M<4000) ok=false;
+    // Check option effects for money loss the player can't afford
+    const opts = e.options||[];
+    for(const opt of opts){
+      if(opt.effects?.money && opt.effects.money<0 && M < Math.abs(opt.effects.money)) ok=false;
+      if(opt.failEffects?.money && opt.failEffects.money<0 && M < Math.abs(opt.failEffects.money)) ok=false;
+    }
 
     // Events that should only happen ONCE
     if(isOnceEvent(e.title) && P.onceEvents.includes(e.title)) ok = false;
