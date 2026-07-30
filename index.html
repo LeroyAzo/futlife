@@ -1756,9 +1756,11 @@ function getEligibleEvents(){
 
     // RELATIONSHIP gates - require actual partner
     if(title.includes("pareja")||title.includes("Crisis de")||title.includes("infidelidad")||
-       title.includes("Boda")||title.includes("padre")||title.includes("Romance")||
-       title.includes("Hijo secreto"))
+       title.includes("Boda")||title.includes("padre")||title.includes("Romance"))
       if(!P.hasPartner) ok=false;
+
+    // Hijo secreto - needs age + some fame
+    if(title.includes("Hijo secreto")) if(A<22||F<20000) ok=false;
 
     // AGE gates - events that need maturity/experience
     if(title.includes("Video íntimo")||title.includes("Doping")||title.includes("Apuesta")) if(A<22) ok=false;
@@ -2840,28 +2842,29 @@ function renderLifeItems(){
 // ============================================================
 const ACTIONS = [
   // Siempre disponibles
-  {id:"llamar_familia",name:"Llamar a la familia",icon:"📞",desc:"Una videollamada con tu familia te recarga el alma.",eff:{familia:5,morale:5},cost:0,req:{}},
-  {id:"leer_tactica",name:"Estudiar táctica",icon:"📖",desc:"Analizas partidos de tu próximo rival. Siempre se aprende algo.",eff:{discipline:8,overall_boost:1},cost:0,req:{}},
-  {id:"descansar",name:"Día de descanso",icon:"😴",desc:"Te tomas el día libre. Recuperas energía mental y física.",eff:{morale:8,discipline:-3},cost:0,req:{}},
-  {id:"sesion_gym",name:"Gimnasio extra",icon:"💪",desc:"Una hora más en el gym nunca hace daño.",eff:{fisico:2,morale:-2,discipline:10},cost:0,req:{}},
+  {id:"llamar_familia",name:"Llamar a la familia",icon:"📞",desc:"Una videollamada con tu familia te recarga el alma.",eff:{familia:8,morale:8,discipline:3},cost:0,req:{}},
+  {id:"leer_tactica",name:"Estudiar táctica",icon:"📖",desc:"Analizas partidos. Mejora tu visión de juego.",eff:{discipline:8,overall_boost:1,pase:1,defensa:1},cost:0,req:{}},
+  {id:"descansar",name:"Día de descanso",icon:"😴",desc:"Recuperas energía mental y física. A veces no hacer nada es lo mejor.",eff:{morale:10,discipline:-3,fisico:1},cost:0,req:{}},
+  {id:"sesion_gym",name:"Gimnasio extra",icon:"💪",desc:"Una hora más en el gym. Tu físico lo agradece.",eff:{fisico:3,ritmo:1,morale:-3,discipline:12},cost:0,req:{}},
+  {id:"practicar_tiros",name:"Practicar disparos",icon:"🎯",desc:"Te quedas después del entreno practicando tiros libres.",eff:{tiro:2,regate:1,discipline:8},cost:0,req:{}},
   // Pequeño costo
-  {id:"cena_equipo",name:"Invitar cena al equipo",icon:"🍽️",desc:"Pagas la cena para todo el equipo. Gran gesto.",eff:{rel_compañeros:15,morale:8},cost:5000,req:{money:5000}},
-  {id:"fiesta_amigos",name:"Fiesta con amigos",icon:"🎉",desc:"Una noche de fiesta con tus amigos de toda la vida.",eff:{morale:12,amigos:10,discipline:-20},cost:3000,req:{money:3000,age:18}},
-  {id:"curso_idiomas",name:"Curso de idiomas",icon:"🗣️",desc:"Aprender inglés/italiano te abre puertas en el fútbol.",eff:{overall_boost:1,discipline:5},cost:8000,req:{money:8000}},
-  // Nivel medio (18+, algo de fama o dinero)
-  {id:"influencer_colab",name:"Colaborar con influencer",icon:"📱",desc:"Un influencer local graba contenido contigo. Ganas exposición.",eff:{followers:8000,morale:8},cost:5000,req:{money:5000,age:18}},
-  {id:"sesion_fotos",name:"Sesión de fotos",icon:"📸",desc:"Una revista deportiva te hace un reportaje fotográfico.",eff:{followers:15000,morale:6},cost:10000,req:{money:10000,age:18}},
-  {id:"stream_twitch",name:"Stream en Twitch",icon:"🎮",desc:"Juegas en vivo con fans. Cercanía + seguidores.",eff:{followers:20000,morale:10,amigos:5},cost:2000,req:{money:2000,age:18}},
-  {id:"entrevista_radio",name:"Entrevista en radio local",icon:"🎙️",desc:"Charlas con una radio deportiva. Te conocen más.",eff:{followers:10000,rel_entrenador:3},cost:0,req:{age:18}},
-  {id:"evento_benefico",name:"Evento benéfico",icon:"🤝",desc:"Asistes a una gala benéfica. Donas algo simbólico.",eff:{morale:10,familia:8,followers:15000},cost:15000,req:{money:15000,age:18}},
+  {id:"cena_equipo",name:"Invitar cena al equipo",icon:"🍽️",desc:"Pagas la cena para todo el equipo. Une al vestuario.",eff:{rel_compañeros:15,morale:10,familia:3},cost:5000,req:{money:5000}},
+  {id:"fiesta_amigos",name:"Fiesta con amigos",icon:"🎉",desc:"Noche de fiesta. Diversión asegurada, rendimiento dudoso mañana.",eff:{morale:15,amigos:12,discipline:-25,fisico:-1},cost:3000,req:{money:3000,age:18}},
+  {id:"curso_idiomas",name:"Curso de idiomas",icon:"🗣️",desc:"Aprender idiomas abre puertas a ligas extranjeras.",eff:{overall_boost:1,discipline:8,familia:3},cost:8000,req:{money:8000}},
+  // Nivel medio
+  {id:"influencer_colab",name:"Colaborar con influencer",icon:"📱",desc:"Un influencer graba contenido contigo. Ganas fans.",eff:{followers:8000,morale:8,rel_entrenador:-3},cost:5000,req:{money:5000,age:18}},
+  {id:"sesion_fotos",name:"Sesión de fotos",icon:"📸",desc:"Revista deportiva te hace un reportaje. Imagen pública.",eff:{followers:15000,morale:6,discipline:-5},cost:10000,req:{money:10000,age:18}},
+  {id:"stream_twitch",name:"Stream en Twitch",icon:"🎮",desc:"Juegas en vivo con fans. Cercanía digital.",eff:{followers:20000,morale:10,amigos:8,discipline:-8},cost:2000,req:{money:2000,age:18}},
+  {id:"entrevista_radio",name:"Entrevista en radio",icon:"🎙️",desc:"La radio deportiva local te entrevista. Visibilidad.",eff:{followers:10000,rel_entrenador:5,morale:3},cost:0,req:{age:18}},
+  {id:"evento_benefico",name:"Evento benéfico",icon:"🤝",desc:"Asistes a una gala solidaria. Donas y ganas respeto.",eff:{morale:12,familia:10,followers:15000,rel_entrenador:5},cost:15000,req:{money:15000,age:18}},
   // Alto nivel (fama/dinero)
-  {id:"anuncio_marca",name:"Anuncio para marca",icon:"📺",desc:"Una marca local te paga por aparecer en su publicidad.",eff:{money:150000,followers:30000,morale:5},cost:0,req:{followers:50000}},
-  {id:"invertir_negocio",name:"Invertir en negocio",icon:"💼",desc:"Inviertes en un restaurante de un amigo emprendedor.",eff:{investmentValue:150000,morale:8},cost:80000,req:{money:80000}},
-  {id:"viaje_lujo",name:"Viaje de lujo",icon:"🌴",desc:"Una semana en un resort 5 estrellas. Recargas pilas.",eff:{morale:20,amigos:8},cost:50000,req:{money:50000}},
-  {id:"comprar_ropa_lujo",name:"Renovar guardarropa",icon:"👔",desc:"Ropa de diseñador. Hay que verse bien ante las cámaras.",eff:{morale:8,followers:5000},cost:25000,req:{money:25000}},
+  {id:"anuncio_marca",name:"Anuncio para marca",icon:"📺",desc:"Una marca te paga por aparecer en su publicidad nacional.",eff:{money:150000,followers:30000,morale:5,discipline:-5},cost:0,req:{followers:50000,age:18}},
+  {id:"invertir_negocio",name:"Invertir en negocio",icon:"💼",desc:"Inviertes en un restaurante con un amigo. Riesgo calculado.",eff:{investmentValue:150000,morale:8,amigos:5},cost:80000,req:{money:80000,age:20}},
+  {id:"viaje_lujo",name:"Viaje de lujo",icon:"🌴",desc:"Una semana en un resort 5 estrellas. Relax total.",eff:{morale:20,amigos:8,discipline:-10,fisico:-1},cost:50000,req:{money:50000,age:20}},
+  {id:"comprar_ropa_lujo",name:"Renovar guardarropa",icon:"👔",desc:"Ropa de diseñador. Imagen cuidada ante las cámaras.",eff:{morale:8,followers:5000,rel_entrenador:2},cost:25000,req:{money:25000,age:18}},
   // Especiales
-  {id:"terapia",name:"Ir a terapia",icon:"🧘",desc:"Un psicólogo deportivo te ayuda con la presión.",eff:{morale:15,discipline:10},cost:12000,req:{money:12000}},
-  {id:"patrocinar_torneo",name:"Patrocinar torneo juvenil",icon:"🏆",desc:"Pagas un torneo en tu barrio. Los niños te aman.",eff:{followers:25000,familia:12,morale:15},cost:30000,req:{money:30000,followers:80000}},
+  {id:"terapia",name:"Ir a terapia",icon:"🧘",desc:"Un psicólogo deportivo te ayuda a manejar la presión mediática.",eff:{morale:18,discipline:12,overall_boost:1},cost:12000,req:{money:12000}},
+  {id:"patrocinar_torneo",name:"Patrocinar torneo juvenil",icon:"🏆",desc:"Pagas un torneo en tu barrio. Los niños te idolatran.",eff:{followers:25000,familia:15,morale:15,rel_compañeros:5},cost:30000,req:{money:30000,followers:80000,age:18}},
 ];
 
 function checkActionReq(action){
@@ -2886,7 +2889,13 @@ function doAction(action){
   if(e.amigos) P.relationships.amigos = clamp(P.relationships.amigos+e.amigos,0,100);
   if(e.rel_entrenador) P.relationships.entrenador = clamp(P.relationships.entrenador+e.rel_entrenador,0,100);
   if(e.rel_compañeros) P.relationships.compañeros = clamp(P.relationships.compañeros+e.rel_compañeros,0,100);
+  if(e.ritmo) P.stats.ritmo = clamp(P.stats.ritmo+e.ritmo,1,99);
+  if(e.tiro) P.stats.tiro = clamp(P.stats.tiro+e.tiro,1,99);
+  if(e.pase) P.stats.pase = clamp(P.stats.pase+e.pase,1,99);
+  if(e.defensa) P.stats.defensa = clamp(P.stats.defensa+e.defensa,1,99);
   if(e.fisico) P.stats.fisico = clamp(P.stats.fisico+e.fisico,1,99);
+  if(e.regate) P.stats.regate = clamp(P.stats.regate+e.regate,1,99);
+
   if(e.overall_boost) for(const k of Object.keys(P.stats)) P.stats[k]=clamp(P.stats[k]+1,1,99);
   if(e.followers){
     const scale = Math.max(0.3, Math.min(6, Math.sqrt(Math.max(100,P.followers)/5000)));
@@ -2899,9 +2908,9 @@ function doAction(action){
   P.timeline.push(`Edad ${P.age}: ${action.desc}`);
   showToast(`✅ ${action.name}: ¡Hecho!`);
   // Set year-long effects based on action
-  if(action.id==="sesion_gym") P.yearActionEffects.injuryResist = true;
-  if(action.id==="influencer_colab"||action.id==="stream_twitch") P.yearActionEffects.fameBoost = true;
-  if(action.id==="descansar"||action.id==="terapia") P.yearActionEffects.moraleBoost = true;
+  if(action.id==="sesion_gym"||action.id==="practicar_tiros") P.yearActionEffects.injuryResist = true;
+  if(action.id==="influencer_colab"||action.id==="stream_twitch"||action.id==="sesion_fotos") P.yearActionEffects.fameBoost = true;
+  if(action.id==="descansar"||action.id==="terapia"||action.id==="cena_equipo") P.yearActionEffects.moraleBoost = true;
   updateUI();
 }
 
