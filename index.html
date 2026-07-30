@@ -391,7 +391,7 @@ input[type=range]::-webkit-slider-thumb{
   </div>
 
   <div style="text-align:center;margin-bottom:12px">
-    <button class="btn btn-advance" onclick="advanceYear()">⏩ Avanzar un año</button>
+    <button class="btn btn-advance" id="btn-advance" onclick="triggerNextEvent()">⏩ Avanzar un año</button>
   </div>
 
   <div class="tab-bar">
@@ -696,7 +696,8 @@ const P = {
   followers:1000, fameLevel:5, lastEventIds:[],
   contractYears:0, contractTarget:0, contractWarnings:0, discipline:70, contractMet:true,
   squadRole:3, releaseClause:0, pendingTransfer:null,
-  personality:{}, lastTags:[], onceEvents:[]
+  personality:{}, lastTags:[], onceEvents:[],
+  actionsThisYear:0, yearActionEffects:{}
 };
 
 const STAT_NAMES = {
@@ -1465,6 +1466,8 @@ function handleStart(){
   P.personality = {};
   P.lastTags = [];
   P.onceEvents = [];
+  P.actionsThisYear = 0;
+  P.yearActionEffects = {};
   P.timeline.push(`Edad 16: Comienza su carrera futbolística en ${P.country}`);
 
   document.getElementById("create-screen").classList.remove("active");
@@ -1779,9 +1782,38 @@ function advanceYear(){
     return;
   }
 
+  // Apply year action effects
+  if(P.yearActionEffects.injuryResist) P.yearActionEffects = {};
+  if(P.yearActionEffects.fameBoost){
+    P.followers += Math.floor(P.followers*0.1);
+    P.yearActionEffects = {};
+  }
+  if(P.yearActionEffects.moraleBoost){P.morale=clamp(P.morale+10,0,100);P.yearActionEffects={}}
+  
   currentEventIndex = 0;
   P.yearEvents = [];
+  P.actionsThisYear = 0;
+  updateAdvanceButton();
+  updateUI();
+}
+
+function triggerNextEvent(){
+  if(currentYearEvents.length===0 || !currentYearEvents[currentEventIndex]){
+    advanceYear();
+    return;
+  }
   showNextEvent();
+}
+
+function updateAdvanceButton(){
+  const btn = document.getElementById("btn-advance");
+  if(!btn) return;
+  if(currentYearEvents.length>0 && currentEventIndex<currentYearEvents.length){
+    const remaining = currentYearEvents.length - currentEventIndex;
+    btn.textContent = `📋 Siguiente evento (${currentEventIndex+1} de ${currentYearEvents.length})`;
+  } else {
+    btn.textContent = "⏩ Avanzar un año";
+  }
 }
 
 function showNextEvent(){
@@ -2006,7 +2038,13 @@ function resolveEvent(event, option){
 function closeEventResult(){
   document.getElementById("event-modal").classList.remove("active");
   currentEventIndex++;
-  setTimeout(showNextEvent,200);
+  // Check if all events done
+  if(currentEventIndex >= currentYearEvents.length){
+    showYearSummary();
+  } else {
+    updateAdvanceButton();
+    updateUI();
+  }
 }
 
 function closeEventModal(){
@@ -2243,22 +2281,33 @@ function closeTransferModal(){
 }
 
 function showFreeAgentPicker(){
-  // Pick 4 clubs from different leagues matching player's overall
-  const candidates = CLUBS.filter(c=>c.minOverall<=P.overall+5 && c.stars>=2 && c.name!==P.clubName && c.country!==P.clubCountry);
-  const uniqueLeagues = [];
+  // Pick clubs from different leagues AND continents matching player's overall
+  const allCandidates = CLUBS.filter(c=>c.minOverall<=P.overall+5 && c.stars>=1 && c.name!==P.clubName);
+  const shuffled = shuffle([...allCandidates]);
+  const usedLeagues = new Set();
+  const usedCountries = new Set();
   const picked = [];
-  candidates.forEach(c=>{
-    if(picked.length>=4) return;
-    if(!uniqueLeagues.includes(c.league)){
-      uniqueLeagues.push(c.league);
+  for(const c of shuffled){
+    if(picked.length>=5) break;
+    if(!usedLeagues.has(c.league) && !usedCountries.has(c.country)){
+      usedLeagues.add(c.league);
+      usedCountries.add(c.country);
       picked.push(c);
     }
-  });
-  // If not enough, fill with random
-  while(picked.length<4){
-    const extra = candidates.find(c=>!picked.includes(c));
-    if(!extra) break;
-    picked.push(extra);
+  }
+  // Fill remaining
+  for(const c of shuffled){
+    if(picked.length>=5) break;
+    if(!usedLeagues.has(c.league)){
+      usedLeagues.add(c.league);
+      picked.push(c);
+    }
+  }
+  if(picked.length<3){
+    for(const c of shuffled){
+      if(picked.length>=5) break;
+      if(!picked.includes(c)) picked.push(c);
+    }
   }
   if(picked.length===0){showToast("Ningún club interesado...");return}
 
@@ -2540,11 +2589,11 @@ function checkActionReq(action){
 }
 
 function doAction(action){
+  if(P.actionsThisYear>=1){showToast("❌ Ya hiciste una acción este año. Espera al siguiente.");return}
   const block = checkActionReq(action);
   if(block){showToast("❌ "+block);return}
-  if(action.cost>0){
-    P.money -= action.cost;
-  }
+  P.actionsThisYear++;
+  if(action.cost>0){P.money -= action.cost;}
   const e = action.eff;
   if(e.morale) P.morale = clamp(P.morale+e.morale,0,100);
   if(e.discipline) P.discipline = clamp(P.discipline+e.discipline,0,100);
@@ -2564,6 +2613,10 @@ function doAction(action){
   if(e.money) P.money += e.money;
   P.timeline.push(`Edad ${P.age}: ${action.desc}`);
   showToast(`✅ ${action.name}: ¡Hecho!`);
+  // Set year-long effects based on action
+  if(action.id==="sesion_gym") P.yearActionEffects.injuryResist = true;
+  if(action.id==="influencer_colab"||action.id==="stream_twitch") P.yearActionEffects.fameBoost = true;
+  if(action.id==="descansar"||action.id==="terapia") P.yearActionEffects.moraleBoost = true;
   updateUI();
 }
 
@@ -2573,10 +2626,14 @@ function renderActions(){
   div.innerHTML = "";
   ACTIONS.forEach(a=>{
     const block = checkActionReq(a);
-    const locked = !!block;
+    const usedThisYear = P.actionsThisYear>=1;
+    const locked = !!block || usedThisYear;
     const card = document.createElement("div");
     card.style.cssText = `background:#0d1117;border:1px solid ${locked?'#21262d':'#30363d'};border-radius:10px;padding:14px;text-align:center;cursor:${locked?'default':'pointer'};transition:all .2s;opacity:${locked?'0.5':'1'}`;
-    card.innerHTML = `<div style="font-size:28px;margin-bottom:4px">${a.icon}</div><div style="font-size:13px;font-weight:600;margin-bottom:4px">${a.name}</div><div style="font-size:10px;color:#8b949e;margin-bottom:6px">${a.desc}</div>${a.cost>0?`<div style="font-size:11px;color:#d29922">${formatMoney(a.cost)}</div>`:''}${locked?`<div style="font-size:10px;color:#f85149;margin-top:4px">🔒 ${block}</div>`:''}`;
+    let lockText = "";
+    if(usedThisYear) lockText = "⏳ Ya usada este año";
+    else if(block) lockText = "🔒 "+block;
+    card.innerHTML = `<div style="font-size:28px;margin-bottom:4px">${a.icon}</div><div style="font-size:13px;font-weight:600;margin-bottom:4px">${a.name}</div><div style="font-size:10px;color:#8b949e;margin-bottom:6px">${a.desc}</div>${a.cost>0?`<div style="font-size:11px;color:#d29922">${formatMoney(a.cost)}</div>`:''}${lockText?`<div style="font-size:10px;color:${usedThisYear?'#79c0ff':'#f85149'};margin-top:4px">${lockText}</div>`:''}`;
     card.onmouseenter = function(){if(!locked){card.style.borderColor="#2ea043";card.style.transform="translateY(-2px)"}};
     card.onmouseleave = function(){if(!locked){card.style.borderColor="#30363d";card.style.transform="translateY(0)"}};
     if(!locked) card.onclick = ()=>doAction(a);
