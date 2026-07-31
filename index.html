@@ -2524,6 +2524,15 @@ function finalizeTransfer(club, salary, years, role, clausePct){
   document.getElementById("tf-submit").textContent = "✓ Firmado";
   updateUI();
   checkAchievements();
+
+  // Close event modal if we came from an event
+  if(document.getElementById("event-modal").classList.contains("active")){
+    setTimeout(()=>{
+      document.getElementById("transfer-modal").classList.remove("active");
+      document.getElementById("event-modal").classList.remove("active");
+      closeEventResult();
+    },1500);
+  }
 }
 
 function closeTransferModal(){
