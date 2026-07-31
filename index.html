@@ -501,6 +501,7 @@ input[type=range]::-webkit-slider-thumb{
     <h2 style="text-align:center;font-size:20px;margin-bottom:4px" id="tf-club-name">Club Ofertante</h2>
     <p style="text-align:center;color:#8b949e;font-size:13px;margin-bottom:16px" id="tf-club-info"></p>
     
+    <div id="tf-controls">
     <div style="background:#0d1117;border-radius:10px;padding:16px;margin-bottom:16px">
       <div style="display:flex;justify-content:space-between;margin-bottom:8px">
         <span style="font-size:13px">💰 Salario anual</span>
@@ -543,6 +544,7 @@ input[type=range]::-webkit-slider-thumb{
       <div style="display:flex;justify-content:space-between;font-size:11px;color:#8b949e">
         <span>Sin cláusula</span><span>Baja</span><span>Alta</span>
       </div>
+    </div>
     </div>
 
     <div id="tf-response" style="text-align:center;padding:10px;border-radius:8px;margin-bottom:12px;display:none;font-size:14px"></div>
@@ -2393,9 +2395,9 @@ function openNegotiation(club){
 function updateNegValues(){
   const club = P.pendingTransfer;
   if(!club) return;
-  const baseSalary = club.salaryBase;
-  const minSal = Math.floor(baseSalary*0.5);
-  const maxSal = Math.floor(baseSalary*(P.overall>=85?3:2));
+  const baseSalary = P._renewalBase || club.salaryBase;
+  const minSal = Math.floor(P._renewalMin || baseSalary*0.5);
+  const maxSal = Math.floor(P._renewalMax || baseSalary*(P.overall>=85?3:2));
 
   const pct = parseInt(document.getElementById("tf-salary").value)/100;
   const salary = Math.floor(minSal + (maxSal-minSal)*pct);
@@ -2416,9 +2418,9 @@ function updateNegValues(){
 function submitNegotiation(){
   const club = P.pendingTransfer;
   if(!club) return;
-  const baseSalary = club.salaryBase;
-  const minSal = Math.floor(baseSalary*0.5);
-  const maxSal = Math.floor(baseSalary*(P.overall>=85?3:2));
+  const baseSalary = P._renewalBase || club.salaryBase;
+  const minSal = Math.floor(P._renewalMin || baseSalary*0.5);
+  const maxSal = Math.floor(P._renewalMax || baseSalary*(P.overall>=85?3:2));
   const pct = parseInt(document.getElementById("tf-salary").value)/100;
   const salary = Math.floor(minSal + (maxSal-minSal)*pct);
   const years = parseInt(document.getElementById("tf-years").value);
@@ -2523,6 +2525,7 @@ function closeTransferModal(){
   document.getElementById("tf-submit").disabled = false;
   document.getElementById("tf-submit").textContent = "Negociar contrato";
   P.pendingTransfer = null;
+  P._renewalBase = null; P._renewalMin = null; P._renewalMax = null;
   showToast("Oferta rechazada");
 }
 
@@ -2540,6 +2543,9 @@ function openRenewalNegotiation(){
   const baseSalary = P.salary;
   const minSal = Math.max(0, Math.floor(baseSalary*0.8));
   const maxSal = Math.floor(baseSalary*2);
+  P._renewalBase = baseSalary;
+  P._renewalMin = minSal;
+  P._renewalMax = maxSal;
   document.getElementById("tf-salary").min = 0;
   document.getElementById("tf-salary").max = 100;
   document.getElementById("tf-salary").value = 55;
@@ -2562,12 +2568,14 @@ function openRenewalNegotiation(){
   document.getElementById("tf-role").oninput = updateNegValues;
   document.getElementById("tf-clause").oninput = updateNegValues;
   
-  document.querySelector("#transfer-modal .btn-outline").textContent = "No renovar (agente libre)";
-  document.querySelector("#transfer-modal .btn-outline").onclick = function(){
-    document.getElementById("transfer-modal").classList.remove("active");
-    P.clubName = "Sin club"; P.salary = 0; P.clubStars = 0; P.contractYears = 0;
-    showFreeAgentPicker();
-  };
+  const btnOut = document.querySelector("#transfer-modal .btn-outline");
+  if(btnOut){ btnOut.textContent = "No renovar (agente libre)";
+    btnOut.onclick = function(){
+      document.getElementById("transfer-modal").classList.remove("active");
+      P.clubName = "Sin club"; P.salary = 0; P.clubStars = 0; P.contractYears = 0;
+      showFreeAgentPicker();
+    };
+  }
   document.getElementById("tf-submit").onclick = submitNegotiation;
   
   updateNegValues();
@@ -2611,9 +2619,8 @@ function showFreeAgentPicker(){
   document.getElementById("tf-response").style.display = "none";
   document.getElementById("tf-response").className = "";
 
-  // Replace sliders with club cards
-  const parent = document.getElementById("tf-salary").parentElement.parentElement;
-  parent.innerHTML = `<div style="display:flex;flex-direction:column;gap:8px" id="fa-clubs"></div>`;
+  // Replace negotiation controls with club cards
+  document.getElementById("tf-controls").innerHTML = `<div style="display:flex;flex-direction:column;gap:8px" id="fa-clubs"></div>`;
   const div = document.getElementById("fa-clubs");
   picked.forEach((club,i)=>{
     const flag = club.country==="Argentina"?"🇦🇷":club.country==="Brasil"?"🇧🇷":club.country==="México"?"🇲🇽":club.country==="España"?"🇪🇸":club.country==="Inglaterra"?"🏴󠁧󠁢󠁥󠁮󠁧󠁿":club.country==="Italia"?"🇮🇹":club.country==="Alemania"?"🇩🇪":club.country==="Francia"?"🇫🇷":club.country==="Portugal"?"🇵🇹":club.country==="Países Bajos"?"🇳🇱":club.country==="Arabia Saudí"?"🇸🇦":club.country==="Estados Unidos"?"🇺🇸":"🌍";
@@ -2628,7 +2635,8 @@ function showFreeAgentPicker(){
     document.getElementById("tf-submit").onclick = submitNegotiation;
     showToast("Te quedaste sin club...");
   };
-  document.querySelector("#transfer-modal .btn-outline").style.display = "none";
+  const btnOut = document.querySelector("#transfer-modal .btn-outline");
+  if(btnOut) btnOut.style.display = "none";
   modal.classList.add("active");
 }
 
@@ -2636,13 +2644,16 @@ function openNegotiationFromPicker(idx){
   const club = window._faClubs[idx];
   document.getElementById("tf-submit").textContent = "Negociar contrato";
   document.getElementById("tf-submit").onclick = submitNegotiation;
-  document.querySelector("#transfer-modal .btn-outline").style.display = "";
-  // Clear the picker UI and restore negotiation sliders
-  const parent = document.getElementById("tf-salary").parentElement.parentElement;
-  parent.innerHTML = `
-    <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="font-size:13px">💰 Salario anual</span><span style="font-weight:700;color:#7ee787" id="tf-salary-val">0</span></div>
-    <input type="range" id="tf-salary" min="0" max="100" value="50" style="width:100%">
-    <div style="display:flex;justify-content:space-between;font-size:11px;color:#8b949e"><span id="tf-salary-min">0</span><span id="tf-salary-max">0</span></div>
+  const btnOut = document.querySelector("#transfer-modal .btn-outline");
+  if(btnOut) btnOut.style.display = "";
+  // Restore controls and prepare negotiation
+  document.getElementById("tf-controls").innerHTML = `
+
+    <div style="background:#0d1117;border-radius:10px;padding:16px;margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="font-size:13px">💰 Salario anual</span><span style="font-weight:700;color:#7ee787" id="tf-salary-val">0</span></div>
+      <input type="range" id="tf-salary" min="0" max="100" value="50" style="width:100%">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:#8b949e"><span id="tf-salary-min">0</span><span id="tf-salary-max">0</span></div>
+    </div>
   `;
   openNegotiation(club);
 }
