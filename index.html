@@ -1427,6 +1427,7 @@ function refreshOverall(){
 
 function generateSeasonStats(){
   if(P.clubStars===0) return;
+  refreshOverall();
   const pos = P.position;
   const ovr = P.overall;
   const roleMul = 1 + (P.squadRole-2)*0.15; // Role affects playing time
@@ -1652,7 +1653,6 @@ function handleStart(){
   P.yearEvents = []; P.year = 0;
   P.nationalTeam = false; P.worldCupWinner = false; P.worldCupParticipated = false;
   P.retirementReason = "";
-  P.yearEvents = [];
   P.followers = randomBetween(500,3000);
   P.fameLevel = getFame();
   P.lastEventIds = [];
@@ -2019,13 +2019,13 @@ function advanceYear(){
     return;
   }
 
-  // Apply year action effects
-  if(P.yearActionEffects.injuryResist) P.yearActionEffects = {};
+  // Apply year action effects (fix: don't clear all when one is present)
+  if(P.yearActionEffects.injuryResist){P.yearActionEffects.injuryResist=false;}
   if(P.yearActionEffects.fameBoost){
     P.followers += Math.floor(P.followers*0.1);
-    P.yearActionEffects = {};
+    P.yearActionEffects.fameBoost=false;
   }
-  if(P.yearActionEffects.moraleBoost){P.morale=clamp(P.morale+10,0,100);P.yearActionEffects={}}
+  if(P.yearActionEffects.moraleBoost){P.morale=clamp(P.morale+10,0,100);P.yearActionEffects.moraleBoost=false;}
   
   currentEventIndex = 0;
   P.yearEvents = [];
