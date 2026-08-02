@@ -32,6 +32,11 @@ body::before{
 
 /* ===== CREATE SCREEN ===== */
 #create-screen{padding:20px;justify-content:center;min-height:100vh}
+
+/* ===== MENU SCREEN ===== */
+#menu-screen{padding:40px 20px;justify-content:flex-start;min-height:100vh}
+#menu-screen .logo{font-size:48px;font-weight:900;background:linear-gradient(135deg,#2ea043,#7ee787);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px;text-align:center}
+#menu-screen .subtitle{color:#8b949e;font-size:16px;margin-bottom:32px;text-align:center}
 #create-screen .logo{font-size:36px;font-weight:900;background:linear-gradient(135deg,#2ea043,#7ee787);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:2px;text-align:center}
 #create-screen .subtitle{color:#8b949e;font-size:14px;margin-bottom:24px;text-align:center}
 
@@ -268,8 +273,15 @@ input[type=range]::-webkit-slider-thumb{
 </head>
 <body>
 
+<!-- MENU SCREEN (main menu) -->
+<div id="menu-screen" class="screen active">
+  <div class="logo" style="margin-bottom:24px">FOOTBALL LIFE</div>
+  <div class="subtitle" style="margin-bottom:8px">Simulador de carrera de futbolista</div>
+  <div style="display:flex;flex-direction:column;gap:12px;max-width:500px;width:100%;padding:0 20px" id="menu-slots"></div>
+</div>
+
 <!-- CREATE SCREEN -->
-<div id="create-screen" class="screen active">
+<div id="create-screen" class="screen">
   <div class="logo">FOOTBALL LIFE</div>
   <div class="subtitle">Simulador de carrera de futbolista</div>
   <div class="create-layout">
@@ -328,7 +340,6 @@ input[type=range]::-webkit-slider-thumb{
       </div>
       <div id="stats-preview" class="stats-preview"></div>
       <button class="btn btn-primary" id="btn-start" onclick="handleStart()">Comenzar Carrera</button>
-      <button class="btn btn-outline btn-small" onclick="showSaveSlots()" style="margin-top:4px">💾 Guardar / Cargar</button>
     </div>
     <!-- RIGHT: Football Field -->
     <div class="create-right">
@@ -561,15 +572,6 @@ input[type=range]::-webkit-slider-thumb{
 </div>
 
 <div id="toast" class="toast" style="display:none"></div>
-
-<!-- SAVE SLOTS MODAL -->
-<div id="saves-modal" class="modal-overlay">
-  <div class="modal-card">
-    <h2 style="text-align:center;font-size:20px;margin-bottom:16px">💾 Partidas guardadas</h2>
-    <div id="saves-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px"></div>
-    <button class="btn btn-outline btn-small" onclick="document.getElementById('saves-modal').classList.remove('active')" style="width:100%">Cerrar</button>
-  </div>
-</div>
 
 <script>
 window.onerror = function(msg, url, line){
@@ -841,7 +843,7 @@ const P = {
   contractYears:0, contractTarget:0, contractWarnings:0, discipline:70, contractMet:true,
   squadRole:3, releaseClause:0, pendingTransfer:null,
   personality:{}, lastTags:[], onceEvents:[],
-  actionsThisYear:0, yearActionEffects:{}
+  actionsThisYear:0, yearActionEffects:{}, _saveSlot:0
 };
 
 const STAT_NAMES = {
@@ -1801,6 +1803,7 @@ function handleStart(){
   P.yearActionEffects = {};
   P.timeline.push(`Edad 16: Comienza su carrera futbolística en ${P.country}`);
 
+  document.getElementById("menu-screen").classList.remove("active");
   document.getElementById("create-screen").classList.remove("active");
   document.getElementById("main-screen").classList.add("active");
 
@@ -3229,90 +3232,86 @@ function showRetirement(){
 // INIT
 // ============================================================
 // ============================================================
-// SAVE SYSTEM
+// MENU / SAVE SYSTEM
 // ============================================================
-function showSaveSlots(){
-  const list = document.getElementById("saves-list");
+function renderMenuSlots(){
+  const list = document.getElementById("menu-slots");
   list.innerHTML = "";
-  for(let i=0;i<5;i++){
+  for(let i=0;i<3;i++){
     const data = localStorage.getItem("futlife_save_"+i);
     const saved = data?JSON.parse(data):null;
     const card = document.createElement("div");
-    card.style.cssText = "background:#0d1117;border:1px solid #30363d;border-radius:10px;padding:12px;display:flex;justify-content:space-between;align-items:center";
+    card.style.cssText = "background:#161b22;border:1px solid #30363d;border-radius:12px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;gap:12px";
     if(saved){
-      card.innerHTML = `<div><strong style="font-size:14px">${saved.name||"Sin nombre"}</strong><br><span style="font-size:11px;color:#8b949e">${saved.clubName||"Sin club"} · Edad ${saved.P.age||16} · OVR ${saved.P.overall||67} · 💰 ${formatMoney(saved.P.money||0)}</span></div>
-        <div style="display:flex;gap:6px">
-          <button class="btn btn-small btn-primary" onclick="loadGame(${i})">Cargar</button>
-          <button class="btn btn-small btn-danger" onclick="deleteSave(${i})">🗑</button>
-        </div>`;
+      card.innerHTML = `<div style="flex:1">
+        <div style="font-size:15px;font-weight:700;color:#e6edf3">${saved.name||"Sin nombre"}</div>
+        <div style="font-size:12px;color:#8b949e;margin-top:4px">${saved.P.clubName||"Sin club"} · Edad ${saved.P.age||16} · OVR <span style="color:#7ee787">${saved.P.overall||67}</span> · 💰 ${formatMoney(saved.P.money||0)}</div>
+      </div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap">
+        <button class="btn btn-advance" style="padding:10px 20px;font-size:14px" onclick="startFromSave(${i})">▶ Jugar</button>
+        <button class="btn btn-small btn-outline" onclick="editSaveName(${i})">✏️</button>
+        <button class="btn btn-small btn-danger" onclick="deleteSaveSlot(${i})">🗑</button>
+      </div>`;
     } else {
-      card.innerHTML = `<div style="color:#8b949e;font-size:13px">Ranura ${i+1} - Vacía</div>
-        <button class="btn btn-small btn-outline" onclick="saveGame(${i})">Guardar aquí</button>`;
+      card.innerHTML = `<div style="flex:1;color:#8b949e;font-size:14px">Ranura ${i+1} · Vacía</div>
+        <button class="btn btn-primary" style="padding:10px 24px;font-size:14px" onclick="startNewGame(${i})">➕ Nueva partida</button>`;
     }
     list.appendChild(card);
   }
-  // Add autosave slot
-  const auto = localStorage.getItem("futlife_autosave");
-  if(auto){
-    const s = JSON.parse(auto);
-    const ac = document.createElement("div");
-    ac.style.cssText = "background:#0d1117;border:1px solid #d29922;border-radius:10px;padding:12px;display:flex;justify-content:space-between;align-items:center;margin-top:8px";
-    ac.innerHTML = `<div><strong style="font-size:14px;color:#d29922">⚡ Auto-guardado</strong><br><span style="font-size:11px;color:#8b949e">${s.P.clubName||"Sin club"} · Edad ${s.P.age||16} · OVR ${s.P.overall||67}</span></div>
-      <button class="btn btn-small btn-primary" onclick="loadAutosave()">Cargar</button>`;
-    list.appendChild(ac);
-  }
-  document.getElementById("saves-modal").classList.add("active");
 }
 
-function saveGame(slot){
-  const name = prompt("Nombre de la partida:", P.name||"Carrera "+slot);
-  if(name===null) return;
-  const saveData = {name:name,P:JSON.parse(JSON.stringify(P)),savedAt:new Date().toISOString()};
-  localStorage.setItem("futlife_save_"+slot,JSON.stringify(saveData));
-  showToast("✅ Partida guardada en ranura "+(slot+1));
-  showSaveSlots();
+function startNewGame(slot){
+  P._saveSlot = slot;
+  document.getElementById("menu-screen").classList.remove("active");
+  document.getElementById("create-screen").classList.add("active");
+  initCreateScreen();
 }
 
-function loadGame(slot){
+function startFromSave(slot){
   const data = localStorage.getItem("futlife_save_"+slot);
-  if(!data){showToast("Ranura vacía");return}
+  if(!data) return;
   const saved = JSON.parse(data);
   Object.assign(P,saved.P);
-  document.getElementById("saves-modal").classList.remove("active");
+  P._saveSlot = slot;
+  document.getElementById("menu-screen").classList.remove("active");
   document.getElementById("create-screen").classList.remove("active");
   document.getElementById("main-screen").classList.add("active");
   updateUI();updateAdvanceButton();
   showToast("✅ Partida cargada: "+saved.name);
 }
 
-function deleteSave(slot){
-  if(!confirm("¿Borrar esta partida?")) return;
+function deleteSaveSlot(slot){
+  if(!confirm("¿Borrar esta partida definitivamente?")) return;
   localStorage.removeItem("futlife_save_"+slot);
-  showToast("🗑 Partida borrada");
-  showSaveSlots();
+  renderMenuSlots();
+}
+
+function editSaveName(slot){
+  const data = localStorage.getItem("futlife_save_"+slot);
+  if(!data) return;
+  const saved = JSON.parse(data);
+  const name = prompt("Nuevo nombre:", saved.name||"Carrera "+(slot+1));
+  if(name!==null&&name.trim()){
+    saved.name = name.trim();
+    localStorage.setItem("futlife_save_"+slot,JSON.stringify(saved));
+    renderMenuSlots();
+  }
+}
+
+function quickSave(){
+  if(!P.name||P.age<17) return;
+  const slot = P._saveSlot||0;
+  const saveData = {name:P.name+" ("+P.age+"a)",P:JSON.parse(JSON.stringify(P)),savedAt:new Date().toISOString()};
+  localStorage.setItem("futlife_save_"+slot,JSON.stringify(saveData));
 }
 
 function autoSave(){
-  if(!P.name||P.age<17) return;
-  const saveData = {name:P.name+" (Edad "+P.age+")",P:JSON.parse(JSON.stringify(P)),savedAt:new Date().toISOString()};
-  localStorage.setItem("futlife_autosave",JSON.stringify(saveData));
-}
-
-function loadAutosave(){
-  const data = localStorage.getItem("futlife_autosave");
-  if(!data) return;
-  const saved = JSON.parse(data);
-  Object.assign(P,saved.P);
-  document.getElementById("saves-modal").classList.remove("active");
-  document.getElementById("create-screen").classList.remove("active");
-  document.getElementById("main-screen").classList.add("active");
-  updateUI();updateAdvanceButton();
-  showToast("✅ Auto-guardado cargado");
+  quickSave();
 }
 
 function init(){
   try{
-    initCreateScreen();
+    renderMenuSlots();
     // Attach tab click handlers
     document.querySelectorAll(".tab-btn").forEach(btn=>{
       btn.addEventListener("click", function(){
