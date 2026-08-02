@@ -1815,7 +1815,7 @@ function handleStart(){
   P.clubStars = 0;
   const posMod = POSITIONS[P.position].stats;
   for(const k of Object.keys(P.stats)){
-    P.stats[k] = clamp(64 + posMod[k] + randomBetween(-6,6), 50, 80);
+    P.stats[k] = clamp(50 + posMod[k] + randomBetween(-4,6), 30, 72);
   }
   P.morale = 60;
   P.energyAvailable = true;
@@ -1978,11 +1978,29 @@ function advanceYear(){
       P.stats[k] = Math.max(10, P.stats[k]-randomBetween(1,3));
     }
   }
-  // Passive growth for young players (16-22)
+  // Passive growth: strong for youth, depends on discipline
   if(P.age>=16 && P.age<=22){
-    const keys = shuffle(Object.keys(P.stats));
-    P.stats[keys[0]] = Math.min(99, P.stats[keys[0]]+1);
-    P.stats[keys[1]] = Math.min(99, P.stats[keys[1]]+1);
+    // Base: +2 to all stats (rapid growth years)
+    for(const k of Object.keys(P.stats)) P.stats[k] = Math.min(99, P.stats[k]+2);
+    // Disciplined: +1 extra to 3 random stats
+    if(P.discipline>=66){
+      const keys = shuffle(Object.keys(P.stats));
+      for(let i=0;i<3;i++) P.stats[keys[i]] = Math.min(99, P.stats[keys[i]]+1);
+    }
+    // Fiestero: less growth but more followers
+    if(P.discipline<=35){
+      P.followers += Math.floor(P.followers*0.15);
+    }
+  } else if(P.age>=23 && P.age<=28){
+    // Slower growth in mid-20s
+    for(const k of Object.keys(P.stats)) P.stats[k] = Math.min(99, P.stats[k]+1);
+    if(P.discipline>=66){
+      const keys = shuffle(Object.keys(P.stats));
+      P.stats[keys[0]] = Math.min(99, P.stats[keys[0]]+1);
+    }
+    if(P.discipline<=35){
+      P.followers += Math.floor(P.followers*0.08);
+    }
   }
 
   // Injury recovery
