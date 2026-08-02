@@ -34,9 +34,47 @@ body::before{
 #create-screen{padding:20px;justify-content:center;min-height:100vh}
 
 /* ===== MENU SCREEN ===== */
-#menu-screen{padding:40px 20px;justify-content:flex-start;min-height:100vh}
-#menu-screen .logo{font-size:48px;font-weight:900;background:linear-gradient(135deg,#2ea043,#7ee787);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px;text-align:center}
-#menu-screen .subtitle{color:#8b949e;font-size:16px;margin-bottom:32px;text-align:center}
+#menu-screen{padding:0;justify-content:center;min-height:100vh;position:relative;overflow:hidden}
+#menu-screen::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse at 50% 30%, rgba(34,139,34,0.12) 0%, transparent 60%),
+             radial-gradient(ellipse at 50% 100%, rgba(34,139,34,0.06) 0%, transparent 50%),
+             radial-gradient(ellipse at 20% 80%, rgba(46,160,67,0.04) 0%, transparent 40%);
+  pointer-events:none;z-index:0;
+}
+#menu-screen::after{
+  content:'';position:absolute;bottom:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(46,160,67,0.3),transparent);
+  pointer-events:none;z-index:0;
+}
+.menu-wrapper{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:8px;width:100%;max-width:560px;padding:40px 20px}
+.menu-logo{font-size:56px;font-weight:900;background:linear-gradient(135deg,#2ea043 0%,#7ee787 50%,#2ea043 100%);background-size:200% 200%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:menuShine 4s ease-in-out infinite;text-align:center;line-height:1.1;letter-spacing:2px}
+@keyframes menuShine{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+.menu-subtitle{color:#8b949e;font-size:16px;text-align:center;margin-bottom:28px;letter-spacing:1px}
+.menu-slot{background:linear-gradient(135deg,#161b22 0%,#0d1117 100%);border:1px solid #21262d;border-radius:14px;padding:20px 24px;display:flex;justify-content:space-between;align-items:center;gap:16px;transition:all .3s;position:relative;overflow:hidden}
+.menu-slot::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(180deg,#2ea043,#7ee787,#2ea043);border-radius:0 3px 3px 0;opacity:0;transition:opacity .3s}
+.menu-slot:hover{border-color:#30363d;transform:translateY(-2px);box-shadow:0 8px 30px rgba(0,0,0,0.3)}
+.menu-slot:hover::before{opacity:1}
+.menu-slot.saved::before{opacity:0.6}
+.menu-slot.saved:hover::before{opacity:1}
+.menu-slot-info{flex:1;min-width:0}
+.menu-slot-name{font-size:17px;font-weight:700;color:#e6edf3;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.menu-slot-detail{font-size:12px;color:#8b949e;display:flex;gap:12px;flex-wrap:wrap}
+.menu-slot-detail span{white-space:nowrap}
+.menu-slot-empty{color:#484f58;font-size:15px}
+.menu-btn{font-family:inherit;font-weight:600;border-radius:10px;cursor:pointer;transition:all .2s;border:none;font-size:14px;padding:12px 24px}
+.menu-btn-play{background:linear-gradient(135deg,#238636,#2ea043);color:#fff;box-shadow:0 4px 15px rgba(35,134,54,0.3)}
+.menu-btn-play:hover{box-shadow:0 6px 25px rgba(46,160,67,0.5);transform:translateY(-1px)}
+.menu-btn-new{background:transparent;color:#7ee787;border:2px solid #238636;padding:10px 20px;font-size:14px}
+.menu-btn-new:hover{background:rgba(35,134,54,0.15);border-color:#2ea043;box-shadow:0 0 20px rgba(46,160,67,0.2)}
+.menu-btn-icon{background:transparent;border:1px solid #30363d;color:#8b949e;border-radius:8px;padding:8px 12px;font-size:13px;font-family:inherit;cursor:pointer;transition:all .2s}
+.menu-btn-icon:hover{border-color:#58a6ff;color:#79c0ff}
+.menu-btn-del{background:transparent;border:1px solid #30363d;color:#8b949e;border-radius:8px;padding:8px 12px;font-size:13px;cursor:pointer;transition:all .2s;font-family:inherit}
+.menu-btn-del:hover{border-color:#da3633;color:#f85149;background:rgba(218,54,51,0.08)}
+.menu-version{color:#21262d;font-size:11px;text-align:center;margin-top:20px;letter-spacing:1px}
+.menu-footer{display:flex;gap:8px;margin-top:16px}
+.menu-footer .menu-btn{font-size:12px;padding:8px 16px}
+#menu-slots{display:flex;flex-direction:column;gap:10px}
 #create-screen .logo{font-size:36px;font-weight:900;background:linear-gradient(135deg,#2ea043,#7ee787);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:2px;text-align:center}
 #create-screen .subtitle{color:#8b949e;font-size:14px;margin-bottom:24px;text-align:center}
 
@@ -275,9 +313,12 @@ input[type=range]::-webkit-slider-thumb{
 
 <!-- MENU SCREEN (main menu) -->
 <div id="menu-screen" class="screen active">
-  <div class="logo" style="margin-bottom:24px">FOOTBALL LIFE</div>
-  <div class="subtitle" style="margin-bottom:8px">Simulador de carrera de futbolista</div>
-  <div style="display:flex;flex-direction:column;gap:12px;max-width:500px;width:100%;padding:0 20px" id="menu-slots"></div>
+  <div class="menu-wrapper">
+    <div class="menu-logo">FOOTBALL LIFE</div>
+    <div class="menu-subtitle">Simulador de carrera de futbolista</div>
+    <div id="menu-slots"></div>
+    <div class="menu-version">v2.0 · 67</div>
+  </div>
 </div>
 
 <!-- CREATE SCREEN -->
@@ -340,6 +381,7 @@ input[type=range]::-webkit-slider-thumb{
       </div>
       <div id="stats-preview" class="stats-preview"></div>
       <button class="btn btn-primary" id="btn-start" onclick="handleStart()">Comenzar Carrera</button>
+      <button class="btn btn-outline btn-small" onclick="goToMenu()">← Volver al menú</button>
     </div>
     <!-- RIGHT: Football Field -->
     <div class="create-right">
@@ -405,6 +447,7 @@ input[type=range]::-webkit-slider-thumb{
       <div class="top-item">⚡ <span id="top-discipline">70</span></div>
       <div class="top-item"><span id="top-role" style="color:#d29922">Titular</span></div>
       <div class="top-smiley" id="top-mood" title="Moral">😐</div>
+      <button class="menu-btn-del" style="margin-left:auto" onclick="goToMenu()" title="Volver al menú">🏠</button>
     </div>
   </div>
 
@@ -3241,20 +3284,25 @@ function renderMenuSlots(){
     const data = localStorage.getItem("futlife_save_"+i);
     const saved = data?JSON.parse(data):null;
     const card = document.createElement("div");
-    card.style.cssText = "background:#161b22;border:1px solid #30363d;border-radius:12px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;gap:12px";
+    card.className = "menu-slot"+(saved?" saved":"");
     if(saved){
-      card.innerHTML = `<div style="flex:1">
-        <div style="font-size:15px;font-weight:700;color:#e6edf3">${saved.name||"Sin nombre"}</div>
-        <div style="font-size:12px;color:#8b949e;margin-top:4px">${saved.P.clubName||"Sin club"} · Edad ${saved.P.age||16} · OVR <span style="color:#7ee787">${saved.P.overall||67}</span> · 💰 ${formatMoney(saved.P.money||0)}</div>
+      card.innerHTML = `<div class="menu-slot-info">
+        <div class="menu-slot-name">${saved.name||"Sin nombre"}</div>
+        <div class="menu-slot-detail">
+          <span>🏟️ ${saved.P.clubName||"Sin club"}</span>
+          <span>🎂 ${saved.P.age||16}a</span>
+          <span style="color:#7ee787">⭐ ${saved.P.overall||67}</span>
+          <span>💰 ${formatMoney(saved.P.money||0)}</span>
+        </div>
       </div>
-      <div style="display:flex;gap:4px;flex-wrap:wrap">
-        <button class="btn btn-advance" style="padding:10px 20px;font-size:14px" onclick="startFromSave(${i})">▶ Jugar</button>
-        <button class="btn btn-small btn-outline" onclick="editSaveName(${i})">✏️</button>
-        <button class="btn btn-small btn-danger" onclick="deleteSaveSlot(${i})">🗑</button>
+      <div style="display:flex;gap:6px;align-items:center">
+        <button class="menu-btn menu-btn-play" onclick="startFromSave(${i})">▶ Jugar</button>
+        <button class="menu-btn-icon" onclick="editSaveName(${i})" title="Renombrar">✏️</button>
+        <button class="menu-btn-del" onclick="deleteSaveSlot(${i})" title="Borrar">🗑</button>
       </div>`;
     } else {
-      card.innerHTML = `<div style="flex:1;color:#8b949e;font-size:14px">Ranura ${i+1} · Vacía</div>
-        <button class="btn btn-primary" style="padding:10px 24px;font-size:14px" onclick="startNewGame(${i})">➕ Nueva partida</button>`;
+      card.innerHTML = `<div class="menu-slot-info"><div class="menu-slot-empty">Ranura ${i+1}</div></div>
+        <button class="menu-btn menu-btn-new" onclick="startNewGame(${i})">➕ Nueva partida</button>`;
     }
     list.appendChild(card);
   }
@@ -3296,6 +3344,14 @@ function editSaveName(slot){
     localStorage.setItem("futlife_save_"+slot,JSON.stringify(saved));
     renderMenuSlots();
   }
+}
+
+function goToMenu(){
+  quickSave();
+  document.getElementById("create-screen").classList.remove("active");
+  document.getElementById("main-screen").classList.remove("active");
+  document.getElementById("menu-screen").classList.add("active");
+  renderMenuSlots();
 }
 
 function quickSave(){
