@@ -460,6 +460,7 @@ input[type=range]::-webkit-slider-thumb{
     <button class="tab-btn" data-tab="train">🏋️ Entrenar</button>
     <button class="tab-btn" data-tab="relationships">❤️ Relaciones</button>
     <button class="tab-btn" data-tab="actions">⚡ Acciones</button>
+    <button class="tab-btn" data-tab="tables">📊 Tablas</button>
     <button class="tab-btn" data-tab="achievements">🏆 Logros</button>
   </div>
 
@@ -515,6 +516,22 @@ input[type=range]::-webkit-slider-thumb{
     <div class="section-card">
       <h3>Logros</h3>
       <div class="achievement-grid" id="achievements-display"></div>
+    </div>
+  </div>
+
+  <div id="tab-tables" class="tab-panel">
+    <div class="section-card">
+      <h3>📊 Tu Liga</h3>
+      <div id="league-table"></div>
+      <div id="league-detail" style="display:none;margin-top:12px;background:#0d1117;border-radius:8px;padding:12px;font-size:12px"></div>
+    </div>
+    <div class="section-card">
+      <h3>🏆 Competición Continental</h3>
+      <div id="continental-table"></div>
+    </div>
+    <div class="section-card">
+      <h3>🏅 Copa Doméstica</h3>
+      <div id="cup-table"></div>
     </div>
   </div>
 </div>
@@ -845,6 +862,29 @@ const CLUBS = [
   {name:"Wydad Sub-20",league:"Reservas",country:"Marruecos",continent:"africa",competition:"-",stars:1,minOverall:0,salaryBase:8000},
   {name:"Al Ahly Sub-20",league:"Reservas",country:"Egipto",continent:"africa",competition:"-",stars:1,minOverall:0,salaryBase:8000}
 ];
+
+const YOUTH_PARENT = {
+  "Boca Juvenil":"Buenos Aires Boca","River Juvenil":"River Buenos Aires","Banfield B":"Buenos Aires Boca",
+  "Flamengo Sub-20":"Río Flamengo","São Paulo Sub-20":"São Paulo FC","Santos Sub-20":"Santos FC",
+  "Santos Laguna B":"Monterrey Rayados","Chivas Sub-20":"Guadalajara Chivas","Pachuca Sub-20":"Pachuca",
+  "La Fábrica":"Madrid CF","La Masia B":"FC Cataluña","Rayo B":"Real Madrid",
+  "Red Devils Sub-21":"Manchester Reds","Cityzens Sub-21":"Manchester Cityzens","Blues Sub-21":"London Blues",
+  "Milán Primavera":"Milán Rossoneri","Atalanta Sub-19":"Atalanta Bérgamo",
+  "Múnich Sub-19":"Múnich Baviera","Dortmund Sub-19":"Dortmund Amarillo",
+  "París Sub-19":"París Saint","Marsella Sub-19":"Marsella Olímpico",
+  "Benfica Sub-19":"Benfica Lisboa","Porto Sub-19":"Porto Dragões",
+  "Ajax Sub-19":"Ajax Ámsterdam","Anderlecht Sub-19":"Anderlecht","Dinamo Sub-19":"Dinamo Zagreb",
+  "Malmö Sub-19":"Malmö FF","Galatasaray Sub-19":"Galatasaray",
+  "Peñarol Juvenil":"Peñarol Montevideo","Nacional Juvenil":"Nacional Montevideo",
+  "Nacional Sub-20":"Nacional Medellín","Colo-Colo Sub-20":"Colo-Colo",
+  "Alianza Sub-20":"Alianza Lima","Liga Quito Sub-20":"Liga Quito","Olimpia Sub-20":"Olimpia Asunción",
+  "LA Galaxy Sub-19":"Los Ángeles Galaxy","Toronto Sub-19":"Toronto FC",
+  "Al-Hilal Sub-19":"Al-Hilal Riyadh","Kashima Sub-18":"Kashima Antlers",
+  "Jeonbuk Sub-18":"Jeonbuk Hyundai","Sydney Sub-20":"Sydney FC",
+  "Génération Foot B":"Génération Foot","Asante Kotoko B":"Asante Kotoko",
+  "Enyimba B":"Enyimba FC","Canon Yaoundé B":"Canon Yaoundé",
+  "Wydad Sub-20":"Wydad Casablanca","Al Ahly Sub-20":"Al Ahly"
+};
 
 const LIFE_ITEMS = [
   {id:"casa_peq",name:"Casa pequeña",price:150000,icon:"🏠"},
@@ -1645,9 +1685,6 @@ function generateSeasonStats(){
   // Add to career totals  
   P.careerGoals += P.seasonGoals;
   P.careerAssists += P.seasonAssists;
-
-  // Competition results
-  P.competitionResult = generateCompetitionResults();
 }
 
 function generateCompetitionResults(){
@@ -1698,6 +1735,7 @@ function updateUI(){
   renderLifeItems();
   renderActions();
   renderAchievements();
+  renderTables();
   document.getElementById("train-status").textContent = P.trainingsLeft>0 ? `Entrenamientos restantes: ${P.trainingsLeft}` : "Sin entrenamientos este año";
 }
 
@@ -2012,6 +2050,22 @@ function advanceYear(){
     if(P.discipline<=35) P.followers += Math.floor(P.followers*0.08);
   }
 
+  // Youth promotion check
+  if(P.clubStars===1 && P.age<=22 && P.overall>=60){
+    const parentName = YOUTH_PARENT[P.clubName];
+    if(parentName){
+      const mainClub = CLUBS.find(c=>c.name===parentName);
+      if(mainClub){
+        const threshold = mainClub.stars>=5 ? 75 : mainClub.stars>=4 ? 70 : mainClub.stars>=3 ? 66 : 62;
+        if(P.overall >= threshold){
+          currentYearEvents.unshift({title:"¡Promoción al primer equipo!",text:`Tu nivel en ${P.clubName} ha llamado la atención. ${mainClub.name} (${mainClub.league}) te sube al primer equipo. ¡Felicidades!`,emoji:"⬆️",type:"transfer",magnitude:"big",options:[
+            {text:"¡Es mi gran oportunidad!",effects:{clubChange:"promotion",promotionClub:mainClub.name},chance:0.98,failText:"",failEffects:{}}
+          ]});
+        }
+      }
+    }
+  }
+
   // Injury recovery
   if(P.injured){
     P.injuryWeeks--;
@@ -2061,45 +2115,42 @@ function advanceYear(){
     }
   }
 
-  // Generate random events with magnitude system
+  // Generate exactly 6 events (2 months each)
   const eligible = getEligibleEvents();
   let filtered = eligible.filter(e=>!P.lastEventIds.includes(e.title));
-  if(filtered.length<10) filtered = [...eligible];
-  const big = shuffle(filtered.filter(e=>e.magnitude==="big"));
-  const med = shuffle(filtered.filter(e=>e.magnitude==="medium"||!e.magnitude));
-  const small = shuffle(filtered.filter(e=>e.magnitude==="small"));
+  if(filtered.length<15) filtered = [...eligible];
+  const shuffled = shuffle([...filtered]);
   const picked = [];
   const usedTypes = new Set();
-
-  function tryPickFrom(arr, max, maxTypeCount){
-    for(const e of arr){
-      if(picked.length>=max) break;
-      if(P.lastEventIds.includes(e.title) && filtered.length>20) continue;
-      const typeCount = picked.filter(p=>p.type===e.type).length;
-      if(typeCount>=maxTypeCount) continue;
-      if(e.type!=="match" && e.type!=="random" && typeCount>=1) continue;
-      picked.push(e);
-      usedTypes.add(e.type);
-      P.lastEventIds.push(e.title);
-      if(P.lastEventIds.length>20) P.lastEventIds.shift();
-    }
+  for(const e of shuffled){
+    if(picked.length>=6) break;
+    const typeCount = picked.filter(p=>p.type===e.type).length;
+    if(typeCount>=2) continue;
+    if(e.type==="match" && typeCount>=0){} // Can have 2 match events
+    if(e.type!=="match" && e.type!=="random" && typeCount>=1) continue;
+    picked.push(e);
+    usedTypes.add(e.type);
+    P.lastEventIds.push(e.title);
+    if(P.lastEventIds.length>25) P.lastEventIds.shift();
   }
-
-  tryPickFrom(big, 1, 1);   // Max 1 big event
-  tryPickFrom(med, 3, 2);   // Max 3 medium events, 2 of same type
-  tryPickFrom(small, 5, 3); // Max 5 small events
-  while(picked.length<3 && (big.length+med.length+small.length>picked.length)){
-    const rest = shuffle([...big,...med,...small]).filter(e=>!picked.includes(e));
+  // Fill up to 6
+  while(picked.length<6){
+    const rest = shuffled.filter(e=>!picked.includes(e));
     if(rest.length===0) break;
     picked.push(rest[0]);
   }
-  if(picked.length===0) picked.push(ALL_EVENTS.find(e=>e.type==="random")||ALL_EVENTS[0]);
 
   currentYearEvents = [...picked, ...currentYearEvents];
   if(currentYearEvents.length===0) currentYearEvents.push(ALL_EVENTS.find(e=>e.type==="random"));
 
   // Generate realistic base season stats BEFORE events
   generateSeasonStats();
+
+  // Initialize and advance competitions (6 matchdays per year = 38 total)
+  if(!P.leagueData || P.leagueData.currentMD>=38) initSeasonData();
+  advanceMatchdays(6);
+  advanceContinental();
+  advanceCup();
 
   // Sort events chronologically - title events go LAST
   const eventOrder = {match:1,national:2,worldcup:2,transfer:3,injury:4,coach:5,contract:6,life:7,relationship:8,drama:9,humor:10,random:11};
@@ -2165,6 +2216,7 @@ function advanceYear(){
   if(P.yearActionEffects.moraleBoost){P.morale=clamp(P.morale+10,0,100);P.yearActionEffects.moraleBoost=false;}
   
   currentEventIndex = 0;
+  P.seasonProgress = 0;
   P.yearEvents = [];
   P.actionsThisYear = 0;
   updateAdvanceButton();
@@ -2182,9 +2234,10 @@ function triggerNextEvent(){
 function updateAdvanceButton(){
   const btn = document.getElementById("btn-advance");
   if(!btn) return;
+  const months = ["Ene-Feb","Mar-Abr","May-Jun","Jul-Ago","Sep-Oct","Nov-Dic"];
   if(currentYearEvents.length>0 && currentEventIndex<currentYearEvents.length){
-    const remaining = currentYearEvents.length - currentEventIndex;
-    btn.textContent = `📋 Siguiente evento (${currentEventIndex+1} de ${currentYearEvents.length})`;
+    const mIdx = Math.min(currentEventIndex, 5);
+    btn.textContent = `📋 ${months[mIdx]} (${currentEventIndex+1}/6)`;
   } else {
     btn.textContent = "⏩ Avanzar un año";
   }
@@ -2319,6 +2372,11 @@ function resolveEvent(event, option){
         }
         else if(e.clubChange==="retirementLeague") transferToRetirementLeague();
         else if(e.clubChange==="negotiate") transferToBigClub();
+        else if(e.clubChange==="promotion"){
+          const promClub = CLUBS.find(c=>c.name===e.promotionClub);
+          if(promClub) doTransfer(promClub);
+          else transferToBigClub();
+        }
       }
       if(e.injured){P.injured=true;P.injuryWeeks=e.injuryWeeks||4;effectsHTML+=`🤕 Lesión: ${P.injuryWeeks} semanas<br>`}
       if(e.freeAgent){
@@ -2415,6 +2473,7 @@ function resolveEvent(event, option){
 function closeEventResult(){
   document.getElementById("event-modal").classList.remove("active");
   currentEventIndex++;
+  P.seasonProgress = Math.min(6, currentEventIndex);
   // Check if all events done
   if(currentEventIndex >= currentYearEvents.length){
     showYearSummary();
@@ -2811,6 +2870,7 @@ function openNegotiationFromPicker(idx){
 // ============================================================
 function showYearSummary(){
   document.getElementById("sum-year").textContent = P.age;
+  P.competitionResult = generateCompetitionResults(); // Generate now with current club
   const list = document.getElementById("sum-events-list");
   const cr = P.competitionResult||{league:"No disponible",leaguePos:"-",teamStrength:0};
   const leaguePos = P.seasonWonTitle ? 1 : cr.leaguePos;
@@ -3028,8 +3088,11 @@ function renderStats(){
       </div>
     `;
   }
-  // Career stats visual
-  const sg = P.seasonGoals||0, sa = P.seasonAssists||0, sm = P.seasonMatches||0;
+  // Career stats visual - progressive during the year
+  const progress = Math.max(1, P.seasonProgress||0);
+  const sg = Math.floor((P.seasonGoals||0) * progress/6);
+  const sa = Math.floor((P.seasonAssists||0) * progress/6);
+  const sm = Math.floor((P.seasonMatches||0) * progress/6);
   const cg = P.careerGoals, ca = P.careerAssists, cm = P.careerMatches;
   div.innerHTML += `
     <div style="background:#0d1117;border-radius:10px;padding:12px;margin-top:12px;display:flex;justify-content:space-around;text-align:center">
@@ -3410,6 +3473,165 @@ function quickSave(){
 
 function autoSave(){
   quickSave();
+}
+
+// ============================================================
+// COMPETITION SYSTEM
+// ============================================================
+function simMatch(homeStars, awayStars){
+  const diff = homeStars - awayStars;
+  const r = Math.random();
+  if(r < 0.35 + diff*0.1){ // Home win
+    const aw = randomBetween(Math.random()<0.45?0:1, 2);
+    return {home: aw + randomBetween(1,3), away: aw};
+  } else if(r < 0.6 + diff*0.05){ // Draw
+    const g = randomBetween(0, 3);
+    return {home: g, away: g};
+  } else { // Away win
+    const hw = randomBetween(Math.random()<0.45?0:1, 2);
+    return {home: hw, away: hw + randomBetween(1,3)};
+  }
+}
+
+function initSeasonData(){
+  const league = P.clubLeague||"Liga";
+  const sameLeague = CLUBS.filter(c=>c.league===league && c.stars>=1 && c.name!==P.clubName);
+  let teams = sameLeague.slice(0,19).map(t=>({name:t.name, stars:t.stars}));
+  teams.push({name:P.clubName, stars:P.clubStars, isPlayer:true});
+  while(teams.length<20){
+    const extra = CLUBS.find(c=>c.stars>=1 && !teams.find(t=>t.name===c.name));
+    if(!extra) break; teams.push({name:extra.name, stars:extra.stars});
+  }
+  P.leagueData = {teams: shuffle(teams), currentMD:0, playedMatches:[]};
+  initContinental(); initCup();
+}
+
+function simulateMatchday(mdIdx){
+  if(mdIdx>=38) return;
+  const n = P.leagueData.teams.length;
+  const used = new Set(); const matches = [];
+  for(let i=0;i<n;i++){
+    if(used.has(i)) continue;
+    const j = (mdIdx%2===0)?(i+1>=n?0:i+1):(i-1<0?n-1:i-1);
+    if(used.has(j)) continue;
+    const isHome = mdIdx < 19 ? (mdIdx%2===0) : (mdIdx%2===1);
+    matches.push({homeIdx:isHome?i:j, awayIdx:isHome?j:i});
+    used.add(i); used.add(j);
+  }
+  matches.forEach(m=>{
+    const result = simMatch(P.leagueData.teams[m.homeIdx].stars,P.leagueData.teams[m.awayIdx].stars);
+    P.leagueData.playedMatches.push({md:mdIdx+1, ...m, result});
+  });
+  P.leagueData.currentMD++;
+}
+
+function advanceMatchdays(count){
+  for(let i=0;i<count;i++) simulateMatchday(P.leagueData.currentMD);
+}
+
+function getTeamStats(teamName){
+  let pts=0, pj=0, gf=0, gc=0;
+  P.leagueData.playedMatches.forEach(m=>{
+    const t = P.leagueData.teams;
+    if(t[m.homeIdx].name===teamName){pj++;gf+=m.result.home;gc+=m.result.away;if(m.result.home>m.result.away) pts+=3;else if(m.result.home===m.result.away) pts+=1}
+    if(t[m.awayIdx].name===teamName){pj++;gf+=m.result.away;gc+=m.result.home;if(m.result.away>m.result.home) pts+=3;else if(m.result.away===m.result.home) pts+=1}
+  });
+  return {pts,pj,gf,gc};
+}
+
+function initContinental(){
+  const club = CLUBS.find(c=>c.name===P.clubName);
+  const cont = club?club.continent:"europe";
+  const contClubs = CLUBS.filter(c=>c.continent===cont&&c.stars>=2);
+  const selected = shuffle(contClubs).slice(0,47);
+  const playerClub = CLUBS.find(c=>c.name===P.clubName);
+  if(playerClub&&!selected.find(t=>t.name===P.clubName)) selected[0]=playerClub;
+  P.cd = {name:cont==="europe"?"Champions League":cont==="americas"?"Libertadores":"Continental Cup", teams:selected.map(t=>({name:t.name,stars:t.stars,isPlayer:t.name===P.clubName})), phase:"-", stage:0};
+}
+
+function initCup(){
+  const cupTeams = CLUBS.filter(c=>c.country===P.clubCountry);
+  const selected = shuffle(cupTeams).slice(0,31);
+  const playerClub = CLUBS.find(c=>c.name===P.clubName);
+  if(playerClub&&!selected.find(t=>t.name===P.clubName)) selected[0]=playerClub;
+  P.cupData = {teams:selected.map(t=>({name:t.name,stars:t.stars,isPlayer:t.name===P.clubName})), round:"32avos"};
+}
+
+function advanceContinental(){
+  const cd = P.cd; if(!cd||P.clubStars<2) return;
+  cd.stage++;
+  if(cd.stage===1) return;
+  if(cd.stage===2){cd.phase="Fase de grupos"; cd.groups=Array.from({length:8},()=>cd.teams.splice(0,6)); cd.advancers=cd.groups.map(g=>shuffle([...g]).slice(0,4)).flat();}
+  else if(cd.stage===3&&cd.advancers){cd.phase="Octavos"; cd.current=simKnockout(shuffle(cd.advancers).slice(0,16),8);}
+  else if(cd.stage===4&&cd.current){cd.phase="Cuartos"; cd.current=simKnockout(cd.current,4);}
+  else if(cd.stage===5&&cd.current){cd.phase="Semifinal"; cd.current=simKnockout(cd.current,2);}
+  else if(cd.stage===6&&cd.current&&cd.current.length>=2){
+    cd.phase="Final"; const res=simMatch(cd.current[0].stars,cd.current[1].stars); cd.final={home:cd.current[0].name,away:cd.current[1].name,result:res};
+    const w=res.home>res.away?cd.current[0]:cd.current[1];
+    cd.winner=w; cd.phase="Finalizada";
+    if(w.isPlayer){P.titles.push("🏆 "+cd.name);P.seasonWonTitle=true;}
+  }
+}
+
+function simKnockout(teams, target){
+  const w=[]; for(let i=0;i<teams.length;i+=2){if(i+1>=teams.length){w.push(teams[i]);break}const r=simMatch(teams[i].stars,teams[i+1].stars);w.push(r.home>r.away?teams[i]:r.away>r.home?teams[i+1]:(Math.random()<0.5?teams[i]:teams[i+1]))}
+  return w.slice(0,target);
+}
+
+function advanceCup(){
+  const cup=P.cupData; if(!cup||cup.teams.length<=1) return;
+  for(let r=0;r<2;r++){
+    if(cup.teams.length<=1){cup.round="Campeón";if(cup.teams[0].isPlayer){P.titles.push("🏆 Copa");P.timeline.push(`Edad ${P.age}: ¡Campeón de Copa!`)}return}
+    const nr=[]; const rounds=["32avos","16avos","Octavos","Cuartos","Semifinal","Final","Campeón"];
+    for(let i=0;i<cup.teams.length;i+=2){if(i+1>=cup.teams.length){nr.push(cup.teams[i]);break}const res=simMatch(cup.teams[i].stars,cup.teams[i+1].stars);nr.push(res.home>res.away?cup.teams[i]:res.away>res.home?cup.teams[i+1]:(Math.random()<0.5?cup.teams[i]:cup.teams[i+1]))}
+    cup.teams=nr; cup.round=rounds[rounds.indexOf(cup.round)+1]||"Campeón";
+    if(cup.round==="Campeón"&&cup.teams[0].isPlayer){P.titles.push("🏆 Copa");P.timeline.push(`Edad ${P.age}: ¡Campeón de Copa!`)}
+  }
+}
+
+function renderTables(){
+  if(!P.leagueData) return;
+  renderLeagueTable(); renderContinentalTable(); renderCupTable();
+}
+
+function renderLeagueTable(){
+  const d=document.getElementById("league-table"); if(!P.leagueData){d.innerHTML="<p style='color:#8b949e;font-size:12px'>Sin datos</p>";return}
+  const standings=P.leagueData.teams.map(t=>{const s=getTeamStats(t.name);return{...t,...s,gd:s.gf-s.gc}}).sort((a,b)=>b.pts-a.pts||b.gd-a.gd||b.gf-a.gf);
+  let h='<div style="overflow-x:auto"><table style="width:100%;font-size:11px;border-collapse:collapse"><tr style="color:#8b949e;text-align:center;border-bottom:1px solid #21262d"><th style="padding:3px;text-align:left">#</th><th style="text-align:left">Equipo</th><th>PJ</th><th>PTS</th><th>GF</th><th>GC</th></tr>';
+  standings.forEach((t,i)=>{
+    const isP=t.isPlayer||t.name===P.clubName;
+    h+=`<tr style="text-align:center;cursor:pointer;background:${isP?'rgba(46,160,67,0.12)':'transparent'}" onclick="showTeamDetail('${t.name.replace(/'/g,"\\'")}')" onmouseenter="this.style.background='${isP?'rgba(46,160,67,0.2)':'#161b22'}'" onmouseleave="this.style.background='${isP?'rgba(46,160,67,0.12)':'transparent'}'"><td style="padding:3px">${i+1}</td><td style="text-align:left;font-weight:${isP?'700':'400'};color:${isP?'#7ee787':'#e6edf3'}">${t.name}</td><td>${t.pj}</td><td style="font-weight:700">${t.pts}</td><td>${t.gf}</td><td>${t.gc}</td></tr>`;
+  });
+  h+='</table></div><div style="margin-top:6px;font-size:10px;color:#8b949e">Jornada '+P.leagueData.currentMD+'/38 · Top 3 → continental</div>';
+  d.innerHTML=h;
+}
+
+function showTeamDetail(name){
+  const dd=document.getElementById("league-detail");
+  const rec=P.leagueData.playedMatches.filter(m=>{const t=P.leagueData.teams;return t[m.homeIdx].name===name||t[m.awayIdx].name===name}).slice(-6);
+  let h=`<strong>${name}</strong><br>`;
+  rec.forEach(m=>{const t=P.leagueData.teams;const isH=t[m.homeIdx].name===name;const opp=isH?t[m.awayIdx].name:t[m.homeIdx].name;const gf=isH?m.result.home:m.result.away;const ga=isH?m.result.away:m.result.home;h+=`<div>J${m.md}: ${gf>ga?'🟢':gf===ga?'🟡':'🔴'} vs ${opp} ${gf}-${ga}</div>`});
+  if(rec.length===0) h+="Sin partidos aún";
+  dd.innerHTML=h;dd.style.display="block";
+}
+
+function renderContinentalTable(){
+  const d=document.getElementById("continental-table"); const cd=P.cd;
+  if(!cd){d.innerHTML="<p style='color:#8b949e;font-size:12px'>Sin competición</p>";return}
+  let h=`<strong>🏆 ${cd.name}</strong> · ${cd.phase}<br>`;
+  if(cd.current&&cd.phase!=="Finalizada"){for(let i=0;i<cd.current.length;i+=2){const a=cd.current[i],b=cd.current[i+1];h+=`<div style="font-size:12px;padding:1px 0">${a.name} vs ${b?b.name:'BYE'}</div>`}}
+  if(cd.final) h+=`<div style="font-weight:700;color:#d29922">⚡ Final: ${cd.final.home} ${cd.final.result.home}-${cd.final.result.away} ${cd.final.away}</div>`;
+  if(cd.winner) h+=`<div style="color:#7ee787">🏆 ${cd.winner.name} campeón</div>`;
+  d.innerHTML=h;
+}
+
+function renderCupTable(){
+  const d=document.getElementById("cup-table"); const cup=P.cupData;
+  if(!cup){d.innerHTML="<p style='color:#8b949e;font-size:12px'>Sin copa</p>";return}
+  let h=`<strong>🏅 Copa</strong> · ${cup.round}<br>`;
+  if(cup.teams.length<=8&&cup.teams.length>1){for(let i=0;i<cup.teams.length;i+=2){const a=cup.teams[i],b=cup.teams[i+1];h+=`<div style="font-size:12px">${a.name} vs ${b?b.name:'BYE'}</div>`}}
+  if(cup.round==="Campeón") h+=`<div style="color:#7ee787">🏆 ¡${P.clubName}!</div>`;
+  d.innerHTML=h;
 }
 
 function init(){
