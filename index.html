@@ -2339,14 +2339,15 @@ function updateAdvanceButton(){
 }
 
 function showNextEvent(){
-  // Advance 6 matchdays per event (last event takes remaining)
+  // Advance competitions per event
+  if(!P.leagueData) initSeasonData();
   if(P.leagueData && P.leagueData.currentMD<38){
     const remaining = 38 - P.leagueData.currentMD;
     const toAdvance = Math.min(7, Math.ceil(remaining / Math.max(1, 7 - currentEventIndex)));
     advanceMatchdays(toAdvance);
-    advanceContinental();
-    advanceCup();
   }
+  advanceContinental();
+  advanceCup();
   
   if(currentEventIndex >= currentYearEvents.length){
     showYearSummary();
@@ -3685,7 +3686,7 @@ function initCup(){
 }
 
 function advanceContinental(){
-  const cd = P.cd; if(!cd||P.clubStars<2) return;
+  const cd = P.cd; if(!cd) return;
   cd.stage++;
   if(cd.stage===1) return;
   if(cd.stage===2){cd.phase="Fase de grupos"; cd.groups=Array.from({length:8},()=>cd.teams.splice(0,6)); cd.advancers=cd.groups.map(g=>shuffle([...g]).slice(0,4)).flat();}
@@ -3697,7 +3698,7 @@ function advanceContinental(){
     const final=simTwoLegged(cd.current.teams[0],cd.current.teams[1]); 
     cd.finalResult=`${cd.current.teams[0].name} ${final.result} ${cd.current.teams[1].name}`;
     cd.winner=final.winner; cd.phase="Finalizada";
-    if(w.isPlayer){P.titles.push("🏆 "+cd.name);P.seasonWonTitle=true;}
+    if(final.winner.isPlayer){P.titles.push("🏆 "+cd.name);P.seasonWonTitle=true;}
   }
 }
 
