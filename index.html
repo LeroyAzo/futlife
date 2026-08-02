@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -416,6 +416,10 @@ input[type=range]::-webkit-slider-thumb{
     <div class="section-card">
       <h3>Personalidad</h3>
       <div id="personality-display" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+    </div>
+    <div class="section-card">
+      <h3>Clases actuales</h3>
+      <div id="classes-display" style="display:flex;flex-wrap:wrap;gap:6px"></div>
     </div>
     <div class="section-card">
       <h3>Atributos</h3>
@@ -840,13 +844,127 @@ const STAT_NAMES = {
 };
 
 // ============================================================
+// PLAYER CLASS SYSTEM
+// ============================================================
+function getPlayerClasses(){
+  const M = P.money;
+  const F = P.followers;
+  const A = P.age;
+  const O = P.overall;
+  const CS = P.clubStars;
+  const D = P.discipline;
+  const classes = [];
+
+  // 💰 Money
+  if(M<1000000) classes.push("Pobre");
+  else if(M<5000000) classes.push("Clase Media");
+  else if(M<25000000) classes.push("Rico");
+  else if(M<50000000) classes.push("Millonario");
+  else classes.push("Multimillonario");
+
+  // 📱 Fama
+  if(F<200000) classes.push("Desconocido");
+  else if(F<1000000) classes.push("Conocido");
+  else if(F<10000000) classes.push("Famoso");
+  else classes.push("Superestrella");
+
+  // ⚽ Carrera
+  if(A<=20) classes.push("Promesa");
+  else if(O>=80||CS>=4||P.titles.length>=3) classes.push("Crack");
+  else if(O>=65||CS>=2) classes.push("En Ascenso");
+  if(A>=28&&(O>=85||P.clubHistory.some(c=>c.stars>=5)||P.titles.includes("Copa del Mundo ("+A+")")||P.worldCupWinner)) classes.push("Leyenda");
+
+  // 🧓 Edad
+  if(A<=21) classes.push("Joven");
+  else if(A<=30) classes.push("Adulto");
+  else if(A<=35) classes.push("Mayor");
+  else classes.push("Al Borde del Retiro");
+
+  // 🎭 Disciplina
+  if(D<=35) classes.push("Fiestero");
+  else if(D>=66) classes.push("Disciplinado");
+
+  // 🏟️ Nivel Club
+  if(CS<=1) classes.push("Cantera");
+  else if(CS<=3) classes.push("Profesional");
+  else classes.push("Élite");
+
+  // ❤️ Relación
+  if(!P.hasPartner) classes.push("Soltero");
+  else if(!P.married) classes.push("En Pareja");
+  else classes.push("Casado");
+  if(P.hasKids) classes.push("Padre");
+
+  // 🌍 Continente
+  const cc = CLUBS.find(c=>c.name===P.clubName);
+  const cont = cc?cc.continent:"europe";
+  if(cont==="europe") classes.push("Europeo");
+  else if(cont==="americas") classes.push("Americano");
+  else if(cont==="asia") classes.push("Asiático");
+  else if(cont==="africa") classes.push("Africano");
+  else classes.push("Medio Oriente");
+
+  return classes;
+}
+
+// ============================================================
 // EVENTS - pool masivo
 // ============================================================
 const ALL_EVENTS = [];
 
-function ev(title, text, emoji, type, options, magnitude){
-  ALL_EVENTS.push({title,text,emoji,type,options,magnitude: magnitude||"medium"});
+function ev(title, text, emoji, type, options, magnitude, classes){
+  // Auto-assign classes if not explicitly provided
+  if(!classes || classes.length===0){
+    classes = AUTO_CLASSES[title] || [];
+  }
+  ALL_EVENTS.push({title,text,emoji,type,options,magnitude: magnitude||"medium", classes});
 }
+
+const AUTO_CLASSES = {
+  // MATCH
+  "Final de copa":["Profesional"],"Clásico eterno":["Profesional"],"Remontada histórica":["Profesional"],
+  "Penalti decisivo":["Profesional"],"Hat-trick mágico":["Crack","En Ascenso"],"Derbi de la ciudad":["Profesional"],
+  "Gol en el último segundo":["Profesional"],"Expulsión injusta":["Profesional"],"Goleada histórica":["Profesional"],
+  "Chilena imposible":["Profesional","Crack"],"Debut europeo":["Europeo","Élite","Joven"],
+  "Te nominan al Balón de Oro":["Crack","Leyenda","Élite"],"Racha goleadora":["Crack","En Ascenso"],
+  "Reconocimiento de la afición rival":["Crack","Leyenda"],"Ola de calor en el partido":["Profesional"],
+  // TRANSFER
+  "Oferta millonaria":["Crack","Famoso"],"Fichaje sorpresa":["En Ascenso","Conocido"],
+  "Regreso a casa":["Adulto","Mayor"],"Último baile":["Mayor","Al Borde del Retiro","Crack"],
+  "Llamada de un club histórico":["Crack","Leyenda","Famoso"],"Rumores de traspaso":["En Ascenso","Profesional"],
+  // INJURY
+  "Lesión grave en directo":["Profesional","Famoso"],
+  // COACH
+  "El DT te elogia públicamente":["Profesional","En Ascenso"],"Conflicto táctico":["Profesional"],
+  "Nuevo entrenador":["Profesional"],
+  // RELATIONSHIP
+  "Flechazo en la grada":["Soltero","Conocido"],"Crisis de pareja":["En Pareja","Casado"],
+  "Boda de ensueño":["En Pareja","Adulto"],"Vas a ser padre":["En Pareja","Casado","Adulto"],
+  "Escándalo de infidelidad":["En Pareja","Casado","Famoso"],"Tu mejor amigo te pide dinero":["Clase Media","Rico"],
+  "Fiesta salvaje":["Joven","Adulto","Fiestero"],
+  // DRAMA
+  "Video íntimo filtrado":["Adulto","Famoso"],"Hijo secreto":["Adulto","Famoso"],
+  "Apuesta clandestina":["Adulto","Profesional"],"Doping sorpresa":["Profesional","Conocido"],
+  "Romance secreto con la prensa":["Adulto","Famoso"],"Se filtra tu salario":["Élite","Conocido"],
+  "Tu representante te roba":["En Ascenso","Profesional"],"Secuestro express":["Rico","Famoso"],
+  "Amenaza de muerte":["Superestrella","Crack"],"Se filtra tu grupo de WhatsApp":["Famoso"],
+  "Problemas de apuestas":["Profesional","Famoso"],"Tu familia en el ojo público":["Famoso"],
+  // HUMOR
+  "Baile viral":["Conocido"],"Entrevista desastrosa":["Conocido"],"Tu canción viral":["Famoso"],
+  "Te grabas un reality show":["Famoso"],"Rivalidad explosiva":["Conocido","Famoso"],
+  // LIFE
+  "Oportunidad de negocio":["Clase Media","Rico"],"Patrocinio millonario":["Famoso","Superestrella"],
+  "Donación benéfica":["Clase Media"],"Creas tu propia marca de ropa":["Rico","Famoso"],
+  "Compra impulsiva":["Rico"],"Vacaciones de lujo":["Rico"],"Tu propio videojuego":["Famoso","Superestrella","Crack"],
+  "Invitación a la Met Gala":["Superestrella","Rico"],"El vecino molesto":["Clase Media","Rico"],
+  // RANDOM
+  "Escribes tu autobiografía":["Famoso"],"Te invitan a un podcast famoso":["Famoso"],
+  "Encuentro con una leyenda":["En Ascenso","Crack"],"Tu equipo gana la liga":["Profesional","Crack"],
+  "Fiesta de campeones":["Profesional","Crack"],"Multa por indisciplina":["Fiestero","Profesional"],
+  "Plan de rendimiento":["Profesional"],"Reunión con la directiva":["Profesional"],
+  "Huelga de jugadores":["Profesional"],"Llegas tarde al entrenamiento":["Profesional"],
+  "Trabajo táctico extra":["Profesional"],"Pretemporada intensa":["Profesional"],
+};
 
 // PARTIDO
 ev("Final de copa","Es la final de la copa. El partido va 0-0 y en el último minuto te llega un balón en el área. ¿Qué haces?","🏆","match",[
@@ -1491,6 +1609,7 @@ function updateUI(){
   document.getElementById("top-role").textContent = roleNames[P.squadRole]||"Titular";
   document.getElementById("top-role").style.color = P.squadRole>=4?"#ffd700":P.squadRole>=3?"#7ee787":P.squadRole>=2?"#79c0ff":"#8b949e";
   renderPersonality();
+  renderClasses();
   const moods = {
     80:"😄",60:"😊",40:"😐",20:"😟",0:"😢"
   };
@@ -1725,7 +1844,6 @@ function getEligibleEvents(){
   const currentClub = CLUBS.find(c=>c.name===P.clubName);
   const clubContinent = currentClub?currentClub.continent:"europe";
   const clubComp = currentClub?currentClub.competition:"-";
-  const t = (e)=>(e.title||"")+(e.text||"");
   for(const e of ALL_EVENTS){
     let ok = true;
     // Basic type filters
@@ -1734,89 +1852,14 @@ function getEligibleEvents(){
     if(e.type==="national" && P.age<18) ok = false;
     if(e.type==="relationship" && P.age<18) ok = false;
     if(e.type==="injury" && P.injured) ok = false;
-    if(e.type==="drama" && P.age<20 && t(e).includes("Apuesta")) ok = false;
     // Continent/competition filtering
     if(e.continent && e.continent!==clubContinent) ok = false;
     if(e.competition && e.competition!==clubComp) ok = false;
 
-    // ---- COHERENCE: strict filters ----
-    const M = P.money;
-    const F = P.followers;
-    const A = P.age;
-    const O = P.overall;
-    const CS = P.clubStars;
-    const S = P.salary;
-    const title = t(e);
-
-    // NO CLUB gates - block match/coach/transfer/injury events without a club
-    if(CS===0 && ["match","coach","transfer","injury","national"].includes(e.type)) ok = false;
-
-    // CONTINENT-CLUB gates - block continent-specific events
-    const clubContComp = (currentClub?.competition||"").toLowerCase();
-    if(title.includes("Debut europeo")||title.includes("Champions League")) 
-      if(!clubContComp.includes("champions")&&!clubContComp.includes("europa")) ok=false;
-
-    // RELATIONSHIP gates - require actual partner
-    if(title.includes("pareja")||title.includes("Crisis de")||title.includes("infidelidad")||
-       title.includes("Boda")||title.includes("padre")||title.includes("Romance"))
-      if(!P.hasPartner) ok=false;
-
-    // Hijo secreto - needs age + some fame
-    if(title.includes("Hijo secreto")) if(A<22||F<20000) ok=false;
-
-    // AGE gates - events that need maturity/experience
-    if(title.includes("Video íntimo")||title.includes("Doping")||title.includes("Apuesta")) if(A<22) ok=false;
-    if(title.includes("hermano quiere")||title.includes("Vuelves a estudiar")) if(A<20) ok=false;
-    if(title.includes("representante")) if(A<20) ok=false;
-    if(title.includes("Fiesta salvaje")) if(A<18) ok=false;
-    if(title.includes("Entrevista polémica")) if(A<20) ok=false;
-    if(title.includes("Romance")||title.includes("Se filtra tu")) if(A<20) ok=false;
-    if(title.includes("Hackeo")||title.includes("canción viral")) if(F<20000) ok=false;
-    if(title.includes("Secuestro")||title.includes("Amenaza")) if(F<200000) ok=false;
-
-    // WEALTH gates - need actual money
-    if(title.includes("Mansión")||title.includes("mansión")||title.includes("Superdeportivo")||title.includes("Yate"))
-      if(M<500000) ok=false;
-    if(title.includes("colección")||title.includes("lujo")) if(M<100000) ok=false;
-    if(title.includes("Compras")||title.includes("Compra")||title.includes("coche")) if(M<80000) ok=false;
-    if(title.includes("Donación")) if(M<50000) ok=false;
-    if(title.includes("negocio")||title.includes("Inviertes")||title.includes("startup")) if(M<80000) ok=false;
-    if(title.includes("te roban el coche")) if(M<30000) ok=false;
-    if(title.includes("abogado")||title.includes("Multa")) if(M<20000) ok=false;
-
-    // FAME gates - need followers
-    if(title.includes("Patrocinio millonario")) if(F<50000 && O<78) ok=false;
-    if(title.includes("videojuego")) if(F<100000 || O<75) ok=false;
-    if(title.includes("Met Gala")) if(F<300000) ok=false;
-    if(title.includes("Nominan al Balón")||title.includes("Balón de Oro")) if(O<82) ok=false;
-    if(title.includes("Racha goleadora")) if(O<70) ok=false;
-    if(title.includes("Hat-trick")||title.includes("Hat trick")) if(O<55) ok=false;
-    if(title.includes("Llamada de un club histórico")) if(O<78) ok=false;
-    if(title.includes("Reconocimiento de la afición rival")) if(O<72) ok=false;
-
-    // CAREER STAGE gates
-    if(title.includes("Debut soñado")||title.includes("Debut europeo")) if(A>22||P.careerMatches>5) ok=false;
-    if(title.includes("Debut europeo")||title.includes("Champions")) if(CS<3) ok=false;
-    if(title.includes("Regreso a casa")) if(A<22) ok=false;
-    if(title.includes("Último baile")||title.includes("Arabia")) if(A<28) ok=false;
-    if(title.includes("confundes al árbitro")||title.includes("tu madre tuitea")) {} // Universal, always OK
-
-    // MONEY gates for event effects - check ALL options for large money amounts
-    const opts = e.options||[];
-    for(const opt of opts){
-      if(opt.effects?.money){
-        const amt = opt.effects.money;
-        if(amt>5000000 && S<2000000) ok=false;
-        if(amt>2000000 && S<500000) ok=false;
-        if(amt<-200000 && M<Math.abs(amt)*2) ok=false;
-        if(amt<-50000 && M<Math.abs(amt)*1.5) ok=false;
-      }
-      if(opt.failEffects?.money){
-        const amt = opt.failEffects.money;
-        if(amt<-200000 && M<Math.abs(amt)*2) ok=false;
-        if(amt<-50000 && M<Math.abs(amt)*1.5) ok=false;
-      }
-    }
+    // ---- CLASS-BASED FILTERING ----
+    const playerClasses = getPlayerClasses();
+    if(e.classes && e.classes.length>0 && !e.classes.every(c=>playerClasses.includes(c)))
+      ok = false;
 
     // Events that should only happen ONCE
     if(isOnceEvent(e.title) && P.onceEvents.includes(e.title)) ok = false;
@@ -2807,6 +2850,22 @@ function renderRelationships(){
 // ============================================================
 // STATS
 // ============================================================
+function renderClasses(){
+  const div = document.getElementById("classes-display");
+  if(!div) return;
+  const classes = getPlayerClasses();
+  const icons = {"Pobre":"💸","Clase Media":"💰","Rico":"💎","Millonario":"🏦","Multimillonario":"👑",
+    "Desconocido":"🔒","Conocido":"📢","Famoso":"🌟","Superestrella":"⭐",
+    "Promesa":"🌱","En Ascenso":"📈","Crack":"💪","Leyenda":"🏆",
+    "Joven":"🧒","Adulto":"👤","Mayor":"🧓","Al Borde del Retiro":"⏳",
+    "Fiestero":"🍾","Disciplinado":"⚡",
+    "Cantera":"🏟️","Profesional":"🏟️","Élite":"🏰",
+    "Soltero":"💔","En Pareja":"❤️","Casado":"💒","Padre":"👶",
+    "Europeo":"🇪🇺","Americano":"🌎","Asiático":"🌏","Africano":"🌍","Medio Oriente":"🕌"
+  };
+  div.innerHTML = classes.map(c=>`<span style="background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:4px 10px;font-size:11px;color:#e6edf3;font-weight:600">${icons[c]||""} ${c}</span>`).join("");
+}
+
 function renderPersonality(){
   const div = document.getElementById("personality-display");
   if(!div) return;
