@@ -328,6 +328,7 @@ input[type=range]::-webkit-slider-thumb{
       </div>
       <div id="stats-preview" class="stats-preview"></div>
       <button class="btn btn-primary" id="btn-start" onclick="handleStart()">Comenzar Carrera</button>
+      <button class="btn btn-outline btn-small" onclick="showSaveSlots()" style="margin-top:4px">💾 Guardar / Cargar</button>
     </div>
     <!-- RIGHT: Football Field -->
     <div class="create-right">
@@ -560,6 +561,15 @@ input[type=range]::-webkit-slider-thumb{
 </div>
 
 <div id="toast" class="toast" style="display:none"></div>
+
+<!-- SAVE SLOTS MODAL -->
+<div id="saves-modal" class="modal-overlay">
+  <div class="modal-card">
+    <h2 style="text-align:center;font-size:20px;margin-bottom:16px">💾 Partidas guardadas</h2>
+    <div id="saves-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px"></div>
+    <button class="btn btn-outline btn-small" onclick="document.getElementById('saves-modal').classList.remove('active')" style="width:100%">Cerrar</button>
+  </div>
+</div>
 
 <script>
 window.onerror = function(msg, url, line){
@@ -2568,7 +2578,7 @@ function finalizeTransfer(club, salary, years, role, clausePct){
   
   // Show a confirm modal
   document.getElementById("tf-response").className = "success";
-  document.getElementById("tf-response").innerHTML = `✅ <strong>¡Fichaje confirmado!</strong><br><br>🏟️ <strong>${club.name}</strong> ⭐${club.stars}<br>🏆 ${club.league} · ${club.country}<br>💰 ${formatMoney(salary)}/año · 📅 ${years} años<br>⭐ Rol: ${roleNames[role]}<br>${P.releaseClause>0?`💎 Cláusula: ${formatMoney(P.releaseClause)}<br>`:""}<br><span style="font-size:12px;color:#8b949e">Puedes cerrar esta ventana</span>`;
+  document.getElementById("tf-response").innerHTML = `✅ <strong>¡Fichaje confirmado!</strong><br><br>🏟️ <strong>${club.name}</strong> ⭐${club.stars}<br>🏆 ${club.league} · ${club.country}<br>💰 ${formatMoney(salary)}/año · 📅 ${years} años<br>⭐ Rol: ${roleNames[role]}<br>${P.releaseClause>0?`💎 Cláusula: ${formatMoney(P.releaseClause)}<br>`:""}<br><span style="font-size:12px;color:#8b949e">Rating del fichaje: ${randomBetween(60,99)}/100</span>`;
   document.getElementById("tf-response").style.display = "block";
   document.getElementById("tf-submit").disabled = true;
   document.getElementById("tf-submit").textContent = "✓ Firmado";
@@ -2736,6 +2746,7 @@ function showYearSummary(){
         🏆 ${getPositionMedal(leaguePos)} ${leaguePos}° lugar en ${cr.league}
       </div>
       ${getPositionText(leaguePos)}
+      ${generateMatchRegistry()}
     </div>
   `;
   
@@ -2768,7 +2779,9 @@ function closeSummary(){
   document.getElementById("summary-modal").classList.remove("active");
   currentYearEvents = [];
   P.yearEvents = [];
+  updateAdvanceButton();
   updateUI();
+  autoSave();
 
   // Retirement age
   if(P.age >= 38 && Math.random()<0.6){
@@ -2792,8 +2805,41 @@ function getPositionText(pos){
   return "<p style='text-align:center;color:#f85149;font-size:13px;margin-top:4px'>Casi descienden. Un año para olvidar.</p>";
 }
 
-// ============================================================
-// TRAINING
+function generateMatchRegistry(){
+  const goals = P.seasonGoals||0;
+  const assists = P.seasonAssists||0;
+  const matches = P.seasonMatches||0;
+  if(matches===0) return "";
+  const opponents = ["Rival Local","Atlético Unido","Deportivo Norte","San Martín","Ciudad FC","Estrella Roja","León Blanco","Racing Sur"];
+  const picked = [];
+  for(let i=0;i<Math.min(6,matches);i++){
+    picked.push(opponents[Math.floor(Math.random()*opponents.length)]);
+  }
+  let html = '<h4 style="color:#8b949e;font-size:12px;text-transform:uppercase;letter-spacing:1px;margin-top:12px;margin-bottom:8px">⚽ Partidos destacados</h4><div style="font-size:12px;line-height:1.8">';
+  let remainingGoals = goals;
+  let remainingAssists = assists;
+  for(let i=0;i<picked.length;i++){
+    const opp = picked[i];
+    const isLast = i===picked.length-1;
+    const g = isLast?Math.max(0,remainingGoals):(remainingGoals>0?Math.min(randomBetween(0,3),remainingGoals):0);
+    remainingGoals -= g;
+    const a = isLast?Math.max(0,remainingAssists):(remainingAssists>0&&Math.random()<0.4?Math.min(randomBetween(0,2),remainingAssists):0);
+    remainingAssists -= a;
+    let result = "";
+    if(g>=2) result = `<span style="color:#7ee787">Victoria ${randomBetween(2,5)}-${randomBetween(0,1)}</span>`;
+    else if(g>=1) result = `<span style="color:#7ee787">Victoria ${randomBetween(1,2)}-${randomBetween(0,1)}</span>`;
+    else if(Math.random()<0.35) result = `<span style="color:#f85149">Derrota ${randomBetween(0,1)}-${randomBetween(1,3)}</span>`;
+    else result = `<span style="color:#d29922">Empate ${randomBetween(0,2)}-${randomBetween(0,2)}</span>`;
+    let extra = "";
+    if(g>0) extra += ` ⚽x${g}`;
+    if(a>0) extra += ` 🎯x${a}`;
+    if(g===0&&a===0) extra = " 📊 sin g/a";
+    html += `<div style="padding:2px 0">${result} vs ${opp}${extra}</div>`;
+  }
+  html += `<div style="margin-top:4px;color:#8b949e;font-size:11px">📊 ${picked.length} de ${matches} partidos</div></div>`;
+  return html;
+}
+
 // ============================================================
 function renderTrainOptions(){
   const div = document.getElementById("train-options");
@@ -3182,6 +3228,88 @@ function showRetirement(){
 // ============================================================
 // INIT
 // ============================================================
+// ============================================================
+// SAVE SYSTEM
+// ============================================================
+function showSaveSlots(){
+  const list = document.getElementById("saves-list");
+  list.innerHTML = "";
+  for(let i=0;i<5;i++){
+    const data = localStorage.getItem("futlife_save_"+i);
+    const saved = data?JSON.parse(data):null;
+    const card = document.createElement("div");
+    card.style.cssText = "background:#0d1117;border:1px solid #30363d;border-radius:10px;padding:12px;display:flex;justify-content:space-between;align-items:center";
+    if(saved){
+      card.innerHTML = `<div><strong style="font-size:14px">${saved.name||"Sin nombre"}</strong><br><span style="font-size:11px;color:#8b949e">${saved.clubName||"Sin club"} · Edad ${saved.P.age||16} · OVR ${saved.P.overall||67} · 💰 ${formatMoney(saved.P.money||0)}</span></div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-small btn-primary" onclick="loadGame(${i})">Cargar</button>
+          <button class="btn btn-small btn-danger" onclick="deleteSave(${i})">🗑</button>
+        </div>`;
+    } else {
+      card.innerHTML = `<div style="color:#8b949e;font-size:13px">Ranura ${i+1} - Vacía</div>
+        <button class="btn btn-small btn-outline" onclick="saveGame(${i})">Guardar aquí</button>`;
+    }
+    list.appendChild(card);
+  }
+  // Add autosave slot
+  const auto = localStorage.getItem("futlife_autosave");
+  if(auto){
+    const s = JSON.parse(auto);
+    const ac = document.createElement("div");
+    ac.style.cssText = "background:#0d1117;border:1px solid #d29922;border-radius:10px;padding:12px;display:flex;justify-content:space-between;align-items:center;margin-top:8px";
+    ac.innerHTML = `<div><strong style="font-size:14px;color:#d29922">⚡ Auto-guardado</strong><br><span style="font-size:11px;color:#8b949e">${s.P.clubName||"Sin club"} · Edad ${s.P.age||16} · OVR ${s.P.overall||67}</span></div>
+      <button class="btn btn-small btn-primary" onclick="loadAutosave()">Cargar</button>`;
+    list.appendChild(ac);
+  }
+  document.getElementById("saves-modal").classList.add("active");
+}
+
+function saveGame(slot){
+  const name = prompt("Nombre de la partida:", P.name||"Carrera "+slot);
+  if(name===null) return;
+  const saveData = {name:name,P:JSON.parse(JSON.stringify(P)),savedAt:new Date().toISOString()};
+  localStorage.setItem("futlife_save_"+slot,JSON.stringify(saveData));
+  showToast("✅ Partida guardada en ranura "+(slot+1));
+  showSaveSlots();
+}
+
+function loadGame(slot){
+  const data = localStorage.getItem("futlife_save_"+slot);
+  if(!data){showToast("Ranura vacía");return}
+  const saved = JSON.parse(data);
+  Object.assign(P,saved.P);
+  document.getElementById("saves-modal").classList.remove("active");
+  document.getElementById("create-screen").classList.remove("active");
+  document.getElementById("main-screen").classList.add("active");
+  updateUI();updateAdvanceButton();
+  showToast("✅ Partida cargada: "+saved.name);
+}
+
+function deleteSave(slot){
+  if(!confirm("¿Borrar esta partida?")) return;
+  localStorage.removeItem("futlife_save_"+slot);
+  showToast("🗑 Partida borrada");
+  showSaveSlots();
+}
+
+function autoSave(){
+  if(!P.name||P.age<17) return;
+  const saveData = {name:P.name+" (Edad "+P.age+")",P:JSON.parse(JSON.stringify(P)),savedAt:new Date().toISOString()};
+  localStorage.setItem("futlife_autosave",JSON.stringify(saveData));
+}
+
+function loadAutosave(){
+  const data = localStorage.getItem("futlife_autosave");
+  if(!data) return;
+  const saved = JSON.parse(data);
+  Object.assign(P,saved.P);
+  document.getElementById("saves-modal").classList.remove("active");
+  document.getElementById("create-screen").classList.remove("active");
+  document.getElementById("main-screen").classList.add("active");
+  updateUI();updateAdvanceButton();
+  showToast("✅ Auto-guardado cargado");
+}
+
 function init(){
   try{
     initCreateScreen();
