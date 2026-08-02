@@ -1008,6 +1008,7 @@ const AUTO_CLASSES = {
   // HUMOR
   "Baile viral":["Conocido"],"Entrevista desastrosa":["Conocido"],"Tu canción viral":["Famoso"],
   "Te grabas un reality show":["Famoso"],"Rivalidad explosiva":["Conocido","Famoso"],
+  "Un niño te pide que seas su padrino":["Conocido","Famoso"],
   // LIFE
   "Oportunidad de negocio":["Clase Media","Rico"],"Patrocinio millonario":["Famoso","Superestrella"],
   "Donación benéfica":["Clase Media"],"Creas tu propia marca de ropa":["Rico","Famoso"],
@@ -1606,9 +1607,14 @@ function generateSeasonStats(){
   refreshOverall();
   const pos = P.position;
   const ovr = P.overall;
-  const roleMul = 1 + (P.squadRole-2)*0.15; // Role affects playing time
-  const baseMatches = Math.floor((25 + (P.squadRole*4) + randomBetween(0,8)) * (P.injured?0.3:1));
-  P.seasonMatches = Math.min(55, baseMatches);
+  const roleMul = 1 + (P.squadRole-2)*0.15;
+  // Realistic match counts based on club level
+  let baseMatches;
+  if(P.clubStars<=1) baseMatches = randomBetween(22, 30); // Cantera/reservas
+  else if(P.clubStars<=2) baseMatches = randomBetween(30, 40); // Semi-pro/2★
+  else if(P.clubStars<=3) baseMatches = randomBetween(34, 46); // Profesional (league + cup)
+  else baseMatches = randomBetween(42, 58); // Élite (league + cup + Champions/Libertadores)
+  P.seasonMatches = Math.floor(baseMatches * (P.injured?0.3:1) * (0.6+roleMul*0.4));
   P.careerMatches += P.seasonMatches;
 
   // Goals based on position and overall
@@ -1627,6 +1633,14 @@ function generateSeasonStats(){
   else if(pos==="MCD"||pos==="LI"||pos==="LD") P.seasonAssists = Math.floor(ovr*0.1 + randomBetween(0,3));
   else P.seasonAssists = Math.floor(ovr*0.03 + randomBetween(0,2));
   P.seasonAssists = Math.max(0, P.seasonAssists);
+
+  // Age scaling: youth score less, prime normal, veterans less
+  let ageMul = 1;
+  if(P.age<=18) ageMul = 0.35;
+  else if(P.age<=21) ageMul = 0.6;
+  else if(P.age>=33) ageMul = 0.7;
+  P.seasonGoals = Math.max(0, Math.floor(P.seasonGoals*ageMul));
+  P.seasonAssists = Math.max(0, Math.floor(P.seasonAssists*ageMul));
 
   // Add to career totals  
   P.careerGoals += P.seasonGoals;
@@ -1978,29 +1992,24 @@ function advanceYear(){
       P.stats[k] = Math.max(10, P.stats[k]-randomBetween(1,3));
     }
   }
-  // Passive growth: strong for youth, depends on discipline
-  if(P.age>=16 && P.age<=22){
-    // Base: +2 to all stats (rapid growth years)
+  // Passive growth: strong youth growth, club-dependent after 21
+  if(P.age>=16 && P.age<=21){
+    // Rapid youth development
     for(const k of Object.keys(P.stats)) P.stats[k] = Math.min(99, P.stats[k]+2);
-    // Disciplined: +1 extra to 3 random stats
     if(P.discipline>=66){
       const keys = shuffle(Object.keys(P.stats));
       for(let i=0;i<3;i++) P.stats[keys[i]] = Math.min(99, P.stats[keys[i]]+1);
     }
-    // Fiestero: less growth but more followers
-    if(P.discipline<=35){
-      P.followers += Math.floor(P.followers*0.15);
-    }
-  } else if(P.age>=23 && P.age<=28){
-    // Slower growth in mid-20s
+    if(P.discipline<=35) P.followers += Math.floor(P.followers*0.15);
+  } else if(P.age>=22 && P.age<=29){
+    // Club-dependent growth
+    const clubBoost = P.clubStars>=5 ? 3 : P.clubStars>=4 ? 2 : P.clubStars>=2 ? 1 : 0;
     for(const k of Object.keys(P.stats)) P.stats[k] = Math.min(99, P.stats[k]+1);
     if(P.discipline>=66){
       const keys = shuffle(Object.keys(P.stats));
-      P.stats[keys[0]] = Math.min(99, P.stats[keys[0]]+1);
+      for(let i=0;i<clubBoost;i++) P.stats[keys[i]] = Math.min(99, P.stats[keys[i]]+1);
     }
-    if(P.discipline<=35){
-      P.followers += Math.floor(P.followers*0.08);
-    }
+    if(P.discipline<=35) P.followers += Math.floor(P.followers*0.08);
   }
 
   // Injury recovery
@@ -2884,32 +2893,37 @@ function generateMatchRegistry(){
   const matches = P.seasonMatches||0;
   if(matches===0) return "";
   const opponents = ["Rival Local","Atlético Unido","Deportivo Norte","San Martín","Ciudad FC","Estrella Roja","León Blanco","Racing Sur"];
-  const picked = [];
-  for(let i=0;i<Math.min(6,matches);i++){
-    picked.push(opponents[Math.floor(Math.random()*opponents.length)]);
-  }
-  let html = '<h4 style="color:#8b949e;font-size:12px;text-transform:uppercase;letter-spacing:1px;margin-top:12px;margin-bottom:8px">⚽ Partidos destacados</h4><div style="font-size:12px;line-height:1.8">';
+  const n = Math.min(6,matches);
   let remainingGoals = goals;
   let remainingAssists = assists;
-  for(let i=0;i<picked.length;i++){
-    const opp = picked[i];
-    const isLast = i===picked.length-1;
-    const g = isLast?Math.max(0,remainingGoals):(remainingGoals>0?Math.min(randomBetween(0,3),remainingGoals):0);
+  let html = '<h4 style="color:#8b949e;font-size:12px;text-transform:uppercase;letter-spacing:1px;margin-top:12px;margin-bottom:8px">⚽ Partidos destacados</h4><div style="background:#0d1117;border-radius:10px;padding:12px;font-size:12px;line-height:2">';
+  
+  for(let i=0;i<n;i++){
+    const opp = opponents[Math.floor(Math.random()*opponents.length)];
+    const isLast = i===n-1;
+    // Distribute remaining goals/assists across matches
+    const maxG = Math.min(4, isLast?remainingGoals:Math.ceil(remainingGoals/(n-i)));
+    const g = remainingGoals>0?Math.min(randomBetween(isLast?0:1, Math.max(2,maxG)), remainingGoals):0;
     remainingGoals -= g;
-    const a = isLast?Math.max(0,remainingAssists):(remainingAssists>0&&Math.random()<0.4?Math.min(randomBetween(0,2),remainingAssists):0);
+    const a = (remainingAssists>0&&Math.random()<0.45)?Math.min(randomBetween(0,2),remainingAssists):0;
     remainingAssists -= a;
+    
+    // Make score consistent with player's goals
+    const teamGoals = Math.max(g, randomBetween(g, g+3));
+    const oppGoals = teamGoals>g+1?randomBetween(0,teamGoals-1):randomBetween(0,teamGoals);
     let result = "";
-    if(g>=2) result = `<span style="color:#7ee787">Victoria ${randomBetween(2,5)}-${randomBetween(0,1)}</span>`;
-    else if(g>=1) result = `<span style="color:#7ee787">Victoria ${randomBetween(1,2)}-${randomBetween(0,1)}</span>`;
-    else if(Math.random()<0.35) result = `<span style="color:#f85149">Derrota ${randomBetween(0,1)}-${randomBetween(1,3)}</span>`;
-    else result = `<span style="color:#d29922">Empate ${randomBetween(0,2)}-${randomBetween(0,2)}</span>`;
+    if(teamGoals>oppGoals) result = `<span style="color:#7ee787">Victoria ${teamGoals}-${oppGoals}</span>`;
+    else if(teamGoals===oppGoals) result = `<span style="color:#d29922">Empate ${teamGoals}-${oppGoals}</span>`;
+    else result = `<span style="color:#f85149">Derrota ${teamGoals}-${oppGoals}</span>`;
+    
     let extra = "";
     if(g>0) extra += ` ⚽x${g}`;
     if(a>0) extra += ` 🎯x${a}`;
-    if(g===0&&a===0) extra = " 📊 sin g/a";
-    html += `<div style="padding:2px 0">${result} vs ${opp}${extra}</div>`;
+    if(g===0&&a===0) extra = "";
+    html += `<div style="padding:3px 0;display:flex;justify-content:space-between;border-bottom:1px solid #21262d">
+      <span>vs ${opp}</span><span>${result}${extra?` · ${extra}`:""}</span></div>`;
   }
-  html += `<div style="margin-top:4px;color:#8b949e;font-size:11px">📊 ${picked.length} de ${matches} partidos</div></div>`;
+  html += `<div style="margin-top:4px;color:#8b949e;font-size:11px">📊 ${n} de ${matches} partidos</div></div>`;
   return html;
 }
 
@@ -3006,8 +3020,6 @@ function renderStats(){
   div.innerHTML = "";
   for(const [k,v] of Object.entries(STAT_NAMES)){
     const val = P.stats[k];
-    let color = v.color;
-    if(val>=90) color="#ffd700";
     div.innerHTML += `
       <div class="stat-row">
         <span class="stat-name">${v.name}</span>
@@ -3016,15 +3028,18 @@ function renderStats(){
       </div>
     `;
   }
+  // Career stats visual
+  const sg = P.seasonGoals||0, sa = P.seasonAssists||0, sm = P.seasonMatches||0;
+  const cg = P.careerGoals, ca = P.careerAssists, cm = P.careerMatches;
   div.innerHTML += `
-    <div style="margin-top:12px;display:flex;justify-content:space-between;font-size:12px;color:#8b949e">
-      <span>📊 Temporada: ${P.seasonMatches||0} partidos</span>
-      <span>⚽ ${P.seasonGoals||0} goles</span>
-      <span>🎯 ${P.seasonAssists||0} asist.</span>
+    <div style="background:#0d1117;border-radius:10px;padding:12px;margin-top:12px;display:flex;justify-content:space-around;text-align:center">
+      <div><span style="font-size:20px;font-weight:700;color:#7ee787">${sm}</span><br><span style="font-size:10px;color:#8b949e">Partidos</span></div>
+      <div><span style="font-size:20px;font-weight:700;color:#f0883e">${sg}</span><br><span style="font-size:10px;color:#8b949e">Goles</span></div>
+      <div><span style="font-size:20px;font-weight:700;color:#79c0ff">${sa}</span><br><span style="font-size:10px;color:#8b949e">Asistencias</span></div>
+      <div><span style="font-size:20px;font-weight:700;color:#a371f7">${formatMoney(P.salary)}</span><br><span style="font-size:10px;color:#8b949e">Salario</span></div>
     </div>
-    <div style="display:flex;justify-content:space-between;font-size:12px;color:#8b949e">
-      <span>Goles carrera: ${P.careerGoals}</span>
-      <span>Asistencias: ${P.careerAssists}</span>
+    <div style="margin-top:8px;font-size:11px;color:#8b949e;text-align:center">
+      📋 Carrera: ${cm} partidos · ⚽ ${cg} goles · 🎯 ${ca} asistencias
     </div>
   `;
 }
