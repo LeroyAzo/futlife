@@ -482,6 +482,10 @@ input[type=range]::-webkit-slider-thumb{
       <div id="stats-display"></div>
     </div>
     <div class="section-card">
+      <h3>🏆 Títulos</h3>
+      <div id="titles-display" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+    </div>
+    <div class="section-card">
       <h3>Historial de clubes</h3>
       <div class="club-list" id="club-history"></div>
     </div>
@@ -1830,6 +1834,7 @@ function updateUI(){
   renderRelationships();
   renderTrainOptions();
   renderClubHistory();
+  renderTitles();
   renderLifeItems();
   renderActions();
   renderAchievements();
@@ -3233,6 +3238,14 @@ function renderStats(){
 // ============================================================
 // CLUB HISTORY
 // ============================================================
+function renderTitles(){
+  const div = document.getElementById("titles-display");
+  if(!div) return;
+  const titles = P.titles||[];
+  if(titles.length===0){div.innerHTML="<span style='font-size:12px;color:#8b949e'>Aún sin títulos. ¡A ganar!</span>";return}
+  div.innerHTML = titles.map(t=>`<span style="background:#0d1117;border:1px solid #d29922;border-radius:8px;padding:6px 12px;font-size:11px;color:#d29922;font-weight:600">🏆 ${t}</span>`).join("");
+}
+
 function renderClubHistory(){
   const div = document.getElementById("club-history");
   div.innerHTML = "";
