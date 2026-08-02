@@ -2241,14 +2241,11 @@ function advanceYear(){
   currentYearEvents = [...picked, ...currentYearEvents];
   if(currentYearEvents.length===0) currentYearEvents.push(ALL_EVENTS.find(e=>e.type==="random"));
 
+  // Initialize season competitions at start of year
+  if(!P.leagueData || P.leagueData.currentMD>=38) initSeasonData();
+
   // Generate realistic base season stats BEFORE events
   generateSeasonStats();
-
-  // Initialize and advance competitions (6 matchdays per year = 38 total)
-  if(!P.leagueData || P.leagueData.currentMD>=38){initSeasonData();}
-  advanceMatchdays(6);
-  advanceContinental();
-  advanceCup();
 
   // Sort events chronologically - title events go LAST
   const eventOrder = {match:1,national:2,worldcup:2,transfer:3,injury:4,coach:5,contract:6,life:7,relationship:8,drama:9,humor:10,random:11};
@@ -2342,6 +2339,15 @@ function updateAdvanceButton(){
 }
 
 function showNextEvent(){
+  // Advance 6 matchdays per event (last event takes remaining)
+  if(P.leagueData && P.leagueData.currentMD<38){
+    const remaining = 38 - P.leagueData.currentMD;
+    const toAdvance = Math.min(7, Math.ceil(remaining / Math.max(1, 7 - currentEventIndex)));
+    advanceMatchdays(toAdvance);
+    advanceContinental();
+    advanceCup();
+  }
+  
   if(currentEventIndex >= currentYearEvents.length){
     showYearSummary();
     return;
@@ -2987,6 +2993,7 @@ function showYearSummary(){
       </div>
       ${getPositionText(leaguePos)}
       ${generateMatchRegistry()}
+      ${getCompetitionSummary()}
     </div>
   `;
   
@@ -3086,6 +3093,23 @@ function generateMatchRegistry(){
 }
 
 // ============================================================
+function getCompetitionSummary(){
+  let h='<div style="background:#0d1117;border-radius:8px;padding:10px;margin-top:10px;font-size:12px">';
+  h+='<strong style="color:#8b949e">🏆 Competencias</strong><br>';
+  if(P.leagueData&&P.leagueData.currentMD>0){
+    const st=getTeamStats(P.clubName);
+    const pos=getLeaguePosition();
+    h+=`<div style="margin-top:4px">📊 ${P.clubLeague}: ${pos}° · ${st.pts}pts en ${st.pj}PJ</div>`;
+  }
+  if(P.cd) h+=`<div>🏆 ${P.cd.name}: ${P.cd.winner&&P.cd.winner.name===P.clubName?'¡CAMPEÓN!':P.cd.phase}</div>`;
+  if(P.cupData) h+=`<div>🏅 Copa: ${P.cupData.round}</div>`;
+  h+='</div>';return h;
+}
+function getLeaguePosition(){
+  if(!P.leagueData) return "-";
+  const s=P.leagueData.teams.map(t=>{const x=getTeamStats(t.name);return{...t,...x}}).sort((a,b)=>b.pts-a.pts||(b.gf-b.gc)-(a.gf-a.gc));
+  return s.findIndex(t=>t.name===P.clubName)+1;
+}
 function renderTrainOptions(){
   const div = document.getElementById("train-options");
   div.innerHTML = "";
@@ -3744,14 +3768,46 @@ function renderContinentalTable(){
   if(!cd){d.innerHTML="<p style='color:#8b949e;font-size:12px'>Sin competición</p>";return}
   let h=`<strong>🏆 ${cd.name}</strong> · ${cd.phase}<br>`;
   if(cd.current&&cd.current.teams&&cd.phase!=="Finalizada"){
-    for(let i=0;i<cd.current.teams.length;i+=2){
-      const a=cd.current.teams[i],b=cd.current.teams[i+1];h+=`<div style="font-size:12px;padding:1px 0">${a.name} vs ${b?b.name:'BYE'}</div>`;
-    }
-    if(cd.current.results) h+=`<div style="font-size:11px;color:#d29922;margin-top:4px">${cd.current.results.join('<br>')}</div>`;
+    h+=renderBracket(cd.current.teams, cd.current.results||[]);
   }
-  if(cd.finalResult) h+=`<div style="font-weight:700;color:#d29922">⚡ ${cd.finalResult}</div>`;
-  if(cd.winner) h+=`<div style="color:#7ee787">🏆 ${cd.winner.name} campeón</div>`;
+  if(cd.finalResult) h+=`<div style="font-weight:700;color:#d29922;margin-top:8px;font-size:13px">⚡ ${cd.finalResult}</div>`;
+  if(cd.winner) h+=`<div style="color:#7ee787;font-size:14px;font-weight:700;margin-top:4px">🏆 ¡${cd.winner.name} campeón!</div>`;
   d.innerHTML=h;
+}
+
+function renderBracket(teams, results){
+  if(teams.length<=4){ // Show compact bracket for 4 or fewer teams
+    let h='<div style="display:flex;gap:8px;align-items:center;justify-content:center;font-size:11px;margin-top:8px;overflow-x:auto;padding:8px">';
+    for(let i=0;i<teams.length;i+=2){
+      const a=teams[i],b=teams[i+1];
+      const res = results[Math.floor(i/2)]||"";
+      h+=`<div style="display:flex;flex-direction:column;gap:4px;min-width:120px">
+        <div style="background:#0d1117;border:1px solid ${a.isPlayer?'#2ea043':'#21262d'};border-radius:6px;padding:6px 8px;text-align:center;color:${a.isPlayer?'#7ee787':'#e6edf3'}">${a.name}</div>
+        <div style="text-align:center;color:#8b949e;font-size:10px">vs</div>
+        <div style="background:#0d1117;border:1px solid ${b&&b.isPlayer?'#2ea043':'#21262d'};border-radius:6px;padding:6px 8px;text-align:center;color:${b&&b.isPlayer?'#7ee787':'#e6edf3'}">${b?b.name:'BYE'}</div>
+        ${res?`<div style="text-align:center;color:#d29922;font-size:10px">${res}</div>`:''}
+      </div>`;
+      if(i+2<teams.length) h+=`<div style="font-size:18px;color:#30363d">→</div>`;
+    }
+    h+='</div>';
+    return h;
+  } else { // List format for larger brackets
+    let h='<div style="font-size:12px;margin-top:6px">';
+    for(let i=0;i<teams.length;i+=2){
+      const a=teams[i],b=teams[i+1];
+      const isPa=a.isPlayer||a.name===P.clubName;
+      const isPb=b&&(b.isPlayer||b.name===P.clubName);
+      const res=results[Math.floor(i/2)]||"";
+      h+=`<div style="padding:2px 0;display:flex;justify-content:space-between;border-bottom:1px solid #21262d">
+        <span style="color:${isPa?'#7ee787':'#e6edf3'}">${a.name}${isPa?' ⭐':''}</span>
+        <span style="color:#8b949e">vs</span>
+        <span style="color:${isPb?'#7ee787':'#e6edf3'}">${b?b.name:'BYE'}${isPb?' ⭐':''}</span>
+        ${res?`<span style="color:#d29922;font-size:10px">${res}</span>`:''}
+      </div>`;
+    }
+    h+='</div>';
+    return h;
+  }
 }
 
 function renderCupTable(){
