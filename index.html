@@ -3113,7 +3113,7 @@ function getCompetitionSummary(){
 }
 function getLeaguePosition(){
   if(!P.leagueData) return "-";
-  const s=P.leagueData.teams.map(t=>{const x=getTeamStats(t.name);return{...t,...x}}).sort((a,b)=>b.pts-a.pts||(b.gf-b.gc)-(a.gf-a.gc));
+  const s=P.leagueData.teams.map(t=>{const x=getTeamStats(t.name);return{...t,...x,gd:x.gf-x.gc}}).sort((a,b)=>b.pts-a.pts||b.gd-a.gd||b.gf-a.gf);
   return s.findIndex(t=>t.name===P.clubName)+1;
 }
 function renderTrainOptions(){
@@ -3671,13 +3671,13 @@ function advanceMatchdays(count){
 }
 
 function getTeamStats(teamName){
-  let pts=0, pj=0, gf=0, gc=0;
-  P.leagueData.playedMatches.forEach(m=>{
+  let pts=0, pj=0, gf=0, gc=0, w=0, d=0;
+  (P.leagueData?.playedMatches||[]).forEach(m=>{
     const t = P.leagueData.teams;
-    if(t[m.homeIdx].name===teamName){pj++;gf+=m.result.home;gc+=m.result.away;if(m.result.home>m.result.away) pts+=3;else if(m.result.home===m.result.away) pts+=1}
-    if(t[m.awayIdx].name===teamName){pj++;gf+=m.result.away;gc+=m.result.home;if(m.result.away>m.result.home) pts+=3;else if(m.result.away===m.result.home) pts+=1}
+    if(t[m.homeIdx].name===teamName){pj++;gf+=m.result.home;gc+=m.result.away;if(m.result.home>m.result.away){pts+=3;w++}else if(m.result.home===m.result.away){pts+=1;d++}}
+    if(t[m.awayIdx].name===teamName){pj++;gf+=m.result.away;gc+=m.result.home;if(m.result.away>m.result.home){pts+=3;w++}else if(m.result.away===m.result.home){pts+=1;d++}}
   });
-  return {pts,pj,gf,gc};
+  return {pts,pj,gf,gc,w,d,l:pj-w-d};
 }
 
 function initContinental(){
@@ -3702,7 +3702,10 @@ function advanceContinental(){
   const cd = P.cd; if(!cd) return;
   cd.stage++;
   if(cd.stage===1) return;
-  if(cd.stage===2){cd.phase="Fase de grupos"; cd.groups=Array.from({length:8},()=>cd.teams.splice(0,6)); cd.advancers=cd.groups.map(g=>shuffle([...g]).slice(0,4)).flat();}
+  if(cd.stage===2){cd.phase="Fase de grupos"; cd.groups=Array.from({length:8},()=>cd.teams.splice(0,6)); cd.advancers=cd.groups.map(g=>{
+    const sorted=[...g].sort((a,b)=>(b.stars||2)-(a.stars||2)+randomBetween(-2,2));
+    return sorted.slice(0,4);
+  }).flat();}
   else if(cd.stage===3&&cd.advancers){cd.phase="Octavos (Ida y Vuelta)"; cd.current=simKnockoutTL(shuffle(cd.advancers).slice(0,16),8);}
   else if(cd.stage===4&&cd.current.teams){cd.phase="Cuartos (Ida y Vuelta)"; cd.current=simKnockoutTL(cd.current.teams,4);}
   else if(cd.stage===5&&cd.current.teams){cd.phase="Semifinal (Ida y Vuelta)"; cd.current=simKnockoutTL(cd.current.teams,2);}
@@ -3742,13 +3745,16 @@ function simKnockoutTL(teams, target){
 
 function advanceCup(){
   const cup=P.cupData; if(!cup||cup.teams.length<=1) return;
-  for(let r=0;r<2;r++){
-    if(cup.teams.length<=1){cup.round="Campeón";if(cup.teams[0].isPlayer){P.titles.push("🏆 Copa");P.timeline.push(`Edad ${P.age}: ¡Campeón de Copa!`)}return}
-    const nr=[]; const rounds=["32avos","16avos","Octavos","Cuartos","Semifinal","Final","Campeón"];
-    for(let i=0;i<cup.teams.length;i+=2){if(i+1>=cup.teams.length){nr.push(cup.teams[i]);break}const res=simMatch(cup.teams[i].stars,cup.teams[i+1].stars);nr.push(res.home>res.away?cup.teams[i]:res.away>res.home?cup.teams[i+1]:(Math.random()<0.5?cup.teams[i]:cup.teams[i+1]))}
-    cup.teams=nr; cup.round=rounds[rounds.indexOf(cup.round)+1]||"Campeón";
-    if(cup.round==="Campeón"&&cup.teams[0].isPlayer){P.titles.push("🏆 Copa");P.timeline.push(`Edad ${P.age}: ¡Campeón de Copa!`)}
+  // 1 round per event
+  if(cup.teams.length<=1){cup.round="Campeón";if(cup.teams[0].isPlayer){P.titles.push("🏆 Copa");P.timeline.push(`Edad ${P.age}: ¡Campeón de Copa!`)}return}
+  const nr=[]; const rounds=["32avos","16avos","Octavos","Cuartos","Semifinal","Final","Campeón"];
+  for(let i=0;i<cup.teams.length;i+=2){
+    if(i+1>=cup.teams.length){nr.push(cup.teams[i]);break}
+    const res=simMatch(cup.teams[i].stars,cup.teams[i+1].stars);
+    nr.push(res.home>res.away?cup.teams[i]:res.away>res.home?cup.teams[i+1]:(Math.random()<0.5?cup.teams[i]:cup.teams[i+1]));
   }
+  cup.teams=nr; cup.round=rounds[rounds.indexOf(cup.round)+1]||"Campeón";
+  if(cup.round==="Campeón"&&cup.teams[0].isPlayer){P.titles.push("🏆 Copa");P.timeline.push(`Edad ${P.age}: ¡Campeón de Copa!`)}
 }
 
 function renderTables(){
@@ -3759,10 +3765,10 @@ function renderTables(){
 function renderLeagueTable(){
   const d=document.getElementById("league-table"); if(!P.leagueData){d.innerHTML="<p style='color:#8b949e;font-size:12px'>Sin datos</p>";return}
   const standings=P.leagueData.teams.map(t=>{const s=getTeamStats(t.name);return{...t,...s,gd:s.gf-s.gc}}).sort((a,b)=>b.pts-a.pts||b.gd-a.gd||b.gf-a.gf);
-  let h='<div style="overflow-x:auto"><table style="width:100%;font-size:11px;border-collapse:collapse"><tr style="color:#8b949e;text-align:center;border-bottom:1px solid #21262d"><th style="padding:3px;text-align:left">#</th><th style="text-align:left">Equipo</th><th>PJ</th><th>PTS</th><th>GF</th><th>GC</th></tr>';
+  let h='<div style="overflow-x:auto"><table style="width:100%;font-size:11px;border-collapse:collapse"><tr style="color:#8b949e;text-align:center;border-bottom:1px solid #21262d"><th style="padding:3px;text-align:left">#</th><th style="text-align:left">Equipo</th><th>PJ</th><th>G</th><th>E</th><th>P</th><th>GF</th><th>GC</th><th>PTS</th></tr>';
   standings.forEach((t,i)=>{
     const isP=t.isPlayer||t.name===P.clubName;
-    h+=`<tr style="text-align:center;cursor:pointer;background:${isP?'rgba(46,160,67,0.12)':'transparent'}" onclick="showTeamDetail('${t.name.replace(/'/g,"\\'")}')" onmouseenter="this.style.background='${isP?'rgba(46,160,67,0.2)':'#161b22'}'" onmouseleave="this.style.background='${isP?'rgba(46,160,67,0.12)':'transparent'}'"><td style="padding:3px">${i+1}</td><td style="text-align:left;font-weight:${isP?'700':'400'};color:${isP?'#7ee787':'#e6edf3'}">${t.name}</td><td>${t.pj}</td><td style="font-weight:700">${t.pts}</td><td>${t.gf}</td><td>${t.gc}</td></tr>`;
+    h+=`<tr style="text-align:center;cursor:pointer;background:${isP?'rgba(46,160,67,0.12)':'transparent'}" onclick="showTeamDetail('${t.name.replace(/'/g,"\\'")}')" onmouseenter="this.style.background='${isP?'rgba(46,160,67,0.2)':'#161b22'}'" onmouseleave="this.style.background='${isP?'rgba(46,160,67,0.12)':'transparent'}'"><td style="padding:3px">${i+1}</td><td style="text-align:left;font-weight:${isP?'700':'400'};color:${isP?'#7ee787':'#e6edf3'}">${t.name}</td><td>${t.pj}</td><td>${t.w||0}</td><td>${t.d||0}</td><td>${t.l||0}</td><td>${t.gf}</td><td>${t.gc}</td><td style="font-weight:700">${t.pts}</td></tr>`;
   });
   h+='</table></div><div style="margin-top:6px;font-size:10px;color:#8b949e">Jornada '+P.leagueData.currentMD+'/38 · Top 3 → continental</div>';
   d.innerHTML=h;
