@@ -2578,7 +2578,7 @@ function resolveEvent(event, option){
               const loser = cd.current.teams.find(t=>t.name!==P.clubName)||cd.current.teams[1];
               cd.winner = loser; cd.finalResult = `❌ ${P.clubName} pierde en penales`;
             }
-            cd.phase = "Finalizada"; cd.finalPlayed = true;
+            cd.phase = "Finalizada"; cd.finalPlayed = true; cd.penaltyResolved = true;
           }
           updateUI();
           // Advance to next event
@@ -3862,7 +3862,8 @@ function advanceContinental(){
         ]
       });
     } else if(cd.finalPlayed||!playerIn){
-      // Auto-simulate if already played or player not in final
+      // Auto-simulate if already played or player not in final  
+      if(cd.penaltyResolved) return; // Penalty minigame already handled it
       cd.finalPlayed = false;
       cd.phase="Final (Ida y Vuelta)";
       const final=simTwoLegged(t1,t2);
@@ -3870,6 +3871,7 @@ function advanceContinental(){
       cd.winner=final.winner; cd.phase="Finalizada";
       if(final.winner.isPlayer){P.titles.push("🏆 "+cd.name);P.seasonWonTitle=true;}
     }
+  }
 }
 
 function simKnockout(teams, target){
