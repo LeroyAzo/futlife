@@ -3932,7 +3932,7 @@ function showTeamDetail(name){
 function renderContinentalTable(){
   const d=document.getElementById("continental-table"); const cd=P.cd;
   if(!cd){d.innerHTML="<p style='color:#8b949e;font-size:12px'>Sin competición</p>";return}
-  let h=`<strong>🏆 ${cd.name}</strong> · ${cd.phase}<br>`;
+  let h=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><strong style="font-size:14px">🏆 ${cd.name}</strong><span style="color:#8b949e;font-size:12px">${cd.phase}</span></div>`;
   if(cd.current&&cd.current.teams&&cd.phase!=="Finalizada"){
     h+=renderBracket(cd.current.teams, cd.current.results||[], cd.phase);
   }
