@@ -2109,6 +2109,7 @@ function advanceYear(){
   currentYearEvents = [];
   P.age++;
   P.year++;
+  P.midYearTransfer = false;
   P.seasonGoals = 0;
   P.seasonAssists = 0;
   P.seasonMatches = 0;
@@ -2838,6 +2839,7 @@ function finalizeTransfer(club, salary, years, role, clausePct){
   document.getElementById("tf-response").style.display = "block";
   document.getElementById("tf-submit").disabled = true;
   document.getElementById("tf-submit").textContent = "✓ Firmado";
+  P.midYearTransfer = true; // Mark mid-year transfer
   updateUI();
   checkAchievements();
 
@@ -2985,7 +2987,11 @@ function openNegotiationFromPicker(idx){
 // ============================================================
 function showYearSummary(){
   document.getElementById("sum-year").textContent = P.age;
-  P.competitionResult = generateCompetitionResults(); // Generate now with current club
+  // Only regenerate competition if player hasn't transferred mid-year
+  const clubChanges = P.clubHistory.filter(c=>c.midYearTransfer).length;
+  if(!P.midYearTransfer){
+    P.competitionResult = generateCompetitionResults();
+  }
   const list = document.getElementById("sum-events-list");
   const cr = P.competitionResult||{league:"No disponible",leaguePos:"-",teamStrength:0};
   const leaguePos = P.seasonWonTitle ? 1 : cr.leaguePos;
@@ -3000,9 +3006,9 @@ function showYearSummary(){
         <div><span style="font-size:24px;font-weight:700;color:#79c0ff">${P.seasonAssists||0}</span><br><span style="font-size:11px;color:#8b949e">Asistencias</span></div>
       </div>
       <div style="text-align:center;font-size:18px;font-weight:700;color:#d29922">
-        🏆 ${getPositionMedal(leaguePos)} ${leaguePos}° lugar en ${cr.league}
+        ${P.midYearTransfer?'🔄 Transferido durante la temporada':`🏆 ${getPositionMedal(leaguePos)} ${leaguePos}° lugar en ${cr.league}`}
       </div>
-      ${getPositionText(leaguePos)}
+      ${P.midYearTransfer?'<p style="text-align:center;color:#8b949e;font-size:13px">Te uniste a mitad de año. Sin datos de liga para esta temporada.</p>':getPositionText(leaguePos)}
       ${generateMatchRegistry()}
       ${getCompetitionSummary()}
     </div>
