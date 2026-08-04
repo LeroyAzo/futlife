@@ -2839,7 +2839,17 @@ function finalizeTransfer(club, salary, years, role, clausePct){
   document.getElementById("tf-response").style.display = "block";
   document.getElementById("tf-submit").disabled = true;
   document.getElementById("tf-submit").textContent = "✓ Firmado";
-  P.midYearTransfer = true; // Mark mid-year transfer
+  P.midYearTransfer = true;
+  // Save old club league data for year summary
+  if(P.leagueData){
+    P.oldLeagueData = {
+      club:P.clubHistory.length>1?P.clubHistory[P.clubHistory.length-2]?.name:"Club anterior",
+      league:P.clubHistory.length>1?P.clubHistory[P.clubHistory.length-2]?.league:"Liga",
+      currentMD:P.leagueData.currentMD,
+      teams:P.leagueData.teams,
+      playedMatches:P.leagueData.playedMatches.slice()
+    };
+  }
   updateUI();
   checkAchievements();
 
@@ -3006,9 +3016,9 @@ function showYearSummary(){
         <div><span style="font-size:24px;font-weight:700;color:#79c0ff">${P.seasonAssists||0}</span><br><span style="font-size:11px;color:#8b949e">Asistencias</span></div>
       </div>
       <div style="text-align:center;font-size:18px;font-weight:700;color:#d29922">
-        ${P.midYearTransfer?'🔄 Transferido durante la temporada':`🏆 ${getPositionMedal(leaguePos)} ${leaguePos}° lugar en ${cr.league}`}
+        ${P.midYearTransfer?renderDualClubSummary():`🏆 ${getPositionMedal(leaguePos)} ${leaguePos}° lugar en ${cr.league}`}
       </div>
-      ${P.midYearTransfer?'<p style="text-align:center;color:#8b949e;font-size:13px">Te uniste a mitad de año. Sin datos de liga para esta temporada.</p>':getPositionText(leaguePos)}
+      ${P.midYearTransfer?'':getPositionText(leaguePos)}
       ${generateMatchRegistry()}
       ${getCompetitionSummary()}
     </div>
@@ -3125,6 +3135,38 @@ function getLeaguePosition(){
   const s=P.leagueData.teams.map(t=>{const x=getTeamStats(t.name);return{...t,...x,gd:x.gf-x.gc}}).sort((a,b)=>b.pts-a.pts||b.gd-a.gd||b.gf-a.gf);
   return s.findIndex(t=>t.name===P.clubName)+1;
 }
+function getTeamStatsFromData(data, teamName){
+  let pts=0,pj=0,gf=0,gc=0;
+  (data.playedMatches||[]).forEach(m=>{
+    const t=data.teams;
+    if(t[m.homeIdx].name===teamName){pj++;gf+=m.result.home;gc+=m.result.away;if(m.result.home>m.result.away)pts+=3;else if(m.result.home===m.result.away)pts+=1}
+    if(t[m.awayIdx].name===teamName){pj++;gf+=m.result.away;gc+=m.result.home;if(m.result.away>m.result.home)pts+=3;else if(m.result.away===m.result.home)pts+=1}
+  });
+  return {pts,pj,gf,gc};
+}
+
+function renderDualClubSummary(){
+  let h='<div style="text-align:center;font-size:13px;color:#d29922">🔄 Transferido durante la temporada</div><div style="display:flex;gap:8px;margin-top:8px;font-size:11px">';
+  if(P.oldLeagueData){
+    const oldSt = getTeamStatsFromData(P.oldLeagueData, P.oldLeagueData.club);
+    h+=`<div style="flex:1;background:#0d1117;border-radius:8px;padding:8px;text-align:center">
+      <div style="color:#8b949e;font-weight:600">🏟️ ${P.oldLeagueData.club}</div>
+      <div style="color:#8b949e;font-size:10px">${P.oldLeagueData.league}</div>
+      <div style="margin-top:4px"><span style="color:#7ee787;font-weight:700">${oldSt.pj||0}PJ</span> · ⚽${oldSt.gf||0} · ${oldSt.pts||0}pts</div>
+    </div>`;
+  }
+  if(P.leagueData){
+    const newSt = getTeamStats(P.clubName);
+    h+=`<div style="flex:1;background:#0d1117;border:1px solid #2ea043;border-radius:8px;padding:8px;text-align:center">
+      <div style="color:#7ee787;font-weight:600">🏟️ ${P.clubName}</div>
+      <div style="color:#8b949e;font-size:10px">${P.clubLeague||""}</div>
+      <div style="margin-top:4px"><span style="color:#7ee787;font-weight:700">${newSt.pj||0}PJ</span> · ⚽${newSt.gf||0} · ${newSt.pts||0}pts</div>
+    </div>`;
+  }
+  h+='</div>';
+  return h;
+}
+
 function renderTrainOptions(){
   const div = document.getElementById("train-options");
   div.innerHTML = "";
