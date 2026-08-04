@@ -2061,6 +2061,7 @@ function getEligibleEvents(){
     let ok = true;
     // Basic type filters
     if(e.type==="transfer" && P.clubStars>=5) ok = false;
+    if(e.type==="transfer" && P.age<18) ok = false; // No transfers in first year
     if(e.type==="worldcup") ok = false;
     if(e.type==="national" && P.age<18) ok = false;
     if(e.type==="relationship" && P.age<18) ok = false;
@@ -2154,7 +2155,7 @@ function advanceYear(){
   }
 
   // Youth promotion check
-  if(P.clubStars===1 && P.age<=22 && P.overall>=60){
+  if(P.clubStars===1 && P.age>=17 && P.overall>=60){
     const parentName = YOUTH_PARENT[P.clubName];
     if(parentName){
       const mainClub = CLUBS.find(c=>c.name===parentName);
@@ -2639,7 +2640,7 @@ function transferToRetirementLeague(){
 }
 
 function checkClubOffers(){
-  if(P.clubStars===0) return;
+  if(P.clubStars===0||P.age<18||P.clubStars===1) return; // No offers in first year or at cantera
   const betterClubs = CLUBS.filter(c=>c.stars>P.clubStars && c.minOverall<=P.overall+3 && c.name!==P.clubName);
   if(betterClubs.length>0 && Math.random()<0.35){
     const club = pick(betterClubs);
