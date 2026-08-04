@@ -1842,18 +1842,12 @@ function generateSeasonStats(){
 }
 
 function generateCompetitionResults(){
-  const stars = P.clubStars;
-  const ovr = P.overall;
-  const teamStrength = Math.min(20, Math.floor(stars*4 + ovr/8 + randomBetween(-3,2)));
-  const leaguePos = Math.max(1, Math.min(20, 21 - teamStrength + randomBetween(-2,2)));
-
-  // League name from current club
+  const actualPos = getLeaguePosition();
   const league = P.clubLeague||"Liga";
-
   return {
     league: league,
-    leaguePos: leaguePos,
-    teamStrength: teamStrength
+    leaguePos: actualPos==="-"?Math.floor(21-P.clubStars*3-randomBetween(-2,3)):actualPos,
+    teamStrength: P.clubStars*4
   };
 }
 
