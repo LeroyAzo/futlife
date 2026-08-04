@@ -3201,13 +3201,9 @@ function generateMatchRegistry(){
 function getCompetitionSummary(){
   let h='<div style="background:#0d1117;border-radius:8px;padding:10px;margin-top:10px;font-size:12px">';
   h+='<strong style="color:#8b949e">🏆 Competencias</strong><br>';
-  if(P.leagueData&&P.leagueData.currentMD>0){
-    const st=getTeamStats(P.clubName);
-    const pos=getLeaguePosition();
-    h+=`<div style="margin-top:4px">📊 ${P.clubLeague}: ${pos}° · ${st.pts}pts en ${st.pj}PJ</div>`;
-  }
-  if(P.cd) h+=`<div>🏆 ${P.cd.name}: ${P.cd.winner&&P.cd.winner.name===P.clubName?'¡CAMPEÓN!':P.cd.phase}</div>`;
+  if(P.cd) h+=`<div>🌍 ${P.cd.name}: ${P.cd.winner&&P.cd.winner.name===P.clubName?'¡CAMPEÓN!🏆':P.cd.phase}</div>`;
   if(P.cupData) h+=`<div>🏅 Copa: ${P.cupData.round}</div>`;
+  if(!P.cd&&!P.cupData) h+='<div style="color:#8b949e">Sin competiciones esta temporada</div>';
   h+='</div>';return h;
 }
 function getLeaguePosition(){
