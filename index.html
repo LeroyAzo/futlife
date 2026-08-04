@@ -3934,7 +3934,7 @@ function renderContinentalTable(){
   if(!cd){d.innerHTML="<p style='color:#8b949e;font-size:12px'>Sin competición</p>";return}
   let h=`<strong>🏆 ${cd.name}</strong> · ${cd.phase}<br>`;
   if(cd.current&&cd.current.teams&&cd.phase!=="Finalizada"){
-    h+=renderBracket(cd.current.teams, cd.current.results||[]);
+    h+=renderBracket(cd.current.teams, cd.current.results||[], cd.phase);
   }
   if(cd.finalResult) h+=`<div style="font-weight:700;color:#d29922;margin-top:8px;font-size:13px">⚡ ${cd.finalResult}</div>`;
   if(cd.winner) h+=`<div style="color:#7ee787;font-size:14px;font-weight:700;margin-top:4px">🏆 ¡${cd.winner.name} campeón!</div>`;
@@ -3979,9 +3979,11 @@ function renderBracket(teams, results){
 function renderCupTable(){
   const d=document.getElementById("cup-table"); const cup=P.cupData;
   if(!cup){d.innerHTML="<p style='color:#8b949e;font-size:12px'>Sin copa</p>";return}
-  let h=`<strong>🏅 Copa</strong> · ${cup.round}<br>`;
-  if(cup.teams.length<=8&&cup.teams.length>1){for(let i=0;i<cup.teams.length;i+=2){const a=cup.teams[i],b=cup.teams[i+1];h+=`<div style="font-size:12px">${a.name} vs ${b?b.name:'BYE'}</div>`}}
-  if(cup.round==="Campeón") h+=`<div style="color:#7ee787">🏆 ¡${P.clubName}!</div>`;
+  let h=`<div style="display:flex;justify-content:space-between;margin-bottom:6px"><strong>🏅 Copa</strong><span style="color:#8b949e;font-size:11px">${cup.round}</span></div>`;
+  if(cup.teams.length<=8&&cup.teams.length>1){
+    h+=renderBracket(cup.teams, []);
+  }
+  if(cup.round==="Campeón") h+=`<div style="text-align:center;color:#7ee787;font-size:14px;font-weight:700">🏆 ¡${P.clubName} campeón!</div>`;
   d.innerHTML=h;
 }
 
