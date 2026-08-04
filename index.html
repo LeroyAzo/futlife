@@ -3941,39 +3941,35 @@ function renderContinentalTable(){
   d.innerHTML=h;
 }
 
-function renderBracket(teams, results){
-  if(teams.length<=4){ // Show compact bracket for 4 or fewer teams
-    let h='<div style="display:flex;gap:8px;align-items:center;justify-content:center;font-size:11px;margin-top:8px;overflow-x:auto;padding:8px">';
-    for(let i=0;i<teams.length;i+=2){
-      const a=teams[i],b=teams[i+1];
-      const res = results[Math.floor(i/2)]||"";
-      h+=`<div style="display:flex;flex-direction:column;gap:4px;min-width:120px">
-        <div style="background:#0d1117;border:1px solid ${a.isPlayer?'#2ea043':'#21262d'};border-radius:6px;padding:6px 8px;text-align:center;color:${a.isPlayer?'#7ee787':'#e6edf3'}">${a.name}</div>
-        <div style="text-align:center;color:#8b949e;font-size:10px">vs</div>
-        <div style="background:#0d1117;border:1px solid ${b&&b.isPlayer?'#2ea043':'#21262d'};border-radius:6px;padding:6px 8px;text-align:center;color:${b&&b.isPlayer?'#7ee787':'#e6edf3'}">${b?b.name:'BYE'}</div>
-        ${res?`<div style="text-align:center;color:#d29922;font-size:10px">${res}</div>`:''}
-      </div>`;
-      if(i+2<teams.length) h+=`<div style="font-size:18px;color:#30363d">→</div>`;
-    }
-    h+='</div>';
-    return h;
-  } else { // List format for larger brackets
-    let h='<div style="font-size:12px;margin-top:6px">';
-    for(let i=0;i<teams.length;i+=2){
-      const a=teams[i],b=teams[i+1];
-      const isPa=a.isPlayer||a.name===P.clubName;
-      const isPb=b&&(b.isPlayer||b.name===P.clubName);
-      const res=results[Math.floor(i/2)]||"";
-      h+=`<div style="padding:2px 0;display:flex;justify-content:space-between;border-bottom:1px solid #21262d">
-        <span style="color:${isPa?'#7ee787':'#e6edf3'}">${a.name}${isPa?' ⭐':''}</span>
-        <span style="color:#8b949e">vs</span>
-        <span style="color:${isPb?'#7ee787':'#e6edf3'}">${b?b.name:'BYE'}${isPb?' ⭐':''}</span>
-        ${res?`<span style="color:#d29922;font-size:10px">${res}</span>`:''}
-      </div>`;
-    }
-    h+='</div>';
-    return h;
+function renderBracket(teams, results, phase){
+  const n = teams.length;
+  if(n>8) return renderBracketList(teams, results);
+  let h = '<div style="overflow-x:auto;padding:6px 0"><table style="width:100%;border-collapse:separate;border-spacing:3px">';
+  for(let i=0;i<teams.length;i+=2){
+    const a=teams[i], b=teams[i+1];
+    const isPa=a.isPlayer||a.name===P.clubName, isPb=b&&(b.isPlayer||b.name===P.clubName);
+    const res=results[Math.floor(i/2)]||"";
+    h+=`<tr><td style="width:43%;text-align:right;padding:5px 6px;color:${isPa?'#7ee787':'#e6edf3'};font-size:11px;font-weight:${isPa?'700':'400'}">${a.name}${isPa?' ⭐':''}</td>
+      <td style="width:14%;text-align:center;color:#30363d;font-size:10px;font-family:monospace">├─</td>
+      <td style="width:43%;text-align:left;padding:5px 6px;color:${isPb?'#7ee787':'#e6edf3'};font-size:11px;font-weight:${isPb?'700':'400'}">${isPb?'⭐ ':''}${b?b.name:'BYE'}</td></tr>`;
+    if(res) h+=`<tr><td colspan="3" style="text-align:center;color:#d29922;font-size:10px;padding:0 0 5px 0">↳ ${res}</td></tr>`;
+    if(i+2<teams.length) h+=`<tr><td colspan="3" style="border-bottom:1px solid #21262d;padding:0"></td></tr>`;
   }
+  h+='</table></div>'; return h;
+}
+
+function renderBracketList(teams, results){
+  let h='<div style="font-size:12px;margin-top:4px">';
+  for(let i=0;i<teams.length;i+=2){
+    const a=teams[i],b=teams[i+1],isPa=a.isPlayer||a.name===P.clubName,isPb=b&&(b.isPlayer||b.name===P.clubName),res=results[Math.floor(i/2)]||"";
+    h+=`<div style="padding:3px 0;display:flex;justify-content:space-between;border-bottom:1px solid #21262d;font-size:11px">
+      <span style="color:${isPa?'#7ee787':'#e6edf3'};font-weight:${isPa?'700':'400'}">${a.name}${isPa?' ⭐':''}</span>
+      <span style="color:#8b949e">vs</span>
+      <span style="color:${isPb?'#7ee787':'#e6edf3'};font-weight:${isPb?'700':'400'}">${b?b.name:'BYE'}${isPb?' ⭐':''}</span>
+      ${res?`<span style="color:#d29922;font-size:10px">${res}</span>`:''}
+    </div>`;
+  }
+  h+='</div>'; return h;
 }
 
 function renderCupTable(){
