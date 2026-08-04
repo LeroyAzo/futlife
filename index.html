@@ -2218,7 +2218,9 @@ function advanceYear(){
     }
   }
 
-  // Generate exactly 6 events (2 months each)
+  // Generate exactly 6 events per year (2 months each)
+  // Reduce to 5 random if contract renewal will add one extra
+  const maxRandom = (P.contractYears<=1 && P.clubStars>0) ? 5 : 6;
   const eligible = getEligibleEvents();
   let filtered = eligible.filter(e=>!P.lastEventIds.includes(e.title));
   if(filtered.length<15) filtered = [...eligible];
@@ -2226,7 +2228,7 @@ function advanceYear(){
   const picked = [];
   const usedTypes = new Set();
   for(const e of shuffled){
-    if(picked.length>=6) break;
+    if(picked.length>=maxRandom) break;
     const typeCount = picked.filter(p=>p.type===e.type).length;
     if(typeCount>=2) continue;
     if(e.type==="match" && typeCount>=0){} // Can have 2 match events
@@ -2236,8 +2238,8 @@ function advanceYear(){
     P.lastEventIds.push(e.title);
     if(P.lastEventIds.length>25) P.lastEventIds.shift();
   }
-  // Fill up to 6
-  while(picked.length<6){
+  // Fill up to the required count
+  while(picked.length<maxRandom){
     const rest = shuffled.filter(e=>!picked.includes(e));
     if(rest.length===0) break;
     picked.push(rest[0]);
@@ -2335,9 +2337,10 @@ function updateAdvanceButton(){
   const btn = document.getElementById("btn-advance");
   if(!btn) return;
   const months = ["Ene-Feb","Mar-Abr","May-Jun","Jul-Ago","Sep-Oct","Nov-Dic"];
-  if(currentYearEvents.length>0 && currentEventIndex<currentYearEvents.length){
-    const mIdx = Math.min(currentEventIndex, 5);
-    btn.textContent = `📋 ${months[mIdx]} (${currentEventIndex+1}/6)`;
+  const total = currentYearEvents.length;
+  if(total>0 && currentEventIndex<total){
+    const mIdx = Math.min(currentEventIndex, months.length-1);
+    btn.textContent = `📋 ${months[mIdx]} (${currentEventIndex+1}/${total})`;
   } else {
     btn.textContent = "⏩ Avanzar un año";
   }
@@ -2348,7 +2351,8 @@ function showNextEvent(){
   if(!P.leagueData) initSeasonData();
   if(P.leagueData && P.leagueData.currentMD<38){
     const remaining = 38 - P.leagueData.currentMD;
-    const toAdvance = Math.min(7, Math.ceil(remaining / Math.max(1, 7 - currentEventIndex)));
+    const remainingEvents = Math.max(1, currentYearEvents.length - currentEventIndex);
+    const toAdvance = Math.min(7, Math.ceil(remaining / remainingEvents));
     advanceMatchdays(toAdvance);
   }
   advanceContinental();
@@ -3065,18 +3069,16 @@ function generateMatchRegistry(){
   if(matches===0) return "";
   const opponents = ["Rival Local","Atlético Unido","Deportivo Norte","San Martín","Ciudad FC","Estrella Roja","León Blanco","Racing Sur"];
   const n = Math.min(6,matches);
-  let remainingGoals = goals;
-  let remainingAssists = assists;
+  // Only show ~70% of goals in featured matches (rest were in other games)
+  let remainingGoals = Math.floor(goals * 0.7);
+  let remainingAssists = Math.floor(assists * 0.7);
   let html = '<h4 style="color:#8b949e;font-size:12px;text-transform:uppercase;letter-spacing:1px;margin-top:12px;margin-bottom:8px">⚽ Partidos destacados</h4><div style="background:#0d1117;border-radius:10px;padding:12px;font-size:12px;line-height:2">';
   
   for(let i=0;i<n;i++){
     const opp = opponents[Math.floor(Math.random()*opponents.length)];
-    const isLast = i===n-1;
-    // Distribute remaining goals/assists across matches
-    const maxG = Math.min(4, isLast?remainingGoals:Math.ceil(remainingGoals/(n-i)));
-    const g = remainingGoals>0?Math.min(randomBetween(isLast?0:1, Math.max(2,maxG)), remainingGoals):0;
+    const g = remainingGoals>0?Math.min(randomBetween(0, Math.min(3,remainingGoals)), remainingGoals):0;
     remainingGoals -= g;
-    const a = (remainingAssists>0&&Math.random()<0.45)?Math.min(randomBetween(0,2),remainingAssists):0;
+    const a = (remainingAssists>0&&Math.random()<0.35)?Math.min(randomBetween(0,2),remainingAssists):0;
     remainingAssists -= a;
     
     // Make score consistent with player's goals
