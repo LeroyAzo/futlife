@@ -637,6 +637,34 @@ input[type=range]::-webkit-slider-thumb{
 
 <div id="toast" class="toast" style="display:none"></div>
 
+<!-- PENALTY MINIGAME MODAL -->
+<div id="penalty-modal" class="modal-overlay">
+  <div class="modal-card" style="max-width:500px;text-align:center">
+    <h2 style="font-size:20px;margin-bottom:4px">🎯 Tiro Decisivo</h2>
+    <p style="color:#8b949e;font-size:13px;margin-bottom:16px" id="penalty-text"></p>
+    <div id="penalty-goal" style="position:relative;width:100%;aspect-ratio:2/1;background:linear-gradient(180deg,#1a6e1a,#0d3d0d);border-radius:8px;border:3px solid #fff;margin:0 auto 16px;overflow:hidden">
+      <div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#fff"></div>
+      <div style="position:absolute;right:0;top:0;bottom:0;width:3px;background:#fff"></div>
+      <div style="position:absolute;left:3px;right:3px;top:0;height:3px;background:#fff"></div>
+      <div style="position:absolute;left:20%;right:20%;top:0;bottom:35%;border:2px dashed rgba(255,255,255,0.2);border-top:none"></div>
+      <div id="penalty-zones" style="position:absolute;inset:0;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:30% 40% 30%">
+        <div class="pen-zone" data-zone="top-left" onclick="shootAt('top-left')" style="cursor:pointer"></div>
+        <div class="pen-zone" data-zone="top-right" onclick="shootAt('top-right')" style="cursor:pointer"></div>
+        <div class="pen-zone" data-zone="mid-left" onclick="shootAt('mid-left')" style="cursor:pointer"></div>
+        <div class="pen-zone" data-zone="mid-right" onclick="shootAt('mid-right')" style="cursor:pointer"></div>
+        <div class="pen-zone" data-zone="center" onclick="shootAt('center')" style="cursor:pointer;grid-column:1/-1;border-top:1px solid rgba(255,255,255,0.1)"></div>
+      </div>
+    </div>
+    <div id="penalty-result" style="font-size:28px;font-weight:900;min-height:40px;display:none"></div>
+  </div>
+</div>
+
+<style>
+.pen-zone:hover{background:rgba(255,255,255,0.08)}
+#penalty-modal .flash{position:fixed;inset:0;background:#fff;z-index:300;animation:flashBang 0.8s ease-out forwards;pointer-events:none}
+@keyframes flashBang{0%{opacity:1}40%{opacity:1}100%{opacity:0}}
+</style>
+
 <script>
 window.onerror = function(msg, url, line){
   alert("Error JS linea "+line+": "+msg);
@@ -2536,6 +2564,30 @@ function resolveEvent(event, option){
       if(e.renewalNegotiation){
         openRenewalNegotiation(); return;
       }
+      if(e.penaltyGame){
+        document.getElementById("event-modal").classList.remove("active");
+        startPenaltyGame(event.text, (result)=>{
+          const cd = P.cd;
+          if(cd&&cd.current&&cd.current.teams&&cd.current.teams.length>=2){
+            if(result==="goal"){
+              const winner = cd.current.teams.find(t=>t.name===P.clubName)||cd.current.teams[0];
+              cd.winner = winner; cd.finalResult = `⚽ ${P.clubName} gana en penales`;
+              P.titles.push("🏆 "+cd.name); P.seasonWonTitle=true;
+              P.timeline.push(`Edad ${P.age}: ¡Campeón de la ${cd.name}!`);
+            } else {
+              const loser = cd.current.teams.find(t=>t.name!==P.clubName)||cd.current.teams[1];
+              cd.winner = loser; cd.finalResult = `❌ ${P.clubName} pierde en penales`;
+            }
+            cd.phase = "Finalizada"; cd.finalPlayed = true;
+          }
+          updateUI();
+          // Advance to next event
+          currentEventIndex++;
+          if(currentEventIndex >= currentYearEvents.length) showYearSummary();
+          else updateAdvanceButton();
+        });
+        return;
+      }
       if(e.titles){e.titles.forEach(t=>{P.titles.push(t);effectsHTML+=`🏆 ${t}<br>`;P.seasonWonTitle=true})}
       if(e.winTitle){const t="Campeón de liga ("+P.age+")";P.titles.push(t);effectsHTML+=`🏆 ${t}<br>`;P.seasonWonTitle=true}
       if(e.overallPenalty){for(const k of Object.keys(P.stats)){P.stats[k]=Math.max(10,P.stats[k]-5)};effectsHTML+="📉 Atributos -5 (declive)<br>"}
@@ -3795,12 +3847,29 @@ function advanceContinental(){
   else if(cd.stage===4&&cd.current.teams){cd.phase="Cuartos (Ida y Vuelta)"; cd.current=simKnockoutTL(cd.current.teams,4);}
   else if(cd.stage===5&&cd.current.teams){cd.phase="Semifinal (Ida y Vuelta)"; cd.current=simKnockoutTL(cd.current.teams,2);}
   else if(cd.stage===6&&cd.current.teams&&cd.current.teams.length>=2){
-    cd.phase="Final (Ida y Vuelta)"; 
-    const final=simTwoLegged(cd.current.teams[0],cd.current.teams[1]); 
-    cd.finalResult=`${cd.current.teams[0].name} ${final.result} ${cd.current.teams[1].name}`;
-    cd.winner=final.winner; cd.phase="Finalizada";
-    if(final.winner.isPlayer){P.titles.push("🏆 "+cd.name);P.seasonWonTitle=true;}
-  }
+    // Check if player's team is in the final
+    const t1=cd.current.teams[0], t2=cd.current.teams[1];
+    const playerIn = t1.isPlayer||t2.isPlayer||t1.name===P.clubName||t2.name===P.clubName;
+    if(playerIn&&!cd.finalPlayed){
+      cd.finalPlayed = true;
+      cd.phase="Final (Ida y Vuelta)";
+      // Push penalty minigame event
+      currentYearEvents.push({
+        title:"🎯 ¡La final! Tiro Decisivo",
+        text:`Es la final de ${cd.name}. Último minuto. Penalti a favor. Todo depende de ti. ¿A dónde disparas?`,
+        emoji:"🎯",type:"match",magnitude:"big",options:[
+          {text:"¡Voy a disparar!",effects:{penaltyGame:true},chance:0.95}
+        ]
+      });
+    } else if(cd.finalPlayed||!playerIn){
+      // Auto-simulate if already played or player not in final
+      cd.finalPlayed = false;
+      cd.phase="Final (Ida y Vuelta)";
+      const final=simTwoLegged(t1,t2);
+      cd.finalResult=`${t1.name} ${final.result} ${t2.name}`;
+      cd.winner=final.winner; cd.phase="Finalizada";
+      if(final.winner.isPlayer){P.titles.push("🏆 "+cd.name);P.seasonWonTitle=true;}
+    }
 }
 
 function simKnockout(teams, target){
@@ -3922,6 +3991,37 @@ function renderCupTable(){
   if(cup.teams.length<=8&&cup.teams.length>1){for(let i=0;i<cup.teams.length;i+=2){const a=cup.teams[i],b=cup.teams[i+1];h+=`<div style="font-size:12px">${a.name} vs ${b?b.name:'BYE'}</div>`}}
   if(cup.round==="Campeón") h+=`<div style="color:#7ee787">🏆 ¡${P.clubName}!</div>`;
   d.innerHTML=h;
+}
+
+// ============================================================
+// PENALTY MINIGAME
+// ============================================================
+let _penaltyCallback = null;
+
+function startPenaltyGame(text, callback){
+  _penaltyCallback = callback;
+  document.getElementById("penalty-text").textContent = text||"¡Es tu momento! Elige dónde disparar...";
+  document.getElementById("penalty-result").style.display = "none";
+  document.getElementById("penalty-result").textContent = "";
+  document.querySelectorAll(".pen-zone").forEach(z=>z.style.pointerEvents="auto");
+  document.getElementById("penalty-modal").classList.add("active");
+}
+
+function shootAt(zone){
+  document.querySelectorAll(".pen-zone").forEach(z=>z.style.pointerEvents="none");
+  const chances = {"top-left":0.7,"top-right":0.7,"mid-left":0.5,"mid-right":0.5,"center":0.3};
+  const success = Math.random() < (chances[zone]||0.5);
+  const flash = document.createElement("div");
+  flash.className = "flash";
+  document.getElementById("penalty-modal").appendChild(flash);
+  setTimeout(()=>{
+    flash.remove();
+    const rd = document.getElementById("penalty-result");
+    rd.style.display = "block";
+    if(success){rd.innerHTML='<span style="color:#7ee787">⚽ ¡GOOOOOOL!</span>';if(_penaltyCallback)_penaltyCallback("goal")}
+    else{rd.innerHTML='<span style="color:#f85149">❌ ¡Fallaste!</span>';if(_penaltyCallback)_penaltyCallback("miss")}
+    setTimeout(()=>{document.getElementById("penalty-modal").classList.remove("active");_penaltyCallback=null},1500);
+  },800);
 }
 
 function init(){
