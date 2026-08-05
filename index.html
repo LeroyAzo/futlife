@@ -1504,10 +1504,6 @@ ev("Confundes a tu compañero con un recogepelotas","Le pides el balón con urge
 ]);
 
 // --- MÁS VIDA ---
-ev("Te mudas de país","El club te obliga a mudarte. Nueva ciudad, nuevo idioma, nueva cultura. Tu familia tiene que adaptarse.","🌍","life",[
-  {text:"Abrazas el cambio. Nueva aventura",effects:{morale:10,money:-100000},chance:0.8, failText:"No te adaptas. La nostalgia te come.", failEffects:{morale:-15}},
-  {text:"Te quejas. No querías mudarte",effects:{morale:-10,rel_entrenador:-5},chance:0.5, failText:"El club no se toma bien tu actitud. Relación tensa.", failEffects:{rel_entrenador:-15,morale:-15}}
-]);
 ev("Tu hermano quiere ser futbolista","Tu hermano menor te dice que quiere seguir tus pasos. Te pide que le ayudes a entrar en una academia.","⚽","life",[
   {text:"Usas tus contactos para meterlo en la mejor cantera",effects:{familia:15,morale:8},chance:0.85, failText:"Tu hermano no tiene talento. Lo rebotan. Te culpa a ti.", failEffects:{familia:-15,morale:-10}},
   {text:"Le dices que estudie una carrera. El fútbol es muy duro",effects:{familia:-5,morale:2},chance:0.6, failText:"Tu hermano se enfada. Siente que no confías en él.", failEffects:{familia:-20,morale:-8}}
@@ -1573,7 +1569,7 @@ ev("Tu propio videojuego","Una desarrolladora quiere hacer un videojuego sobre t
   {text:"Solo prestas tu imagen y cobras",effects:{money:800000, followers:30000},chance:0.9, failText:"", failEffects:{}}
 ]);
 ev("Te nominan al Balón de Oro","Estás en la lista de los mejores del mundo. La gala es en París. Cámaras, flashes, leyendas del fútbol. Tu corazón late a mil.","🏅","match",[
-  {text:"Preparas un discurso emotivo por si acaso",effects:{morale:15, followers:500000},chance:0.3, failText:"No ganas. Tu discurso se filtra y es un poco cringe.", failEffects:{morale:-5, followers:50000}},
+  {text:"Preparas un discurso emotivo por si acaso",effects:{morale:15, followers:500000, ballonDorWin:true},chance:0.3, failText:"No ganas. Tu discurso se filtra y es un poco cringe.", failEffects:{morale:-5, followers:50000}},
   {text:"Vas a disfrutar. Ganar o no, ya eres historia",effects:{morale:10, followers:200000, money:200000},chance:0.8, failText:"", failEffects:{}}
 ]);
 ev("Lesión grave en directo","Un partido transmitido a millones. Una entrada te destroza la rodilla. El silencio en el estadio es ensordecedor. Las redes estallan.","🏥","injury",[
@@ -2349,6 +2345,7 @@ function advanceYear(){
 
   P.seasonWonTitle = false;
   P.seasonWonLeague = false;
+  P.ballonDorResult = null;
 
   // Contract countdown - only if not just signed this year
   if(P.clubStars>0){
@@ -2545,6 +2542,8 @@ function resolveEvent(event, option){
       if(e.hasPartner && !P.hasPartner){P.hasPartner=true;P.partnerName=e.partnerName||randomPartner();P.relationships.pareja=65;effectsHTML+=`💘 Nueva pareja: ${P.partnerName}<br>`}
       if(e.hasKids && !P.hasKids){P.hasKids=true;P.kidNames=e.kidNames||["Junior"];effectsHTML+="👶 ¡Has sido padre!<br>"}
       if(e.married && !P.married){P.married=true;effectsHTML+="💒 ¡Te has casado!<br>"}
+      if(e.ballonDorWin){P.ballonDorResult="won";effectsHTML+="🏅 ¡BALÓN DE ORO!<br>"}
+      if(!e.ballonDorWin && event.title.includes("Balón de Oro")) P.ballonDorResult = "nominated";
       if(e.dinero_extra){P.money+=e.dinero_extra;effectsHTML+=`💰 Bono: ${formatMoney(e.dinero_extra)}<br>`}
       if(e.clubChange){
         if(e.clubChange==="big") transferToBigClub();
@@ -3244,6 +3243,8 @@ function getCompetitionSummary(){
     h+=`<div>🏅 Copa: ${cupStatus}</div>`;
   } else { h+=`<div style="color:#8b949e">🏅 Sin copa doméstica</div>`; }
   if(P.seasonWonTitle) h+=`<div style="color:#d29922;font-weight:700;margin-top:4px">🏆 ¡Ganaste un título esta temporada!</div>`;
+  if(P.ballonDorResult==="won") h+=`<div style="color:#ffd700;font-weight:700;margin-top:4px">🏅 ¡Ganaste el Balón de Oro!</div>`;
+  else if(P.ballonDorResult==="nominated") h+=`<div style="color:#d29922;margin-top:2px">🏅 Nominado al Balón de Oro</div>`;
   h+='</div>';return h;
 }
 function getLeaguePosition(){
@@ -3943,6 +3944,8 @@ function advanceCup(){
     nr.push(res.home>res.away?cup.teams[i]:res.away>res.home?cup.teams[i+1]:(Math.random()<0.5?cup.teams[i]:cup.teams[i+1]));
   }
   cup.teams=nr; cup.round=rounds[rounds.indexOf(cup.round)+1]||"Campeón";
+  // Track if player was eliminated
+  if(!cup.teams.find(t=>t.isPlayer||t.name===P.clubName)) cup.playerEliminated = cup.round;
   if(cup.round==="Campeón"&&cup.teams[0].isPlayer){P.titles.push("🏆 Copa");P.timeline.push(`Edad ${P.age}: ¡Campeón de Copa!`)}
 }
 
@@ -4026,10 +4029,10 @@ function renderBracketList(teams, results){
 
 function renderCupTable(){
   const d=document.getElementById("cup-table"); const cup=P.cupData;
-  if(!cup||!cup.teams||cup.teams.length===0){d.innerHTML="<p style='color:#8b949e;font-size:12px'>🏅 No participas en copa doméstica</p>";return}
+  if(!cup||cup.round===""){d.innerHTML="<p style='color:#8b949e;font-size:12px'>🏅 No participas en copa doméstica</p>";return}
   let h=`<div style="display:flex;justify-content:space-between;margin-bottom:6px"><strong>🏅 Copa</strong><span style="color:#8b949e;font-size:11px">${cup.round}</span></div>`;
-  if(cup.teams.length<=8&&cup.teams.length>1){
-    // Show player's opponent
+  if(cup.playerEliminated) h+=`<div style="color:#f85149;font-size:12px">❌ Eliminado en ${cup.playerEliminated}</div>`;
+  if(cup.teams&&cup.teams.length<=8&&cup.teams.length>1){
     const playerTeam = cup.teams.find(t=>t.isPlayer||t.name===P.clubName);
     if(playerTeam){
       const idx = cup.teams.indexOf(playerTeam);
