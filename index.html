@@ -2375,17 +2375,6 @@ function advanceYear(){
   if(P.discipline>50) P.discipline -= randomBetween(1,5);
   else if(P.discipline<50) P.discipline += randomBetween(1,5);
   P.discipline = clamp(P.discipline,0,100);
-  if(P.age >= 34 && Math.random() < (P.age-33)*0.25){
-    P.retirementReason = "edad";
-    showRetirement();
-    return;
-  }
-  if(P.overall < 30 && P.age >= 30){
-    P.retirementReason = "declive";
-    showRetirement();
-    return;
-  }
-
   // Apply year action effects (fix: don't clear all when one is present)
   if(P.yearActionEffects.injuryResist){P.yearActionEffects.injuryResist=false;}
   if(P.yearActionEffects.fameBoost){
@@ -3506,6 +3495,7 @@ const ACTIONS = [
   // Especiales
   {id:"terapia",name:"Ir a terapia",icon:"🧘",desc:"Un psicólogo deportivo te ayuda a manejar la presión mediática.",eff:{morale:18,discipline:12,overall_boost:1},cost:12000,req:{money:12000}},
   {id:"patrocinar_torneo",name:"Patrocinar torneo juvenil",icon:"🏆",desc:"Pagas un torneo en tu barrio. Los niños te idolatran.",eff:{followers:25000,familia:15,morale:15,rel_compañeros:5},cost:30000,req:{money:30000,followers:80000,age:18}},
+  {id:"retirarse",name:"Retirarse del fútbol",icon:"🏁",desc:"Cuelgas los botines. Termina tu carrera profesional.",eff:{retire:true},cost:0,req:{age:30}},
 ];
 
 function checkActionReq(action){
@@ -3519,6 +3509,7 @@ function checkActionReq(action){
 
 function doAction(action){
   if(P.actionsThisYear>=1){showToast("❌ Ya hiciste una acción este año. Espera al siguiente.");return}
+  if(action.id==="retirarse"){if(confirm("¿Estás seguro de que quieres retirarte?")){P.retirementReason="voluntario";showRetirement()}return}
   const block = checkActionReq(action);
   if(block){showToast("❌ "+block);return}
   P.actionsThisYear++;
@@ -3886,11 +3877,11 @@ function advanceContinental(){
     const sorted=[...g].sort((a,b)=>(b.stars||2)-(a.stars||2)+randomBetween(-2,2));
     return sorted.slice(0,4);
   }).flat();}
-  else if(cd.stage===3&&cd.advancers){cd.phase="Octavos (Ida y Vuelta)"; cd.current=simKnockoutTL(shuffle(cd.advancers).slice(0,16),8);
+  else if(cd.stage===3&&cd.advancers){cd.phase="Octavos (Ida y Vuelta)"; cd.current=simKnockoutTL(shuffle(cd.advancers),16);
     if(!cd.current.teams.find(t=>t.isPlayer||t.name===P.clubName)) cd.playerEliminated="Octavos";}
-  else if(cd.stage===4&&cd.current.teams){cd.phase="Cuartos (Ida y Vuelta)"; cd.current=simKnockoutTL(cd.current.teams,4);
+  else if(cd.stage===4&&cd.current.teams){cd.phase="Cuartos (Ida y Vuelta)"; cd.current=simKnockoutTL(cd.current.teams,8);
     if(!cd.current.teams.find(t=>t.isPlayer||t.name===P.clubName)) cd.playerEliminated="Cuartos";}
-  else if(cd.stage===5&&cd.current.teams){cd.phase="Semifinal (Ida y Vuelta)"; cd.current=simKnockoutTL(cd.current.teams,2);
+  else if(cd.stage===5&&cd.current.teams){cd.phase="Semifinal (Ida y Vuelta)"; cd.current=simKnockoutTL(cd.current.teams,4);
     if(!cd.current.teams.find(t=>t.isPlayer||t.name===P.clubName)) cd.playerEliminated="Semifinal";}
   else if(cd.stage===6&&cd.current.teams&&cd.current.teams.length>=2){
     // Check if player's team is in the final
