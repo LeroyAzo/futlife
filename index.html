@@ -2951,8 +2951,18 @@ function finalizeTransfer(club, salary, years, role, clausePct){
       playedMatches:P.leagueData.playedMatches.slice()
     };
   }
-  // Reinit league data for new club's league
-  if(P.midYearTransfer) initSeasonData();
+  // Reinit league data for new club's league (keep continental/cup intact)
+  if(P.midYearTransfer){
+    const league = P.clubLeague||"Liga";
+    const sameLeague = CLUBS.filter(c=>c.league===league && c.stars>=1 && c.name!==P.clubName);
+    let teams = sameLeague.slice(0,19).map(t=>({name:t.name, stars:t.stars}));
+    teams.push({name:P.clubName, stars:P.clubStars, isPlayer:true});
+    while(teams.length<20){
+      const extra = CLUBS.find(c=>c.stars>=1 && !teams.find(t=>t.name===c.name));
+      if(!extra) break; teams.push({name:extra.name, stars:extra.stars});
+    }
+    P.leagueData = {teams: shuffle(teams), currentMD:0, playedMatches:[]};
+  }
   updateUI();
   checkAchievements();
 
@@ -3222,11 +3232,16 @@ function generateMatchRegistry(){
 function getCompetitionSummary(){
   let h='<div style="background:#0d1117;border-radius:8px;padding:10px;margin-bottom:10px;font-size:12px">';
   h+='<strong style="color:#8b949e">🏆 Competiciones</strong><br>';
-  if(P.cd&&P.cd.teams&&P.cd.teams.length>0){
-    h+=`<div style="margin-top:4px">🌍 ${P.cd.name}: ${P.cd.winner&&P.cd.winner.name===P.clubName?'<span style="color:#7ee787">¡CAMPEÓN!</span>':P.cd.phase}</div>`;
+  // Continental
+  if(P.cd){
+    let status = P.cd.winner&&P.cd.winner.name===P.clubName?'<span style="color:#7ee787">¡CAMPEÓN!</span>':
+      P.cd.playerEliminated?`<span style="color:#f85149">Eliminado en ${P.cd.playerEliminated}</span>`:P.cd.phase;
+    h+=`<div style="margin-top:4px">🌍 ${P.cd.name}: ${status}</div>`;
   } else { h+=`<div style="margin-top:4px;color:#8b949e">🌍 Sin competición continental</div>`; }
-  if(P.cupData&&P.cupData.teams&&P.cupData.teams.length>0){
-    h+=`<div>🏅 Copa: ${P.cupData.round==="Campeón"?'<span style="color:#7ee787">¡CAMPEÓN!</span>':P.cupData.round}</div>`;
+  // Cup
+  if(P.cupData){
+    let cupStatus = P.cupData.round==="Campeón"?'<span style="color:#7ee787">¡CAMPEÓN!</span>':P.cupData.round;
+    h+=`<div>🏅 Copa: ${cupStatus}</div>`;
   } else { h+=`<div style="color:#8b949e">🏅 Sin copa doméstica</div>`; }
   if(P.seasonWonTitle) h+=`<div style="color:#d29922;font-weight:700;margin-top:4px">🏆 ¡Ganaste un título esta temporada!</div>`;
   h+='</div>';return h;
@@ -3858,9 +3873,12 @@ function advanceContinental(){
     const sorted=[...g].sort((a,b)=>(b.stars||2)-(a.stars||2)+randomBetween(-2,2));
     return sorted.slice(0,4);
   }).flat();}
-  else if(cd.stage===3&&cd.advancers){cd.phase="Octavos (Ida y Vuelta)"; cd.current=simKnockoutTL(shuffle(cd.advancers).slice(0,16),8);}
-  else if(cd.stage===4&&cd.current.teams){cd.phase="Cuartos (Ida y Vuelta)"; cd.current=simKnockoutTL(cd.current.teams,4);}
-  else if(cd.stage===5&&cd.current.teams){cd.phase="Semifinal (Ida y Vuelta)"; cd.current=simKnockoutTL(cd.current.teams,2);}
+  else if(cd.stage===3&&cd.advancers){cd.phase="Octavos (Ida y Vuelta)"; cd.current=simKnockoutTL(shuffle(cd.advancers).slice(0,16),8);
+    if(!cd.current.teams.find(t=>t.isPlayer||t.name===P.clubName)) cd.playerEliminated="Octavos";}
+  else if(cd.stage===4&&cd.current.teams){cd.phase="Cuartos (Ida y Vuelta)"; cd.current=simKnockoutTL(cd.current.teams,4);
+    if(!cd.current.teams.find(t=>t.isPlayer||t.name===P.clubName)) cd.playerEliminated="Cuartos";}
+  else if(cd.stage===5&&cd.current.teams){cd.phase="Semifinal (Ida y Vuelta)"; cd.current=simKnockoutTL(cd.current.teams,2);
+    if(!cd.current.teams.find(t=>t.isPlayer||t.name===P.clubName)) cd.playerEliminated="Semifinal";}
   else if(cd.stage===6&&cd.current.teams&&cd.current.teams.length>=2){
     // Check if player's team is in the final
     const t1=cd.current.teams[0], t2=cd.current.teams[1];
@@ -3968,6 +3986,8 @@ function renderContinentalTable(){
     }
     h+=renderBracket(cd.current.teams, cd.current.results||[], cd.phase);
   }
+  if(cd.playerEliminated) h+=`<div style="background:rgba(248,81,73,0.08);border:1px solid #f85149;border-radius:6px;padding:8px;margin-top:8px;text-align:center;font-size:12px;color:#f85149">❌ Eliminado en ${cd.playerEliminated}</div>`;
+  if(P.cupData&&P.cupData.playerEliminated) h+=`<div style="color:#f85149;font-size:12px">❌ Copa: Eliminado en ${P.cupData.playerEliminated}</div>`;
   if(cd.finalResult) h+=`<div style="font-weight:700;color:#d29922;margin-top:8px;font-size:13px">⚡ ${cd.finalResult}</div>`;
   if(cd.winner) h+=`<div style="color:#7ee787;font-size:14px;font-weight:700;margin-top:4px">🏆 ¡${cd.winner.name} campeón!</div>`;
   d.innerHTML=h;
