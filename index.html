@@ -537,6 +537,10 @@ input[type=range]::-webkit-slider-thumb{
       <h3>🏅 Copa Doméstica</h3>
       <div id="cup-table"></div>
     </div>
+    <div class="section-card" id="wc-section" style="display:none">
+      <h3>🌍 Copa del Mundo</h3>
+      <div id="worldcup-table"></div>
+    </div>
   </div>
 </div>
 
@@ -2316,8 +2320,11 @@ function advanceYear(){
   currentYearEvents = [...picked, ...currentYearEvents];
   if(currentYearEvents.length===0) currentYearEvents.push(ALL_EVENTS.find(e=>e.type==="random"));
 
-  // Initialize season competitions at start of year
-  if(!P.leagueData || P.leagueData.currentMD>=38) initSeasonData();
+  // Initialize season competitions at start of year (always reinit league)
+  initSeasonData();
+  // World Cup every 4 years at eligible ages
+  if([18,22,26,30,34].includes(P.age)) initWorldCup();
+  else{P.wcData=null;document.getElementById("wc-section").style.display="none";}
 
   // Generate realistic base season stats BEFORE events
   generateSeasonStats();
@@ -2427,6 +2434,7 @@ function showNextEvent(){
   }
   advanceContinental();
   advanceCup();
+  if(P.wcData) advanceWorldCup();
   
   if(currentEventIndex >= currentYearEvents.length){
     showYearSummary();
@@ -3241,6 +3249,11 @@ function getCompetitionSummary(){
     let cupStatus = P.cupData.round==="Campeón"?'<span style="color:#7ee787">¡CAMPEÓN!</span>':P.cupData.round;
     h+=`<div>🏅 Copa: ${cupStatus}</div>`;
   } else { h+=`<div style="color:#8b949e">🏅 Sin copa doméstica</div>`; }
+  if(P.wcData&&P.wcData.playerCalled){
+    let wcStatus = P.wcData.winner&&P.wcData.winner.name===P.country?'<span style="color:#7ee787">¡CAMPEÓN DEL MUNDO!</span>':
+      P.wcData.playerEliminated?`<span style="color:#f85149">Eliminado en ${P.wcData.playerEliminated}</span>`:P.wcData.phase;
+    h+=`<div>🌍 Mundial: ${wcStatus}</div>`;
+  }
   if(P.seasonWonTitle) h+=`<div style="color:#d29922;font-weight:700;margin-top:4px">🏆 ¡Ganaste un título esta temporada!</div>`;
   if(P.ballonDorResult==="won") h+=`<div style="color:#ffd700;font-weight:700;margin-top:4px">🏅 ¡Ganaste el Balón de Oro!</div>`;
   else if(P.ballonDorResult==="nominated") h+=`<div style="color:#d29922;margin-top:2px">🏅 Nominado al Balón de Oro</div>`;
@@ -3949,8 +3962,10 @@ function advanceCup(){
 }
 
 function renderTables(){
-  if(!P.leagueData) return;
   renderLeagueTable(); renderContinentalTable(); renderCupTable();
+  const wcSec = document.getElementById("wc-section");
+  if(P.wcData){renderWorldCupTable();wcSec.style.display="block"}
+  else{wcSec.style.display="none"}
 }
 
 function renderLeagueTable(){
@@ -4029,22 +4044,59 @@ function renderBracketList(teams, results){
 function renderCupTable(){
   const d=document.getElementById("cup-table"); const cup=P.cupData;
   if(!cup||cup.round===""){d.innerHTML="<p style='color:#8b949e;font-size:12px'>🏅 No participas en copa doméstica</p>";return}
-  let h=`<div style="display:flex;justify-content:space-between;margin-bottom:6px"><strong>🏅 Copa</strong><span style="color:#8b949e;font-size:11px">${cup.round}</span></div>`;
-  if(cup.playerEliminated) h+=`<div style="color:#f85149;font-size:12px">❌ Eliminado en ${cup.playerEliminated}</div>`;
+  let h=`<div style="display:flex;justify-content:space-between;margin-bottom:6px"><strong style="font-size:14px">🏅 Copa</strong><span style="color:#8b949e;font-size:11px">${cup.round}</span></div>`;
+  if(cup.playerEliminated){h+=`<div style="background:rgba(248,81,73,0.08);border:1px solid #f85149;border-radius:6px;padding:8px;margin-bottom:8px;text-align:center;color:#f85149;font-size:12px">❌ Eliminado en ${cup.playerEliminated}</div>`}
   if(cup.teams&&cup.teams.length<=8&&cup.teams.length>1){
-    const playerTeam = cup.teams.find(t=>t.isPlayer||t.name===P.clubName);
-    if(playerTeam){
-      const idx = cup.teams.indexOf(playerTeam);
-      const opponent = idx%2===0?cup.teams[idx+1]:cup.teams[idx-1];
-      if(opponent) h+=`<div style="background:rgba(46,160,67,0.1);border:1px solid #2ea043;border-radius:6px;padding:6px 10px;margin-bottom:8px;font-size:11px;text-align:center">⭐ Tu rival: <strong style="color:#7ee787">${opponent.name}</strong></div>`;
-    }
-    h+=renderBracket(cup.teams, []);
+    const pt = cup.teams.find(t=>t.isPlayer||t.name===P.clubName);
+    if(pt){const idx=cup.teams.indexOf(pt);const op=idx%2===0?cup.teams[idx+1]:cup.teams[idx-1];if(op)h+=`<div style="background:rgba(46,160,67,0.1);border:1px solid #2ea043;border-radius:6px;padding:6px 10px;margin-bottom:8px;font-size:11px;text-align:center">⭐ Tu rival: <strong style="color:#7ee787">${op.name}</strong></div>`}
+    h+=renderBracket(cup.teams,[]);
   }
-  if(cup.round==="Campeón") h+=`<div style="text-align:center;color:#7ee787;font-size:14px;font-weight:700">🏆 ¡${P.clubName} campeón!</div>`;
+  if(cup.round==="Campeón"){h+=`<div style="text-align:center;color:#7ee787;font-size:14px;font-weight:700;margin-top:4px">🏆 ¡${P.clubName} campeón!</div>`}
   d.innerHTML=h;
 }
 
 // ============================================================
+// ============================================================
+// WORLD CUP SYSTEM
+// ============================================================
+function initWorldCup(){
+  const countries = COUNTRIES.slice(0,32);
+  if(!countries.includes(P.country)) countries[31]=P.country;
+  P.wcData = {
+    teams: countries.map(c=>({name:c, stars: (c===P.country?Math.min(5,Math.floor(P.overall/18)):Math.min(5,randomBetween(1,5))), isPlayer:(c===P.country)})),
+    stage:0, phase:"No iniciado", playerCalled: P.overall>=70
+  };
+}
+
+function advanceWorldCup(){
+  const wc = P.wcData; if(!wc||!wc.playerCalled) return;
+  wc.stage++;
+  if(wc.stage===1){wc.phase="Fase de grupos"; wc.groups=Array.from({length:8},(_,i)=>wc.teams.slice(i*4,(i+1)*4));}
+  else if(wc.stage===2){wc.phase="Fase de grupos"; const adv=[]; wc.groups.forEach(g=>{const s=[...g].sort((a,b)=>(b.stars||2)+randomBetween(-2,2)-(a.stars||2));adv.push(s[0],s[1])});wc.advancers=adv;}
+  else if(wc.stage===3&&wc.advancers){wc.phase="Octavos"; const r=simKnockoutTL(shuffle(wc.advancers),8);wc.current=r;if(!r.teams.find(t=>t.name===P.country))wc.playerEliminated="Octavos";}
+  else if(wc.stage===4&&wc.current.teams){wc.phase="Cuartos"; const r=simKnockoutTL(wc.current.teams,4);wc.current=r;if(!r.teams.find(t=>t.name===P.country))wc.playerEliminated="Cuartos";}
+  else if(wc.stage===5&&wc.current.teams){wc.phase="Semifinal"; const r=simKnockoutTL(wc.current.teams,2);wc.current=r;if(!r.teams.find(t=>t.name===P.country))wc.playerEliminated="Semifinal";}
+  else if(wc.stage===6&&wc.current.teams&&wc.current.teams.length>=2){
+    wc.phase="Final"; const final=simTwoLegged(wc.current.teams[0],wc.current.teams[1]);
+    wc.finalResult=`${wc.current.teams[0].name} ${final.result} ${wc.current.teams[1].name}`;
+    wc.winner=final.winner;wc.phase="Finalizada";
+    if(wc.winner.name===P.country){P.titles.push("🏆 Copa del Mundo");P.timeline.push(`Edad ${P.age}: ¡Campeón del Mundo con ${P.country}!`);P.seasonWonTitle=true;}
+  }
+}
+
+function renderWorldCupTable(){
+  const d=document.getElementById("worldcup-table");
+  const wc=P.wcData;
+  if(!wc||!wc.playerCalled){d.innerHTML="<p style='color:#8b949e;font-size:12px'>No fuiste convocado para este Mundial</p>";return}
+  let h=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><strong style="font-size:14px">🌍 Copa del Mundo</strong><span style="color:#8b949e;font-size:12px">${wc.phase}</span></div>`;
+  if(wc.playerEliminated){h+=`<div style="background:rgba(248,81,73,0.08);border:1px solid #f85149;border-radius:6px;padding:8px;margin-bottom:8px;text-align:center;color:#f85149;font-size:12px">❌ ${P.country} eliminado en ${wc.playerEliminated}</div>`}
+  if(wc.current&&wc.current.teams&&wc.phase!=="Finalizada") h+=renderBracket(wc.current.teams,wc.current.results||[]);
+  if(wc.finalResult) h+=`<div style="font-weight:700;color:#d29922;margin-top:8px;font-size:13px">⚡ ${wc.finalResult}</div>`;
+  if(wc.winner) h+=`<div style="color:#7ee787;font-size:14px;font-weight:700;margin-top:4px">🏆 ¡${wc.winner.name} Campeón del Mundo!</div>`;
+  d.innerHTML=h;
+  document.getElementById("wc-section").style.display="block";
+}
+
 // PENALTY MINIGAME
 // ============================================================
 let _penaltyCallback = null;
