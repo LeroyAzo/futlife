@@ -2928,20 +2928,19 @@ function finalizeTransfer(club, salary, years, role, clausePct){
   } else if(club.stars>=4){
     toastMsg = `⭐ ¡Fichaje TOP! ${club.name} · ${formatMoney(salary)}/año · ${club.league}`;
   } else {
-    toastMsg = `📝 Fichado por ${club.name} · ${formatMoney(salary)}/año · ${years} años`;
+    toastMsg = `📝 ${oldClub===club.name?'Renovación con':'Fichado por'} ${club.name} · ${formatMoney(salary)}/año · ${years} años`;
   }
   if(P.releaseClause>0) toastMsg += ` · 💎 Cláusula: ${formatMoney(P.releaseClause)}`;
   showToast(toastMsg);
   
   // Show a confirm modal
   document.getElementById("tf-response").className = "success";
-  document.getElementById("tf-response").innerHTML = `✅ <strong>¡Fichaje confirmado!</strong><br><br>🏟️ <strong>${club.name}</strong> ⭐${club.stars}<br>🏆 ${club.league} · ${club.country}<br>💰 ${formatMoney(salary)}/año · 📅 ${years} años<br>⭐ Rol: ${roleNames[role]}<br>${P.releaseClause>0?`💎 Cláusula: ${formatMoney(P.releaseClause)}<br>`:""}<br><span style="font-size:12px;color:#8b949e">Rating del fichaje: ${randomBetween(60,99)}/100</span>`;
-  document.getElementById("tf-response").style.display = "block";
+  document.getElementById("tf-response").innerHTML = `✅ <strong>${oldClub===club.name?'¡Renovación confirmada!':'¡Fichaje confirmado!'}</strong><br><br>🏟️ <strong>${club.name}</strong> ⭐${club.stars}<br>🏆 ${club.league} · ${club.country}<br>💰 ${formatMoney(salary)}/año · 📅 ${years} años<br>⭐ Rol: ${roleNames[role]}<br>${P.releaseClause>0?`💎 Cláusula: ${formatMoney(P.releaseClause)}<br>`:""}<br><span style="font-size:12px;color:#8b949e">Rating del fichaje: ${randomBetween(60,99)}/100</span>`;  document.getElementById("tf-response").style.display = "block";
   document.getElementById("tf-submit").disabled = true;
   document.getElementById("tf-submit").textContent = "✓ Firmado";
-  P.midYearTransfer = true;
-  // Save old club league data for year summary
-  if(P.leagueData){
+  P.midYearTransfer = (oldClub !== club.name);
+  // Save old club league data for year summary (only if actual transfer to new club)
+  if(P.midYearTransfer && P.leagueData){
     P.oldLeagueData = {
       club:P.clubHistory.length>1?P.clubHistory[P.clubHistory.length-2]?.name:"Club anterior",
       league:P.clubHistory.length>1?P.clubHistory[P.clubHistory.length-2]?.league:"Liga",
