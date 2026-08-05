@@ -3974,7 +3974,7 @@ function showTeamDetail(name){
 
 function renderContinentalTable(){
   const d=document.getElementById("continental-table"); const cd=P.cd;
-  if(!cd||!cd.teams||cd.teams.length===0){d.innerHTML="<p style='color:#8b949e;font-size:12px'>🌍 No participas en competición continental</p>";return}
+  if(!cd||cd.stage===0||(cd.stage===1&&(!cd.teams||cd.teams.length===0))){d.innerHTML="<p style='color:#8b949e;font-size:12px'>🌍 No participas en competición continental</p>";return}
   let h=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><strong style="font-size:14px">🏆 ${cd.name}</strong><span style="color:#8b949e;font-size:12px">${cd.phase}</span></div>`;
   // Show player's opponent if still in
   if(cd.current&&cd.current.teams&&cd.phase!=="Finalizada"){
