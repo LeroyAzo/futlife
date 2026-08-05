@@ -1756,10 +1756,24 @@ function randomPartner(){
 
 function getOverall(){
   const s = P.stats;
-  const base = (s.ritmo+s.tiro+s.pase+s.defensa+s.fisico+s.regate)/6;
-  const pos = POSITIONS[P.position];
-  const bonus = (pos.stats.ritmo+pos.stats.tiro+pos.stats.pase+pos.stats.defensa+pos.stats.fisico+pos.stats.regate)/6;
-  return Math.round(base + bonus*0.3);
+  // Position-specific weights for overall calculation
+  const weights = {
+    DC:{ritmo:20,tiro:35,pase:10,defensa:0,fisico:15,regate:20},
+    EI:{ritmo:25,tiro:25,pase:15,defensa:0,fisico:10,regate:25},
+    ED:{ritmo:25,tiro:25,pase:15,defensa:0,fisico:10,regate:25},
+    MCO:{ritmo:10,tiro:20,pase:35,defensa:0,fisico:5,regate:30},
+    MC:{ritmo:15,tiro:15,pase:30,defensa:10,fisico:15,regate:15},
+    MCD:{ritmo:5,tiro:5,pase:25,defensa:35,fisico:20,regate:10},
+    DFI:{ritmo:10,tiro:0,pase:15,defensa:40,fisico:25,regate:10},
+    DFD:{ritmo:10,tiro:0,pase:15,defensa:40,fisico:25,regate:10},
+    LI:{ritmo:25,tiro:5,pase:20,defensa:25,fisico:15,regate:10},
+    LD:{ritmo:25,tiro:5,pase:20,defensa:25,fisico:15,regate:10},
+    PO:{ritmo:5,tiro:0,pase:10,defensa:40,fisico:35,regate:10}
+  };
+  const w = weights[P.position]||weights.DC;
+  const total = w.ritmo*s.ritmo + w.tiro*s.tiro + w.pase*s.pase + w.defensa*s.defensa + w.fisico*s.fisico + w.regate*s.regate;
+  const sum = w.ritmo+w.tiro+w.pase+w.defensa+w.fisico+w.regate;
+  return Math.round(total/sum);
 }
 
 function refreshOverall(){
