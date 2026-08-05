@@ -2322,7 +2322,7 @@ function advanceYear(){
 
   // Initialize season competitions at start of year (always reinit league)
   // Clear old competition data before reinit
-  P.cd = null; P.cupData = null; P.wcData = null;
+  P.leagueData = null; P.cd = null; P.cupData = null; P.wcData = null;
   initSeasonData();
   // World Cup every 4 years at eligible ages
   if([18,22,26,30,34].includes(P.age)) initWorldCup();
@@ -2416,7 +2416,6 @@ function updateAdvanceButton(){
 
 function showNextEvent(){
   // Advance competitions per event
-  if(!P.leagueData) initSeasonData();
   if(P.leagueData && P.leagueData.currentMD<38){
     const remaining = 38 - P.leagueData.currentMD;
     const remainingEvents = Math.max(1, currentYearEvents.length - currentEventIndex);
@@ -3803,7 +3802,6 @@ function simMatch(homeStars, awayStars){
 }
 
 function initSeasonData(){
-  try{
   const league = P.clubLeague||"Liga";
   const sameLeague = CLUBS.filter(c=>c.league===league && c.stars>=1 && c.name!==P.clubName);
   let teams = sameLeague.slice(0,19).map(t=>({name:t.name, stars:t.stars}));
@@ -3813,8 +3811,9 @@ function initSeasonData(){
     if(!extra) break; teams.push({name:extra.name, stars:extra.stars});
   }
   P.leagueData = {teams: shuffle(teams), currentMD:0, playedMatches:[]};
-  initContinental(); initCup();
-  }catch(e){}
+  P.cd = null; P.cupData = null;
+  try{initContinental()}catch(e){P.cd=null}
+  try{initCup()}catch(e){P.cupData=null}
 }
 
 function simulateMatchday(mdIdx){
