@@ -2252,7 +2252,7 @@ function advanceYear(){
 
   // Debut event - only when first reaching a professional club
   if(P.clubStars>=2 && P.careerMatches===0 && P.age>=17){
-    currentYearEvents.push({title:"Debut profesional",text:"Es tu primer partido en el fútbol profesional de verdad. La camiseta te pesa distinto. La grada ruge. Hoy dejas de ser un juvenil.",emoji:"🌟",type:"match",magnitude:"big",options:[
+    currentYearEvents.unshift({title:"Debut profesional",text:"Es tu primer partido en el fútbol profesional de verdad. La camiseta te pesa distinto. La grada ruge. Hoy dejas de ser un juvenil.",emoji:"🌟",type:"match",magnitude:"big",options:[
       {text:"Juegas simple y seguro. No quieres cagarla",effects:{careerMatches:3, morale:8, rel_entrenador:8, followers:5000},tag:"Prudente",chance:0.85, failText:"Los nervios te traicionan. Pero al menos debutaste.", failEffects:{careerMatches:1, morale:-5}},
       {text:"Vas a por todas. Si debutas, que sea con gol",effects:{careerMatches:3, careerGoals:1, seasonGoals:1, morale:15, followers:20000},tag:"Valiente",chance:0.45, failText:"Intentaste demasiado. Casi metes un gol en propia.", failEffects:{careerMatches:1, morale:-8}},
       {text:"Disfrutas el momento. Esto es lo que soñaste de niño",effects:{careerMatches:3, morale:12, rel_entrenador:5},tag:"Soñador",chance:0.9, failText:"", failEffects:{}}
@@ -2520,7 +2520,8 @@ function resolveEvent(event, option){
       if(e.worldCupGoal) effectsHTML+="⚽ Gol en el Mundial<br>";
       if(e.followers){
         const scale = Math.max(0.3, Math.min(8, Math.sqrt(Math.max(100,P.followers)/5000)));
-        const gained = Math.floor(Math.abs(e.followers) * scale) * (e.followers>0?1:-1);
+        let gained = Math.floor(Math.abs(e.followers) * scale) * (e.followers>0?1:-1);
+        if(gained<0) gained = Math.max(gained, -Math.floor(P.followers*0.5));
         P.followers += gained;
         P.followers = Math.max(0, P.followers);
         P.fameLevel = getFame();
@@ -2536,7 +2537,7 @@ function resolveEvent(event, option){
         else if(e.clubChange==="random") transferRandomClub();
         else if(e.clubChange==="cantera") transferToYouthClub();
         else if(e.clubChange==="forcedTransfer"){
-          if(P.contractYears<=0){transferRandomClub();effectsHTML+="🔄 Traspaso forzado<br>"}
+          if(P.contractYears<=0){P.forcedTransfer=true;transferRandomClub();effectsHTML+="🔄 Traspaso forzado<br>"}
           else{effectsHTML+="⚠️ El club te pone transferible pero tu contrato sigue vigente<br>";P.contractWarnings++;P.morale-=5}
         }
         else if(e.clubChange==="forcedOut"){
@@ -2628,7 +2629,7 @@ function resolveEvent(event, option){
       if(fe.careerMatches) P.careerMatches += fe.careerMatches;
       if(fe.worldCupWinner){P.worldCupWinner=true;P.titles.push(`Copa del Mundo (${P.age})`)}
       if(fe.clubChange==="forcedTransfer"){
-        if(P.contractYears<=0){transferRandomClub();effectsHTML+="🔄 Traspaso forzado<br>"}
+        if(P.contractYears<=0){P.forcedTransfer=true;transferRandomClub();effectsHTML+="🔄 Traspaso forzado<br>"}
         else{P.contractWarnings++;effectsHTML+="⚠️ El club te pone transferible pero tienes contrato<br>"}
       }
       if(fe.clubChange==="forcedOut"){
@@ -2639,7 +2640,8 @@ function resolveEvent(event, option){
       if(fe.dinero_extra){P.money+=fe.dinero_extra}
       if(fe.followers){
         const scale = Math.max(0.3, Math.min(8, Math.sqrt(Math.max(100,P.followers)/5000)));
-        const gained = Math.floor(Math.abs(fe.followers) * scale) * (fe.followers>0?1:-1);
+        let gained = Math.floor(Math.abs(fe.followers) * scale) * (fe.followers>0?1:-1);
+        if(gained<0) gained = Math.max(gained, -Math.floor(P.followers*0.5));
         P.followers += gained;
         P.followers = Math.max(0, P.followers);
         P.fameLevel = getFame();
@@ -2745,12 +2747,16 @@ function openNegotiation(club){
     document.getElementById("tf-controls").innerHTML = '<div style="background:#0d1117;border-radius:10px;padding:16px;margin-bottom:16px"><div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="font-size:13px">💰 Salario anual</span><span style="font-weight:700;color:#7ee787" id="tf-salary-val">0</span></div><input type="range" id="tf-salary" min="0" max="100" value="50" style="width:100%"><div style="display:flex;justify-content:space-between;font-size:11px;color:#8b949e"><span id="tf-salary-min">0</span><span id="tf-salary-max">0</span></div></div><div style="background:#0d1117;border-radius:10px;padding:16px;margin-bottom:16px"><div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="font-size:13px">📅 Años de contrato</span><span style="font-weight:700;color:#79c0ff" id="tf-years-val">3</span></div><input type="range" id="tf-years" min="1" max="5" value="3" style="width:100%"><div style="display:flex;justify-content:space-between;font-size:11px;color:#8b949e"><span>1 año</span><span>5 años</span></div></div><div style="background:#0d1117;border-radius:10px;padding:16px;margin-bottom:16px"><div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="font-size:13px">⭐ Rol en el equipo</span><span style="font-weight:700;color:#d29922" id="tf-role-val">Titular</span></div><input type="range" id="tf-role" min="0" max="4" value="2" style="width:100%"><div style="display:flex;justify-content:space-between;font-size:11px;color:#8b949e"><span>Promesa</span><span>Rotación</span><span>Titular</span><span>Importante</span><span>Estrella</span></div></div><div style="background:#0d1117;border-radius:10px;padding:16px;margin-bottom:16px"><div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="font-size:13px">💎 Cláusula de rescisión</span><span style="font-weight:700;color:#a371f7" id="tf-clause-val">Sin cláusula</span></div><input type="range" id="tf-clause" min="0" max="100" value="0" style="width:100%"><div style="display:flex;justify-content:space-between;font-size:11px;color:#8b949e"><span>Sin cláusula</span><span>Baja</span><span>Alta</span></div></div>';
   }
   
-  // Always restore submit button
-  document.getElementById("tf-submit").disabled = false;
-  document.getElementById("tf-submit").textContent = "Negociar contrato";
-  document.getElementById("tf-submit").onclick = submitNegotiation;
-  const btnOut = document.querySelector("#transfer-modal .btn-outline");
-  if(btnOut){ btnOut.style.display = ""; btnOut.textContent = "Rechazar oferta"; btnOut.onclick = closeTransferModal; }
+  // Force reject button hide for forced transfers
+  if(P.forcedTransfer){
+    const btnOut = document.querySelector("#transfer-modal .btn-outline");
+    if(btnOut) btnOut.style.display = "none";
+    document.getElementById("tf-club-name").innerHTML = "⚠️ TRASPASO FORZADO";
+    P.forcedTransfer = false;
+  } else {
+    const btnOut = document.querySelector("#transfer-modal .btn-outline");
+    if(btnOut){ btnOut.style.display = ""; btnOut.textContent = "Rechazar oferta"; btnOut.onclick = closeTransferModal; }
+  }
   
   // Fun headline based on club comparison
   let headline = "", subHead = "";
