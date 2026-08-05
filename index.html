@@ -2937,6 +2937,8 @@ function finalizeTransfer(club, salary, years, role, clausePct){
       playedMatches:P.leagueData.playedMatches.slice()
     };
   }
+  // Reinit league data for new club's league
+  if(P.midYearTransfer) initSeasonData();
   updateUI();
   checkAchievements();
 
