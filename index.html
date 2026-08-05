@@ -3864,7 +3864,7 @@ function initContinental(){
   const selected = shuffle(contClubs).slice(0,47);
   const playerClub = CLUBS.find(c=>c.name===P.clubName);
   if(playerClub&&!selected.find(t=>t.name===P.clubName)) selected[0]=playerClub;
-  P.cd = {name:cont==="europe"?"Champions League":cont==="americas"?"Libertadores":"Continental Cup", teams:selected.map(t=>({name:t.name,stars:t.stars,isPlayer:t.name===P.clubName})), phase:"-", stage:0};
+  P.cd = {name:cont==="europe"?"Champions League":cont==="americas"?"Libertadores":"Continental Cup", teams:selected.map(t=>({name:t.name,stars:t.stars,isPlayer:t.name===P.clubName})), phase:"-", stage:0, playerEliminated:null};
 }
 
 function initCup(){
@@ -3872,7 +3872,7 @@ function initCup(){
   const selected = shuffle(cupTeams).slice(0,31);
   const playerClub = CLUBS.find(c=>c.name===P.clubName);
   if(playerClub&&!selected.find(t=>t.name===P.clubName)) selected[0]=playerClub;
-  P.cupData = {teams:selected.map(t=>({name:t.name,stars:t.stars,isPlayer:t.name===P.clubName})), round:"32avos"};
+  P.cupData = {teams:selected.map(t=>({name:t.name,stars:t.stars,isPlayer:t.name===P.clubName})), round:"32avos", playerEliminated:null};
 }
 
 function advanceContinental(){
@@ -3952,9 +3952,10 @@ function advanceCup(){
     const res=simMatch(cup.teams[i].stars,cup.teams[i+1].stars);
     nr.push(res.home>res.away?cup.teams[i]:res.away>res.home?cup.teams[i+1]:(Math.random()<0.5?cup.teams[i]:cup.teams[i+1]));
   }
+  const prevCupRound = cup.round;
   cup.teams=nr; cup.round=rounds[rounds.indexOf(cup.round)+1]||"Campeón";
   // Track if player was eliminated
-  if(!cup.teams.find(t=>t.isPlayer||t.name===P.clubName)) cup.playerEliminated = cup.round;
+  if(!cup.teams.find(t=>t.isPlayer||t.name===P.clubName)) cup.playerEliminated = prevCupRound;
   if(cup.round==="Campeón"&&cup.teams[0].isPlayer){P.titles.push("🏆 Copa");P.timeline.push(`Edad ${P.age}: ¡Campeón de Copa!`)}
 }
 
@@ -4000,8 +4001,7 @@ function renderContinentalTable(){
     }
     h+=renderBracket(cd.current.teams, cd.current.results||[], cd.phase);
   }
-  if(cd.playerEliminated) h+=`<div style="background:rgba(248,81,73,0.08);border:1px solid #f85149;border-radius:6px;padding:8px;margin-top:8px;text-align:center;font-size:12px;color:#f85149">❌ Eliminado en ${cd.playerEliminated}</div>`;
-  if(P.cupData&&P.cupData.playerEliminated) h+=`<div style="color:#f85149;font-size:12px">❌ Copa: Eliminado en ${P.cupData.playerEliminated}</div>`;
+  if(cd.playerEliminated&&cd.stage>=3) h+=`<div style="background:rgba(248,81,73,0.08);border:1px solid #f85149;border-radius:6px;padding:8px;margin-top:8px;text-align:center;font-size:12px;color:#f85149">❌ Eliminado en ${cd.playerEliminated}</div>`;
   if(cd.finalResult) h+=`<div style="font-weight:700;color:#d29922;margin-top:8px;font-size:13px">⚡ ${cd.finalResult}</div>`;
   if(cd.winner) h+=`<div style="color:#7ee787;font-size:14px;font-weight:700;margin-top:4px">🏆 ¡${cd.winner.name} campeón!</div>`;
   d.innerHTML=h;
