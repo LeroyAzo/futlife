@@ -2334,6 +2334,7 @@ function advanceYear(){
   });
 
   P.seasonWonTitle = false;
+  P.seasonWonLeague = false;
 
   // Contract countdown - only if not just signed this year
   if(P.clubStars>0){
@@ -2582,8 +2583,8 @@ function resolveEvent(event, option){
         });
         return;
       }
-      if(e.titles){e.titles.forEach(t=>{P.titles.push(t);effectsHTML+=`🏆 ${t}<br>`;P.seasonWonTitle=true})}
-      if(e.winTitle){const t="Campeón de liga ("+P.age+")";P.titles.push(t);effectsHTML+=`🏆 ${t}<br>`;P.seasonWonTitle=true}
+      if(e.titles){e.titles.forEach(t=>{P.titles.push(t);effectsHTML+=`🏆 ${t}<br>`;if(t.includes("Campeón de liga")||t.includes("liga"))P.seasonWonLeague=true;else P.seasonWonTitle=true;})}
+      if(e.winTitle){const t="Campeón de liga ("+P.age+")";P.titles.push(t);effectsHTML+=`🏆 ${t}<br>`;P.seasonWonLeague=true}
       if(e.overallPenalty){for(const k of Object.keys(P.stats)){P.stats[k]=Math.max(10,P.stats[k]-5)};effectsHTML+="📉 Atributos -5 (declive)<br>"}
     }
   } else {
@@ -3084,24 +3085,22 @@ function showYearSummary(){
   }
   const list = document.getElementById("sum-events-list");
   const cr = P.competitionResult||{league:"No disponible",leaguePos:"-",teamStrength:0};
-  const leaguePos = P.seasonWonTitle ? 1 : cr.leaguePos;
+  const leaguePos = P.seasonWonLeague ? 1 : cr.leaguePos;
   
   // Season stats + competition results
   list.innerHTML = `
-    <div style="background:#0d1117;border-radius:10px;padding:14px;margin-bottom:16px">
-      <h4 style="text-align:center;color:#e6edf3;margin-bottom:12px">🏟️ ${cr.league}</h4>
+    <div style="background:#0d1117;border-radius:10px;padding:14px;margin-bottom:12px">
+      <h4 style="text-align:center;color:#e6edf3;margin-bottom:12px">📊 ${cr.league}</h4>
       <div style="display:flex;justify-content:space-around;text-align:center;margin-bottom:10px">
-        <div><span style="font-size:24px;font-weight:700;color:#7ee787">${P.seasonMatches||0}</span><br><span style="font-size:11px;color:#8b949e">Partidos</span></div>
-        <div><span style="font-size:24px;font-weight:700;color:#f0883e">${P.seasonGoals||0}</span><br><span style="font-size:11px;color:#8b949e">Goles</span></div>
-        <div><span style="font-size:24px;font-weight:700;color:#79c0ff">${P.seasonAssists||0}</span><br><span style="font-size:11px;color:#8b949e">Asistencias</span></div>
+        <div><span style="font-size:22px;font-weight:700;color:#7ee787">${P.seasonMatches||0}</span><br><span style="font-size:10px;color:#8b949e">Partidos</span></div>
+        <div><span style="font-size:22px;font-weight:700;color:#f0883e">${P.seasonGoals||0}</span><br><span style="font-size:10px;color:#8b949e">Goles</span></div>
+        <div><span style="font-size:22px;font-weight:700;color:#79c0ff">${P.seasonAssists||0}</span><br><span style="font-size:10px;color:#8b949e">Asistencias</span></div>
       </div>
-      <div style="text-align:center;font-size:18px;font-weight:700;color:#d29922">
-        ${P.midYearTransfer?renderDualClubSummary():`🏆 ${getPositionMedal(leaguePos)} ${leaguePos}° lugar en ${cr.league}`}
-      </div>
-      ${P.midYearTransfer?'':getPositionText(leaguePos)}
-      ${generateMatchRegistry()}
-      ${getCompetitionSummary()}
+      ${P.midYearTransfer?'':`<div style="text-align:center;font-size:18px;font-weight:700;color:#d29922">🏆 ${getPositionMedal(leaguePos)} ${leaguePos}° lugar</div>${getPositionText(leaguePos)}`}
+      ${P.midYearTransfer?renderDualClubSummary():''}
     </div>
+    ${getCompetitionSummary()}
+    ${generateMatchRegistry()}
   `;
   
   // Events list
@@ -3199,11 +3198,15 @@ function generateMatchRegistry(){
 
 // ============================================================
 function getCompetitionSummary(){
-  let h='<div style="background:#0d1117;border-radius:8px;padding:10px;margin-top:10px;font-size:12px">';
-  h+='<strong style="color:#8b949e">🏆 Competencias</strong><br>';
-  if(P.cd) h+=`<div>🌍 ${P.cd.name}: ${P.cd.winner&&P.cd.winner.name===P.clubName?'¡CAMPEÓN!🏆':P.cd.phase}</div>`;
-  if(P.cupData) h+=`<div>🏅 Copa: ${P.cupData.round}</div>`;
-  if(!P.cd&&!P.cupData) h+='<div style="color:#8b949e">Sin competiciones esta temporada</div>';
+  let h='<div style="background:#0d1117;border-radius:8px;padding:10px;margin-bottom:10px;font-size:12px">';
+  h+='<strong style="color:#8b949e">🏆 Competiciones</strong><br>';
+  if(P.cd&&P.cd.teams&&P.cd.teams.length>0){
+    h+=`<div style="margin-top:4px">🌍 ${P.cd.name}: ${P.cd.winner&&P.cd.winner.name===P.clubName?'<span style="color:#7ee787">¡CAMPEÓN!</span>':P.cd.phase}</div>`;
+  } else { h+=`<div style="margin-top:4px;color:#8b949e">🌍 Sin competición continental</div>`; }
+  if(P.cupData&&P.cupData.teams&&P.cupData.teams.length>0){
+    h+=`<div>🏅 Copa: ${P.cupData.round==="Campeón"?'<span style="color:#7ee787">¡CAMPEÓN!</span>':P.cupData.round}</div>`;
+  } else { h+=`<div style="color:#8b949e">🏅 Sin copa doméstica</div>`; }
+  if(P.seasonWonTitle) h+=`<div style="color:#d29922;font-weight:700;margin-top:4px">🏆 ¡Ganaste un título esta temporada!</div>`;
   h+='</div>';return h;
 }
 function getLeaguePosition(){
@@ -3931,9 +3934,16 @@ function showTeamDetail(name){
 
 function renderContinentalTable(){
   const d=document.getElementById("continental-table"); const cd=P.cd;
-  if(!cd){d.innerHTML="<p style='color:#8b949e;font-size:12px'>Sin competición</p>";return}
+  if(!cd||!cd.teams||cd.teams.length===0){d.innerHTML="<p style='color:#8b949e;font-size:12px'>🌍 No participas en competición continental</p>";return}
   let h=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><strong style="font-size:14px">🏆 ${cd.name}</strong><span style="color:#8b949e;font-size:12px">${cd.phase}</span></div>`;
+  // Show player's opponent if still in
   if(cd.current&&cd.current.teams&&cd.phase!=="Finalizada"){
+    const playerTeam = cd.current.teams.find(t=>t.isPlayer||t.name===P.clubName);
+    if(playerTeam){
+      const idx = cd.current.teams.indexOf(playerTeam);
+      const opponent = idx%2===0?cd.current.teams[idx+1]:cd.current.teams[idx-1];
+      if(opponent) h+=`<div style="background:rgba(46,160,67,0.1);border:1px solid #2ea043;border-radius:6px;padding:6px 10px;margin-bottom:8px;font-size:11px;text-align:center">⭐ Tu rival: <strong style="color:#7ee787">${opponent.name}</strong></div>`;
+    }
     h+=renderBracket(cd.current.teams, cd.current.results||[], cd.phase);
   }
   if(cd.finalResult) h+=`<div style="font-weight:700;color:#d29922;margin-top:8px;font-size:13px">⚡ ${cd.finalResult}</div>`;
@@ -3974,9 +3984,16 @@ function renderBracketList(teams, results){
 
 function renderCupTable(){
   const d=document.getElementById("cup-table"); const cup=P.cupData;
-  if(!cup){d.innerHTML="<p style='color:#8b949e;font-size:12px'>Sin copa</p>";return}
+  if(!cup||!cup.teams||cup.teams.length===0){d.innerHTML="<p style='color:#8b949e;font-size:12px'>🏅 No participas en copa doméstica</p>";return}
   let h=`<div style="display:flex;justify-content:space-between;margin-bottom:6px"><strong>🏅 Copa</strong><span style="color:#8b949e;font-size:11px">${cup.round}</span></div>`;
   if(cup.teams.length<=8&&cup.teams.length>1){
+    // Show player's opponent
+    const playerTeam = cup.teams.find(t=>t.isPlayer||t.name===P.clubName);
+    if(playerTeam){
+      const idx = cup.teams.indexOf(playerTeam);
+      const opponent = idx%2===0?cup.teams[idx+1]:cup.teams[idx-1];
+      if(opponent) h+=`<div style="background:rgba(46,160,67,0.1);border:1px solid #2ea043;border-radius:6px;padding:6px 10px;margin-bottom:8px;font-size:11px;text-align:center">⭐ Tu rival: <strong style="color:#7ee787">${opponent.name}</strong></div>`;
+    }
     h+=renderBracket(cup.teams, []);
   }
   if(cup.round==="Campeón") h+=`<div style="text-align:center;color:#7ee787;font-size:14px;font-weight:700">🏆 ¡${P.clubName} campeón!</div>`;
