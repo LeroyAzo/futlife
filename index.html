@@ -2513,11 +2513,13 @@ function resolveEvent(event, option){
     if(option.effects){
       const e = option.effects;
       if(e.careerGoals) P.careerGoals += e.careerGoals;
+      else if(e.seasonGoals) P.careerGoals += e.seasonGoals;
       if(e.seasonGoals) P.seasonGoals += e.seasonGoals;
-      else if(e.careerGoals) P.seasonGoals += e.careerGoals; // Sync: career goals count as season goals too
+      else if(e.careerGoals) P.seasonGoals += e.careerGoals;
       if(e.careerAssists) P.careerAssists += e.careerAssists;
+      else if(e.seasonAssists) P.careerAssists += e.seasonAssists;
       if(e.seasonAssists) P.seasonAssists += e.seasonAssists;
-      else if(e.careerAssists) P.seasonAssists += e.careerAssists; // Sync
+      else if(e.careerAssists) P.seasonAssists += e.careerAssists;
       if(e.careerMatches) P.careerMatches += e.careerMatches;
       if(e.morale) P.morale = clamp(P.morale+e.morale,0,100);
       if(e.money){P.money += e.money;effectsHTML+=`💰 ${formatMoney(e.money)}<br>`}
@@ -2636,8 +2638,11 @@ function resolveEvent(event, option){
       if(fe.hasKids===true && !P.hasKids){P.hasKids=true;P.kidNames=fe.kidNames||["Junior"]}
       if(fe.married===true && !P.married){P.married=true}
       if(fe.careerGoals) P.careerGoals += fe.careerGoals;
+      else if(fe.seasonGoals) P.careerGoals += fe.seasonGoals;
       if(fe.seasonGoals) P.seasonGoals += fe.seasonGoals;
       else if(fe.careerGoals) P.seasonGoals += fe.careerGoals;
+      if(fe.careerAssists) P.careerAssists += fe.careerAssists;
+      else if(fe.seasonAssists) P.careerAssists += fe.seasonAssists;
       if(fe.seasonAssists) P.seasonAssists += fe.seasonAssists;
       else if(fe.careerAssists) P.seasonAssists += fe.careerAssists;
       if(fe.careerMatches) P.careerMatches += fe.careerMatches;
