@@ -3858,7 +3858,10 @@ function getCompetitionSummary(){
   } else { h+=`<div style="margin-top:4px;color:#8b949e">🌍 Sin competición continental</div>`; }
   // Cup
   if(P.cupData){
-    let cupStatus = P.cupData.round==="Campeón"?'<span style="color:#7ee787">¡CAMPEÓN!</span>':P.cupData.round;
+    const cup=P.cupData;
+    const cupWon = cup.round==="Campeón" && cup.champion && (cup.champion.isPlayer||cup.champion.name===P.clubName);
+    let cupStatus = cupWon?'<span style="color:#7ee787">¡CAMPEÓN!</span>':
+      cup.playerEliminated?`<span style="color:#f85149">Eliminado en ${cup.playerEliminated}</span>`:cup.round;
     h+=`<div>🏅 Copa: ${cupStatus}</div>`;
   } else { h+=`<div style="color:#8b949e">🏅 Sin copa doméstica</div>`; }
   if(P.wcData&&P.wcData.playerCalled){
@@ -4872,6 +4875,12 @@ function showTeamDetail(name){
   dd.innerHTML=h;dd.style.display="block";
 }
 
+function toggleContGroup(i){
+  if(!P._contExpanded)P._contExpanded={};
+  P._contExpanded[i]=!P._contExpanded[i];
+  renderContinentalTable();
+}
+
 function renderContinentalTable(){
   const d=document.getElementById("continental-table"); const cd=P.cd;
   if(!cd){d.innerHTML="<p style='color:#8b949e;font-size:12px'>🌍 No clasificaste a competición continental este año</p>";return}
@@ -4881,26 +4890,37 @@ function renderContinentalTable(){
   }
   let h=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><strong style="font-size:14px">🏆 ${cd.name}</strong><span style="color:#8b949e;font-size:12px">${cd.phase}</span></div>`;
 
-  // Group stage display
-  const inGroupPhase = cd.groups && (cd.phase.includes("grupos") || cd.playerEliminated==="Fase de grupos");
-  if(inGroupPhase){
+  // Group stage display (kept visible even after group phase ends)
+  if(cd.groups){
+    if(!P._contExpanded){P._contExpanded={};cd.groups.forEach((g,i)=>{if(g.some(t=>t.isPlayer||t.name===P.clubName))P._contExpanded[i]=true})}
     h+=`<div style="font-size:12px;margin-bottom:10px;color:#8b949e">8 grupos de 4 · Top 2 clasifican a octavos</div>`;
     cd.groups.forEach((g,i)=>{
-      const sorted=[...g].sort((a,b)=>(b.stars||2)-(a.stars||2)+randomBetween(-1,1));
-      h+=`<div style="background:#0d1117;border-radius:8px;padding:8px;margin-bottom:8px">`;
-      h+=`<div style="font-size:11px;color:#d29922;font-weight:600;margin-bottom:4px">Grupo ${String.fromCharCode(65+i)}</div>`;
-      h+=`<table style="width:100%;font-size:11px;border-collapse:collapse">`;
-      sorted.forEach((t,idx)=>{
-        const isP=t.isPlayer||t.name===P.clubName;
-        const qualified=g.advanced && g.advanced.includes(t.name);
-        h+=`<tr style="color:${isP?'#7ee787':qualified?'#e6edf3':'#8b949e'};font-weight:${isP?'700':'400'}">
-          <td style="padding:2px 0">${isP?'⭐ ':''}${idx+1}. ${t.name}</td>
-          <td style="text-align:right">${qualified?'✅':'—'}</td>
-        </tr>`;
-      });
-      h+=`</table></div>`;
+      const isMy = g.some(t=>t.isPlayer||t.name===P.clubName);
+      const expanded = P._contExpanded[i];
+      const border = isMy?'border:2px solid #f0c000;':'border:1px solid #21262d;';
+      h+=`<div style="background:#0d1117;border-radius:8px;padding:8px;margin-bottom:8px;${border}">`;
+      h+=`<div onclick="toggleContGroup(${i})" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#d29922;font-weight:600;margin-bottom:4px">`;
+      h+=`<span>${isMy?'⭐ ':''}Grupo ${String.fromCharCode(65+i)}</span><span style="font-size:10px;color:#8b949e">${expanded?'▲ contraer':'▼ expandir'}</span></div>`;
+      if(expanded){
+        const sorted=[...g].sort((a,b)=>(b.stars||2)-(a.stars||2)+randomBetween(-1,1));
+        h+=`<table style="width:100%;font-size:11px;border-collapse:collapse">`;
+        sorted.forEach((t,idx)=>{
+          const isP=t.isPlayer||t.name===P.clubName;
+          const qualified=g.advanced && g.advanced.includes(t.name);
+          h+=`<tr style="color:${isP?'#7ee787':qualified?'#e6edf3':'#8b949e'};font-weight:${isP?'700':'400'}">
+            <td style="padding:2px 0">${isP?'⭐ ':''}${idx+1}. ${t.name}</td>
+            <td style="text-align:right">${qualified?'✅':'—'}</td>
+          </tr>`;
+        });
+        h+=`</table>`;
+      } else {
+        const myT = g.find(t=>t.isPlayer||t.name===P.clubName);
+        if(myT){const q=g.advanced&&g.advanced.includes(myT.name);h+=`<div style="font-size:11px;color:#7ee787">⭐ ${myT.name} ${q?'✅':'·'}</div>`}
+      }
+      h+=`</div>`;
     });
   }
+  const inGroupPhase = cd.groups && (cd.phase.includes("grupos") || cd.playerEliminated==="Fase de grupos");
 
   // Knockout bracket
   if(cd.current && cd.current.teams && cd.phase!=="Finalizada" && !inGroupPhase){
