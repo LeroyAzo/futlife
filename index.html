@@ -243,6 +243,31 @@ body::before{
 .life-item .life-name{font-size:12px;font-weight:600;color:#e6edf3}
 .life-item .life-price{font-size:11px;color:#8b949e;margin-top:2px}
 
+/* ===== VITRINA ===== */
+.vitrina-shelf{margin-bottom:18px}
+.vitrina-shelf h3{font-size:13px;color:#d29922;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.vitrina-shelf h3 span{color:#8b949e;font-size:11px;text-transform:none;letter-spacing:0}
+.shelf-row{
+  min-height:90px;
+  background:linear-gradient(180deg,#1c2128 0%,#161b22 60%,#0d1117 100%);
+  border:1px solid #30363d;border-radius:12px;
+  padding:16px 14px 22px;display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;
+  position:relative;box-shadow:inset 0 2px 10px rgba(0,0,0,0.3);
+}
+.shelf-row::after{
+  content:'';position:absolute;bottom:10px;left:12px;right:12px;height:5px;
+  background:linear-gradient(90deg,transparent,#d29922,transparent);border-radius:3px;opacity:.7;
+}
+.trophy{
+  width:72px;display:flex;flex-direction:column;align-items:center;gap:4px;
+  text-align:center;z-index:1;transition:transform .2s;
+}
+.trophy:hover{transform:translateY(-4px)}
+.trophy-icon{font-size:34px;line-height:1;filter:drop-shadow(0 0 8px rgba(210,153,34,.35))}
+.trophy-name{font-size:10px;font-weight:700;color:#e6edf3;line-height:1.2}
+.trophy-count{font-size:10px;color:#d29922;font-weight:600}
+.shelf-empty{font-size:12px;color:#8b949e;width:100%;text-align:center;padding:12px 0}
+
 /* ===== EVENT MODAL ===== */
 .modal-overlay{
   position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:100;
@@ -471,6 +496,7 @@ input[type=range]::-webkit-slider-thumb{
     <button class="tab-btn" data-tab="actions">⚡ Acciones</button>
     <button class="tab-btn" data-tab="tables">📊 Tablas</button>
     <button class="tab-btn" data-tab="achievements">🏆 Logros</button>
+    <button class="tab-btn" data-tab="vitrina">🏅 Vitrina</button>
   </div>
 
   <div id="tab-career" class="tab-panel active">
@@ -489,10 +515,6 @@ input[type=range]::-webkit-slider-thumb{
     <div class="section-card">
       <h3>Atributos</h3>
       <div id="stats-display"></div>
-    </div>
-    <div class="section-card">
-      <h3>🏆 Títulos</h3>
-      <div id="titles-display" style="display:flex;flex-wrap:wrap;gap:6px"></div>
     </div>
     <div class="section-card">
       <h3>Historial de clubes</h3>
@@ -529,6 +551,13 @@ input[type=range]::-webkit-slider-thumb{
     <div class="section-card">
       <h3>Logros</h3>
       <div class="achievement-grid" id="achievements-display"></div>
+    </div>
+  </div>
+
+  <div id="tab-vitrina" class="tab-panel">
+    <div class="section-card">
+      <h3>🏅 Vitrina de títulos</h3>
+      <div id="vitrina-display"></div>
     </div>
   </div>
 
@@ -2267,7 +2296,7 @@ function updateUI(){
   renderRelationships();
   renderTrainOptions();
   renderClubHistory();
-  renderTitles();
+  renderVitrina();
   renderLifeItems();
   renderActions();
   renderAchievements();
@@ -4029,17 +4058,56 @@ function renderStats(){
 }
 
 // ============================================================
-// CLUB HISTORY
+// VITRINA DE TÍTULOS
 // ============================================================
-function renderTitles(){
-  const div = document.getElementById("titles-display");
-  if(!div) return;
-  const titles = P.titles||{};
-  const list = getTitleList();
-  if(list.length===0){div.innerHTML="<span style='font-size:12px;color:#8b949e'>Aún sin títulos. ¡A ganar!</span>";return}
-  div.innerHTML = list.map(t=>`<span style="background:#0d1117;border:1px solid #d29922;border-radius:8px;padding:6px 12px;font-size:11px;color:#d29922;font-weight:600">🏆 ${t}</span>`).join("");
+function categorizeTitles(){
+  const leagueNames = new Set(CLUBS.map(c=>c.league));
+  const continentalNames = new Set(["Champions League","Copa Libertadores","AFC Champions League","CAF Champions League","Continental Cup"]);
+  const individualNames = new Set(["Balón de Oro","Bota de Oro","Botín de Oro","Pichichi","MVP"]);
+  const nationalNames = new Set(["Copa del Mundo","Eurocopa","Copa América"]);
+  const categories = {ligas:[],continentales:[],copas:[],individuales:[],nacionales:[]};
+  for(const [name,count] of Object.entries(P.titles||{})){
+    if(leagueNames.has(name)) categories.ligas.push({name,count});
+    else if(continentalNames.has(name)) categories.continentales.push({name,count});
+    else if(individualNames.has(name)) categories.individuales.push({name,count});
+    else if(nationalNames.has(name)) categories.nacionales.push({name,count});
+    else if(name.startsWith("Copa ")) categories.copas.push({name,count});
+    else categories.copas.push({name,count});
+  }
+  return categories;
 }
 
+function renderVitrina(){
+  const div = document.getElementById("vitrina-display");
+  if(!div) return;
+  const cat = categorizeTitles();
+  const shelves = [
+    {key:"ligas", icon:"🏆", label:"Ligas", sub:"Campeonatos de liga"},
+    {key:"continentales", icon:"🌍", label:"Continentales", sub:"Champions, Libertadores, AFC..."},
+    {key:"copas", icon:"🏅", label:"Copas domésticas", sub:"Copas nacionales"},
+    {key:"individuales", icon:"⭐", label:"Individuales", sub:"Balón de Oro, Bota de Oro..."},
+    {key:"nacionales", icon:"🌎", label:"Selección", sub:"Copa del Mundo y más"}
+  ];
+  let html = "";
+  for(const shelf of shelves){
+    const items = cat[shelf.key];
+    if(shelf.key==="nacionales" && items.length===0) continue;
+    html += `<div class="vitrina-shelf"><h3>${shelf.icon} ${shelf.label} <span>— ${shelf.sub}</span></h3><div class="shelf-row">`;
+    if(items.length===0){
+      html += `<div class="shelf-empty">Estante vacío</div>`;
+    } else {
+      for(const t of items){
+        html += `<div class="trophy"><div class="trophy-icon">${shelf.icon}</div><div class="trophy-name">${t.name}</div>${t.count>1?`<div class="trophy-count">x${t.count}</div>`:""}</div>`;
+      }
+    }
+    html += `</div></div>`;
+  }
+  div.innerHTML = html;
+}
+
+// ============================================================
+// CLUB HISTORY
+// ============================================================
 function renderClubHistory(){
   const div = document.getElementById("club-history");
   div.innerHTML = "";
