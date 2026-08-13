@@ -773,18 +773,77 @@ function getTitleList(){
   return Object.keys(t).map(name => formatTitleEntry(name, t[name]));
 }
 
-const POSITIONS = {
-  PO:{name:"Portero",stats:{ritmo:-15,tiro:-15,pase:-5,defensa:20,fisico:10,regate:-10}},
-  DFI:{name:"Defensa Central Izq.",stats:{ritmo:3,tiro:-8,pase:2,defensa:18,fisico:12,regate:-5}},
-  DFD:{name:"Defensa Central Der.",stats:{ritmo:3,tiro:-8,pase:2,defensa:18,fisico:12,regate:-5}},
-  LI:{name:"Lateral Izquierdo",stats:{ritmo:14,tiro:-5,pase:8,defensa:10,fisico:5,regate:5}},
-  LD:{name:"Lateral Derecho",stats:{ritmo:14,tiro:-5,pase:8,defensa:10,fisico:5,regate:5}},
-  MC:{name:"Medio Centro",stats:{ritmo:8,tiro:8,pase:12,defensa:8,fisico:8,regate:8}},
-  MCD:{name:"Pivote",stats:{ritmo:2,tiro:2,pase:10,defensa:18,fisico:12,regate:0}},
-  MCO:{name:"Enganche",stats:{ritmo:5,tiro:10,pase:18,defensa:0,fisico:0,regate:15}},
-  EI:{name:"Extremo Izquierdo",stats:{ritmo:18,tiro:10,pase:5,defensa:-8,fisico:0,regate:16}},
-  ED:{name:"Extremo Derecho",stats:{ritmo:18,tiro:10,pase:5,defensa:-8,fisico:0,regate:16}},
-  DC:{name:"Delantero Centro",stats:{ritmo:10,tiro:18,pase:0,defensa:-10,fisico:10,regate:8}}
+const POSITION_STATS = {
+  PO:{name:"Portero",stats:{pase:-5,estirada:20,salto:10,reflejos:15,fisico:10}},
+  DFI:{name:"Defensa Central Izq.",stats:{entrada:18,fisico:12,tiro:-8,pase:2,ritmo:3}},
+  DFD:{name:"Defensa Central Der.",stats:{entrada:18,fisico:12,tiro:-8,pase:2,ritmo:3}},
+  LI:{name:"Lateral Izquierdo",stats:{ritmo:14,pase:8,entrada:10,fisico:5,centro:5}},
+  LD:{name:"Lateral Derecho",stats:{ritmo:14,pase:8,entrada:10,fisico:5,centro:5}},
+  MC:{name:"Medio Centro",stats:{ritmo:8,pase:12,tiro:8,vision:8,regate:8}},
+  MCD:{name:"Pivote",stats:{ritmo:2,pase:10,tiro:2,vision:10,regate:0}},
+  MCO:{name:"Enganche",stats:{ritmo:5,pase:18,tiro:10,vision:15,regate:5}},
+  EI:{name:"Extremo Izquierdo",stats:{tiro:10,regate:16,fisico:0,ritmo:18,centro:10}},
+  ED:{name:"Extremo Derecho",stats:{tiro:10,regate:16,fisico:0,ritmo:18,centro:10}},
+  DC:{name:"Delantero Centro",stats:{tiro:18,regate:8,fisico:10,ritmo:10,aereo:16}}
+};
+
+const POSITION_WEIGHTS = {
+  DC:{tiro:35,aereo:25,fisico:20,ritmo:10,regate:10},
+  EI:{regate:30,ritmo:25,tiro:25,fisico:12,centro:8},
+  ED:{regate:30,ritmo:25,tiro:25,fisico:12,centro:8},
+  MC:{ritmo:20,pase:20,tiro:20,vision:20,regate:20},
+  MCD:{ritmo:20,pase:20,tiro:20,vision:20,regate:20},
+  MCO:{ritmo:20,pase:20,tiro:20,vision:20,regate:20},
+  DFI:{entrada:35,fisico:30,tiro:13,pase:12,ritmo:10},
+  DFD:{entrada:35,fisico:30,tiro:13,pase:12,ritmo:10},
+  LI:{ritmo:28,pase:25,entrada:25,fisico:12,centro:10},
+  LD:{ritmo:28,pase:25,entrada:25,fisico:12,centro:10},
+  PO:{reflejos:30,estirada:25,salto:20,pase:15,fisico:10}
+};
+
+const ATTACK_SCORE_WEIGHTS = {
+  DC:{tiro:0.5,aereo:0.3,fisico:0.2},
+  EI:{tiro:0.3,regate:0.3,ritmo:0.3,centro:0.1},
+  ED:{tiro:0.3,regate:0.3,ritmo:0.3,centro:0.1},
+  MC:{tiro:0.2,pase:0.3,vision:0.3,ritmo:0.2},
+  MCD:{tiro:0.15,pase:0.3,vision:0.35,ritmo:0.2},
+  MCO:{tiro:0.25,pase:0.25,vision:0.25,regate:0.25},
+  DFI:{entrada:0.4,fisico:0.3,tiro:0.2,pase:0.1},
+  DFD:{entrada:0.4,fisico:0.3,tiro:0.2,pase:0.1},
+  LI:{entrada:0.3,ritmo:0.3,pase:0.25,centro:0.15},
+  LD:{entrada:0.3,ritmo:0.3,pase:0.25,centro:0.15},
+  PO:{}
+};
+
+const ASSIST_SCORE_WEIGHTS = {
+  DC:{tiro:0.2,regate:0.2,fisico:0.2,ritmo:0.2,aereo:0.2},
+  EI:{centro:0.4,pase:0.3,regate:0.2,ritmo:0.1},
+  ED:{centro:0.4,pase:0.3,regate:0.2,ritmo:0.1},
+  MC:{pase:0.4,vision:0.4,ritmo:0.1,tiro:0.1},
+  MCD:{pase:0.4,vision:0.4,ritmo:0.1,tiro:0.1},
+  MCO:{pase:0.4,vision:0.4,regate:0.1,ritmo:0.1},
+  DFI:{pase:0.4,entrada:0.3,ritmo:0.2,fisico:0.1},
+  DFD:{pase:0.4,entrada:0.3,ritmo:0.2,fisico:0.1},
+  LI:{centro:0.4,pase:0.35,entrada:0.15,ritmo:0.1},
+  LD:{centro:0.4,pase:0.35,entrada:0.15,ritmo:0.1},
+  PO:{}
+};
+
+const BASE_GOALS = {DC:22,EI:14,ED:14,MCO:10,MC:5,MCD:5,DFI:3,DFD:3,LI:3,LD:3,PO:0};
+const BASE_ASSISTS = {DC:6,EI:12,ED:12,MCO:14,MC:14,MCD:7,DFI:5,DFD:5,LI:5,LD:5,PO:0};
+
+const STAT_FALLBACKS = {
+  defensa:["entrada","fisico"],
+  regate:["ritmo"],
+  tiro:["pase"],
+  pase:["vision","regate"],
+  aereo:["tiro","fisico"],
+  centro:["pase","regate"],
+  vision:["pase","regate"],
+  entrada:["fisico"],
+  estirada:["reflejos"],
+  salto:["reflejos"],
+  reflejos:["salto"]
 };
 
 const CLUBS = [
@@ -1131,7 +1190,7 @@ const LIFE_ITEMS = [
 const P = {
   name:"", country:"Argentina", position:"DC", age:16,
   overall:0,
-  stats:{ritmo:50,tiro:50,pase:50,defensa:50,fisico:50,regate:50},
+  stats:{ritmo:50,tiro:50,pase:50,regate:50,fisico:50,aereo:50,centro:50,vision:50,entrada:50,estirada:50,salto:50,reflejos:50},
   money:5000, salary:0,
   clubName:"Sin club", clubStars:0, clubLeague:"", clubCountry:"",
   morale:60, energyAvailable:true, injured:false, injuryWeeks:0,
@@ -1158,10 +1217,19 @@ const STAT_NAMES = {
   ritmo:{name:"Ritmo",color:"#7ee787"},
   tiro:{name:"Tiro",color:"#f0883e"},
   pase:{name:"Pase",color:"#79c0ff"},
-  defensa:{name:"Defensa",color:"#a371f7"},
+  regate:{name:"Regate",color:"#ffa657"},
   fisico:{name:"Físico",color:"#f85149"},
-  regate:{name:"Regate",color:"#ffa657"}
+  aereo:{name:"Aéreo",color:"#d29922"},
+  centro:{name:"Centro",color:"#a371f7"},
+  vision:{name:"Visión",color:"#58a6ff"},
+  entrada:{name:"Entrada",color:"#ff7b72"},
+  estirada:{name:"Estirada",color:"#79c0ff"},
+  salto:{name:"Salto",color:"#7ee787"},
+  reflejos:{name:"Reflejos",color:"#ffd700"}
 };
+
+const ALL_STAT_KEYS = Object.keys(STAT_NAMES);
+const SAVE_VERSION = 2;
 
 // ============================================================
 // PLAYER CLASS SYSTEM
@@ -1232,12 +1300,20 @@ function getPlayerClasses(){
 // ============================================================
 const ALL_EVENTS = [];
 
-function ev(title, text, emoji, type, options, magnitude, classes){
+const EVENT_POSITION_OVERRIDES = {
+  "Hat-trick mágico":["DC","EI","ED","MCO"],
+  "Racha goleadora":["DC","EI","ED","MCO"]
+};
+
+function ev(title, text, emoji, type, options, magnitude, classes, positions){
   // Auto-assign classes if not explicitly provided
   if(!classes || classes.length===0){
     classes = AUTO_CLASSES[title] || [];
   }
-  ALL_EVENTS.push({title,text,emoji,type,options,magnitude: magnitude||"medium", classes});
+  if(!positions && EVENT_POSITION_OVERRIDES[title]){
+    positions = EVENT_POSITION_OVERRIDES[title];
+  }
+  ALL_EVENTS.push({title,text,emoji,type,options,magnitude: magnitude||"medium", classes, positions});
 }
 
 const AUTO_CLASSES = {
@@ -1834,36 +1910,235 @@ ev("Plan de rendimiento","El club te presenta un plan de objetivos para esta tem
   {text:"Firmas motivado. Este año es TU año",effects:{morale:10, overall_boost:1, money:100000, discipline:15},chance:0.8, failText:"No cumples ni la mitad de los objetivos. Te descuentan del sueldo.", failEffects:{money:-50000,morale:-10}},
   {text:"Lo lees por encima. Mucha presión",effects:{morale:2, rel_entrenador:-5},chance:0.6, failText:"Tu falta de compromiso se nota en el campo.", failEffects:{rel_entrenador:-10,discipline:-10}}
 ]);
+// ============================================================
+// EVENTOS ESPECÍFICOS POR POSICIÓN
+// ============================================================
+
+// PORTERO (PO)
+ev("Parada decisiva","El delantero se planta solo ante ti. El estadio contiene la respiración. Es ahora o nunca.","🧤","match",[
+  {text:"Te estiras y desvías a córner",effects:{careerMatches:1,morale:12,rel_entrenador:8,rel_compañeros:8},chance:0.75,failText:"El balón te cuela por debajo del cuerpo. Gol del rival.",failEffects:{morale:-10,rel_entrenador:-5}},
+  {text:"Sales a achicar sin miedo",effects:{careerMatches:1,morale:8,rel_compañeros:5},chance:0.6,failText:"Te la tira por encima. Gol.",failEffects:{morale:-8}}
+],"medium",[],["PO"]);
+ev("Penalti en contra","El árbitro señala penalti. Todos miran al cielo. Tú te quedas solo ante el lanzador.","🥅","match",[
+  {text:"Adivinas la intención y paras",effects:{careerMatches:1,morale:20,rel_entrenador:10,rel_compañeros:10,followers:5000},chance:0.45,failText:"El delantero te engaña. Gol.",failEffects:{morale:-12}},
+  {text:"Miras fijamente sin moverte",effects:{careerMatches:1,morale:5},chance:0.2,failText:"Te la clava a la escuadra.",failEffects:{morale:-8}}
+],"medium",[],["PO"]);
+ev("Saque que genera peligro","Coges el balón con las manos y ves a un compañero desmarcado a campo contrario.","🚀","match",[
+  {text:"Lanzas un saque largo preciso",effects:{careerAssists:1,seasonAssists:1,morale:10,rel_compañeros:8},chance:0.65,failText:"El balón se va fuera. Oportunidad perdida.",failEffects:{morale:-3}},
+  {text:"Juegas corto con la defensa",effects:{careerMatches:1,morale:3},chance:0.9,failText:"",failEffects:{}}
+],"medium",[],["PO"]);
+ev("Uno contra uno","Un extremo se te viene encima en velocidad. Decides si salir o esperar en la portería.","⚡","match",[
+  {text:"Sales rápido y achicas",effects:{careerMatches:1,morale:10,rel_entrenador:5},chance:0.7,failText:"Te regatea y marca.",failEffects:{morale:-8}},
+  {text:"Esperas en la línea",effects:{careerMatches:1,morale:3},chance:0.5,failText:"Define con calma.",failEffects:{morale:-5}}
+],"medium",[],["PO"]);
+ev("Error bajo palos","Un balón bobo se te escurre entre las manos. La afición se queda en silencio.","😬","match",[
+  {text:"Lo asumes y pides el balón de nuevo",effects:{careerMatches:1,morale:5,rel_compañeros:3},chance:0.8,failText:"La culpa te carcome. Te desconcentras.",failEffects:{morale:-10,rel_entrenador:-5}},
+  {text:"Te encierras en ti mismo",effects:{morale:-8,rel_compañeros:-5},chance:0.5,failText:"",failEffects:{}}
+],"medium",[],["PO"]);
+ev("Valla invicta","Tu equipo gana 1-0 y el rival no ha tenido ocasiones claras. Tu trabajo ha sido clave.","🛡️","match",[
+  {text:"Agradeces a la defensa",effects:{careerMatches:1,morale:10,rel_compañeros:10,rel_entrenador:8},chance:0.9,failText:"",failEffects:{}},
+  {text:"Te llevas todo el mérito",effects:{careerMatches:1,morale:5,rel_compañeros:-5},chance:0.6,failText:"El vestuario te mira raro.",failEffects:{rel_compañeros:-10}}
+],"medium",[],["PO"]);
+ev("Entrenamiento de reflejos","El preparador te lanza pelotas a quemarropa. Necesitas reaccionar al milisegundo.","🧤","random",[
+  {text:"Das el 100%",effects:{reflejos:2,estirada:1,morale:5},chance:0.9,failText:"Te golpea una pelota en la cara. Risa general.",failEffects:{morale:-3}},
+  {text:"Te dosificas",effects:{morale:2},chance:0.8,failText:"El entrenador nota que no te esfuerzas.",failEffects:{rel_entrenador:-3}}
+],"small",[],["PO"]);
+ev("Liderazgo bajo palos","La defensa está desorganizada en un córner. Tú eres el que más ve el campo.","📣","match",[
+  {text:"Organizas la barrera y gritas instrucciones",effects:{careerMatches:1,morale:8,rel_entrenador:5,rel_compañeros:5},chance:0.85,failText:"Nadie te hace caso. Marcan de cabeza.",failEffects:{morale:-5,rel_compañeros:-5}},
+  {text:"Te quedas callado",effects:{careerMatches:1,morale:2},chance:0.7,failText:"El caos continúa.",failEffects:{morale:-3}}
+],"small",[],["PO"]);
+ev("Saque de puerta peligroso","El rival presiona alto. Tienes que sacar rápido y bien.","🦶","match",[
+  {text:"Encuentras al lateral solo",effects:{careerAssists:1,seasonAssists:1,morale:8,rel_compañeros:5},chance:0.7,failText:"El pase es corto y lo interceptan. Casi te marcan.",failEffects:{morale:-5}},
+  {text:"Despejas sin más",effects:{careerMatches:1,morale:2},chance:0.95,failText:"",failEffects:{}}
+],"small",[],["PO"]);
+ev("Confianza del entrenador","El DT te elige capitán para un partido amistoso. Tienes que liderar desde atrás.","👔","random",[
+  {text:"Hablas con todos antes del partido",effects:{morale:10,rel_compañeros:8,rel_entrenador:5},chance:0.9,failText:"",failEffects:{}},
+  {text:"Dejas que otros hablen",effects:{morale:3},chance:0.6,failText:"Pareces ausente.",failEffects:{rel_entrenador:-3}}
+],"small",[],["PO"]);
+
+// DEFENSAS (DFI, DFD, LI, LD)
+ev("Entrada crucial","El delantero rival se perfila para el remate. Solo una entrada limpia lo para.","🦵","match",[
+  {text:"Entrada limpia y balón para ti",effects:{careerMatches:1,morale:10,rel_entrenador:8,rel_compañeros:5},chance:0.75,failText:"El árbitro pita falta. Te sacan amarilla.",failEffects:{morale:-5,rel_entrenador:-3}},
+  {text:"Te quedas de pie y cierras el paso",effects:{careerMatches:1,morale:5},chance:0.6,failText:"Te dribla y remata.",failEffects:{morale:-5}}
+],"medium",[],["DFI","DFD","LI","LD"]);
+ev("Despeje bajo palos","Tras un córner, el portero ha quedado tendido y el balón ronda la línea.","⚽","match",[
+  {text:"Sacas el balón en la línea",effects:{careerMatches:1,morale:15,rel_compañeros:10,rel_entrenador:10},chance:0.8,failText:"Te resbalas y entra. Gol en propia.",failEffects:{morale:-15,rel_compañeros:-8}},
+  {text:"Esperas a que llegue el portero",effects:{careerMatches:1,morale:3},chance:0.5,failText:"Llega tarde. Gol.",failEffects:{morale:-8}}
+],"medium",[],["DFI","DFD","LI","LD"]);
+ev("Duelo aéreo defensivo","Un centro peligroso viene al área. Tienes que ganar de cabeza.","🧱","match",[
+  {text:"Ganas el salto y despejas",effects:{careerMatches:1,morale:10,rel_entrenador:5},chance:0.8,failText:"Te ganan el salto. Cabezazo al palo.",failEffects:{morale:-5}},
+  {text:"Taponas al delantero",effects:{careerMatches:1,morale:8,rel_compañeros:5},chance:0.7,failText:"Cometes falta. Peligroso.",failEffects:{morale:-5,rel_entrenador:-3}}
+],"medium",[],["DFI","DFD","LI","LD"]);
+ev("Marca al delantero estrella","Te toca vigilador al goleador del rival. Un duelo de titanes.","🥊","match",[
+  {text:"Lo anulas durante todo el partido",effects:{careerMatches:1,morale:12,rel_entrenador:10,rel_compañeros:8},chance:0.6,failText:"Te gana una jugada y marca.",failEffects:{morale:-10,rel_entrenador:-5}},
+  {text:"Lo dejas a tu compañero",effects:{careerMatches:1,morale:3},chance:0.8,failText:"Se produce un malentendido. Gol.",failEffects:{morale:-5,rel_compañeros:-5}}
+],"medium",[],["DFI","DFD","LI","LD"]);
+ev("Carrera de lateral","Robas el balón y ves todo el campo abierto por tu banda.","🏃","match",[
+  {text:"Largas carrera y centras",effects:{careerAssists:1,seasonAssists:1,morale:10,rel_compañeros:5},chance:0.65,failText:"Te cortan el centro. Pero generas peligro.",failEffects:{morale:-2}},
+  {text:"Juegas seguro hacia atrás",effects:{careerMatches:1,morale:3},chance:0.9,failText:"",failEffects:{}}
+],"medium",[],["LI","LD"]);
+ev("Entrada en banda","El extremo rival intenta superarte por velocidad.","⚡","match",[
+  {text:"Le cortas el paso con entrada limpia",effects:{careerMatches:1,morale:10,rel_entrenador:5},chance:0.75,failText:"Te supera y pone un centro peligroso.",failEffects:{morale:-5}},
+  {text:"Retrocedes y cierras el centro",effects:{careerMatches:1,morale:5},chance:0.8,failText:"Centra igual.",failEffects:{morale:-3}}
+],"small",[],["LI","LD"]);
+ev("Entrenamiento defensivo","El entrenador te pone a practicar entradas y despejes durante media hora extra.","🛡️","random",[
+  {text:"Trabajas sin quejarte",effects:{entrada:2,fisico:1,morale:5,discipline:5},chance:0.9,failText:"Te duele la rodilla.",failEffects:{morale:-3}},
+  {text:"Te quejas del esfuerzo",effects:{morale:-2},chance:0.5,failText:"El DT te oye.",failEffects:{rel_entrenador:-5}}
+],"small",[],["DFI","DFD","LI","LD"]);
+ev("Pase en profundidad desde atrás","Ves un compañero desmarcado entre líneas.","👁️","match",[
+  {text:"Le pones un balón largo preciso",effects:{careerAssists:1,seasonAssists:1,morale:8,rel_compañeros:5},chance:0.7,failText:"El pase se va largo.",failEffects:{morale:-3}},
+  {text:"Juegas corto con el portero",effects:{careerMatches:1,morale:2},chance:0.95,failText:"",failEffects:{}}
+],"small",[],["DFI","DFD","LI","LD"]);
+ev("Juego aéreo ofensivo","Te subes a rematar un córner.","🧱","match",[
+  {text:"Conectas un cabezazo potente",effects:{careerGoals:1,seasonGoals:1,morale:12},chance:0.5,failText:"El balón se va desviado.",failEffects:{morale:-3}},
+  {text:"Amagas y dejas pasar",effects:{careerMatches:1,morale:3},chance:0.8,failText:"",failEffects:{}}
+],"small",[],["DFI","DFD"]);
+ev("Centro de lateral","Llegas a línea de fondo y levantas la cabeza.","🎯","match",[
+  {text:"Centro raso al área",effects:{careerAssists:1,seasonAssists:1,morale:10},chance:0.65,failText:"El defensa despeja.",failEffects:{morale:-2}},
+  {text:"Recortas hacia dentro",effects:{careerMatches:1,morale:3},chance:0.8,failText:"Te quitan el balón.",failEffects:{morale:-3}}
+],"small",[],["LI","LD"]);
+
+// MEDIOS (MC, MCD, MCO)
+ev("Pase que rompe líneas","Entre líneas ves a un compañero solo. Es un pase complicado pero decisivo.","🎯","match",[
+  {text:"Filtrado perfecto",effects:{careerAssists:1,seasonAssists:1,morale:12,rel_compañeros:8},chance:0.75,failText:"El defensa lo intercepta.",failEffects:{morale:-5}},
+  {text:"Juegas seguro hacia atrás",effects:{careerMatches:1,morale:3},chance:0.95,failText:"",failEffects:{}}
+],"medium",[],["MC","MCD","MCO"]);
+ev("Recuperación en mediocampo","El rival pierde el balón cerca de ti. Puedes iniciar el contraataque.","⚔️","match",[
+  {text:"Robas y lanzas al espacio",effects:{careerAssists:1,seasonAssists:1,careerMatches:1,morale:10,rel_entrenador:5},chance:0.7,failText:"Te quitan el balón de inmediato.",failEffects:{morale:-3}},
+  {text:"Mantienes la posesión",effects:{careerMatches:1,morale:5},chance:0.9,failText:"",failEffects:{}}
+],"medium",[],["MC","MCD","MCO"]);
+ev("Tiro desde fuera del área","El balón te llega limpio a 25 metros. La portería te llama.","🚀","match",[
+  {text:"Volea potente",effects:{careerGoals:1,seasonGoals:1,morale:12,rel_compañeros:5},chance:0.55,failText:"El balón se va a la grada.",failEffects:{morale:-5}},
+  {text:"Buscas el pase",effects:{careerAssists:1,seasonAssists:1,morale:5},chance:0.8,failText:"El pase es cortado.",failEffects:{morale:-2}}
+],"medium",[],["MC","MCD","MCO"]);
+ev("Organizas el juego","Tu equipo necesita calma. El balón pasa por tus botas.","🧠","match",[
+  {text:"Controlas el ritmo con tu pase",effects:{careerMatches:1,morale:8,rel_entrenador:8,rel_compañeros:5},chance:0.85,failText:"Pierdes un balón bobo.",failEffects:{morale:-5,rel_entrenador:-3}},
+  {text:"Aceleras todo",effects:{careerMatches:1,morale:5},chance:0.6,failText:"El equipo se descontrola.",failEffects:{morale:-3}}
+],"medium",[],["MC","MCD","MCO"]);
+ev("Córner al primer palo","Te toca cobrar un córner. Tienes la responsabilidad.","🚩","match",[
+  {text:"Centro medido al primer palo",effects:{careerAssists:1,seasonAssists:1,morale:10},chance:0.7,failText:"El portero atrapa el balón.",failEffects:{morale:-3}},
+  {text:"Juegas en corto",effects:{careerMatches:1,morale:3},chance:0.9,failText:"La jugada no funciona.",failEffects:{morale:-2}}
+],"medium",[],["MC","MCD","MCO"]);
+ev("Visión periférica","En un ejercicio de entrenamiento detectas pases que nadie más ve.","👁️","random",[
+  {text:"Aprovechas para pulir tu visión",effects:{vision:2,pase:1,morale:5},chance:0.9,failText:"Te cuesta concentrarte.",failEffects:{morale:-2}},
+  {text:"No le das importancia",effects:{morale:1},chance:0.7,failText:"",failEffects:{}}
+],"small",[],["MC","MCD","MCO"]);
+ev("Duelo de mediocentros","Cara a cara con el mediocentro rival. Quien gane este duelo domina el partido.","⚔️","match",[
+  {text:"Ganas el duelo y mandas en el centro",effects:{careerMatches:1,morale:10,rel_entrenador:5,rel_compañeros:5},chance:0.7,failText:"Te superan físicamente.",failEffects:{morale:-5,fisico:-1}},
+  {text:"Evitas el duelo y te mueves",effects:{careerMatches:1,morale:3},chance:0.8,failText:"Pierdes la marca.",failEffects:{morale:-3}}
+],"small",[],["MC","MCD","MCO"]);
+ev("Tiro libre directo","Estás a una distancia decente. El muro te mira fijamente.","🎯","match",[
+  {text:"Lo colocas a la escuadra",effects:{careerGoals:1,seasonGoals:1,morale:15,rel_compañeros:5},chance:0.5,failText:"El balón se estrella en la barrera.",failEffects:{morale:-5}},
+  {text:"Buscas el centro",effects:{careerAssists:1,seasonAssists:1,morale:5},chance:0.75,failText:"Despejan de cabeza.",failEffects:{morale:-2}}
+],"small",[],["MC","MCD","MCO"]);
+ev("Pase largo cambiado","Ves al extremo completamente solo en la otra banda.","🌪️","match",[
+  {text:"Le pones un balón de 40 metros",effects:{careerAssists:1,seasonAssists:1,morale:10,rel_compañeros:8},chance:0.65,failText:"El pase se va desviado.",failEffects:{morale:-3}},
+  {text:"Juegas por dentro",effects:{careerMatches:1,morale:2},chance:0.9,failText:"",failEffects:{}}
+],"small",[],["MC","MCD","MCO"]);
+ev("Recuperación defensiva","El rival contraataca y tú eres el último medio.","🛡️","match",[
+  {text:"Entras con fuerza y robas",effects:{careerMatches:1,morale:10,rel_entrenador:5},chance:0.75,failText:"Falta peligrosa.",failEffects:{morale:-5,rel_entrenador:-3}},
+  {text:"Retrasas y cortas carriles",effects:{careerMatches:1,morale:5},chance:0.85,failText:"Te superan.",failEffects:{morale:-3}}
+],"small",[],["MC","MCD"]);
+
+// DELANTEROS (DC, EI, ED)
+ev("Mano a mano con el portero","Te quedas solo. Solo quedas tú y el guardameta.","⚽","match",[
+  {text:"Definición fría",effects:{careerGoals:1,seasonGoals:1,morale:12,rel_compañeros:5},chance:0.75,failText:"El portero te gana el duelo.",failEffects:{morale:-10}},
+  {text:"Intentas regatearlo",effects:{careerGoals:1,seasonGoals:1,morale:15},chance:0.55,failText:"Te quita el balón. Humillante.",failEffects:{morale:-12}}
+],"medium",[],["DC","EI","ED"]);
+ev("Cabeza a portería","Un centro preciso viene a tu cabeza.","🧱","match",[
+  {text:"Cabezazo a la escuadra",effects:{careerGoals:1,seasonGoals:1,morale:12},chance:0.65,failText:"El balón se va fuera por poco.",failEffects:{morale:-5}},
+  {text:"La bajas para un compañero",effects:{careerAssists:1,seasonAssists:1,morale:5},chance:0.8,failText:"Nadie la espera.",failEffects:{morale:-2}}
+],"medium",[],["DC","EI","ED"]);
+ev("Control en el área","Te llega un balón revuelto dentro del área.","⚽","match",[
+  {text:"Controlas y disparas de primeras",effects:{careerGoals:1,seasonGoals:1,morale:12},chance:0.7,failText:"El control se te escapa.",failEffects:{morale:-5}},
+  {text:"La dejas pasar para el compañero",effects:{careerAssists:1,seasonAssists:1,morale:8},chance:0.8,failText:"Está en fuera de juego.",failEffects:{morale:-3}}
+],"medium",[],["DC","EI","ED"]);
+ev("Centro medido","Llegas a línea de fondo con tiempo para levantar la cabeza.","🎯","match",[
+  {text:"Pones un centro perfecto",effects:{careerAssists:1,seasonAssists:1,morale:12,rel_compañeros:8},chance:0.7,failText:"El defensa despeja.",failEffects:{morale:-3}},
+  {text:"Recortas y disparas",effects:{careerGoals:1,seasonGoals:1,morale:10},chance:0.6,failText:"El portero lo para.",failEffects:{morale:-5}}
+],"medium",[],["EI","ED"]);
+ev("Definición de primeras","Un rebote te cae en el borde del área.","🚀","match",[
+  {text:"Primer toque y gol",effects:{careerGoals:1,seasonGoals:1,morale:15},chance:0.6,failText:"Se te va alto.",failEffects:{morale:-8}},
+  {text:"Controlas y buscas pase",effects:{careerAssists:1,seasonAssists:1,morale:5},chance:0.8,failText:"Pierdes la posesión.",failEffects:{morale:-3}}
+],"medium",[],["DC","EI","ED"]);
+ev("Pase de la muerte","Ves a un compañero entrando solo.","🎯","match",[
+  {text:"Asistencia de oro",effects:{careerAssists:1,seasonAssists:1,morale:12,rel_compañeros:10},chance:0.75,failText:"El pase es interceptado.",failEffects:{morale:-5}},
+  {text:"Tiras tú mismo",effects:{careerGoals:1,seasonGoals:1,morale:8},chance:0.55,failText:"El portero lo para.",failEffects:{morale:-5}}
+],"medium",[],["DC","EI","ED"]);
+ev("Entrenamiento de definición","Te quedas después del entreno practicando remates a puerta vacía.","🎯","random",[
+  {text:"Marca 20 seguidos",effects:{tiro:2,aereo:1,morale:5,discipline:5},chance:0.85,failText:"Te resbalas y te haces daño.",failEffects:{morale:-3}},
+  {text:"Te vas pronto",effects:{morale:1},chance:0.7,failText:"",failEffects:{}}
+],"small",[],["DC","EI","ED"]);
+ev("Duelo con el último defensa","Te enfrentas al central en velocidad.","⚡","match",[
+  {text:"Te lo quitas de encima",effects:{careerGoals:1,seasonGoals:1,morale:12},chance:0.65,failText:"Te hace falta. No pita.",failEffects:{morale:-5}},
+  {text:"Frenas y esperas apoyo",effects:{careerAssists:1,seasonAssists:1,morale:5},chance:0.75,failText:"Te roban el balón.",failEffects:{morale:-3}}
+],"small",[],["DC","EI","ED"]);
+ev("Remate de cabeza en córner","Te colocas en el punto de penalti para rematar.","🧱","match",[
+  {text:"Conectas de cabeza",effects:{careerGoals:1,seasonGoals:1,morale:12},chance:0.6,failText:"Te marcan antes.",failEffects:{morale:-5}},
+  {text:"Despejan antes de llegar",effects:{careerMatches:1,morale:2},chance:0.9,failText:"",failEffects:{}}
+],"small",[],["DC"]);
+ev("Carrera en profundidad","Aprovechas un espacio detrás de la defensa.","🏃","match",[
+  {text:"Llegas y defines con clase",effects:{careerGoals:1,seasonGoals:1,morale:12},chance:0.7,failText:"El portero sale bien.",failEffects:{morale:-5}},
+  {text:"Centras raso",effects:{careerAssists:1,seasonAssists:1,morale:8},chance:0.75,failText:"El balón se va fuera.",failEffects:{morale:-3}}
+],"small",[],["DC","EI","ED"]);
+
 function randomBetween(a,b){return Math.floor(Math.random()*(b-a+1))+a}
 function pick(arr){return arr[Math.floor(Math.random()*arr.length)]}
 function clamp(v,min,max){return Math.max(min,Math.min(max,v))}
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+
+function mapStatEffect(key){
+  if(P.stats[key] !== undefined) return key;
+  const fallbacks = STAT_FALLBACKS[key];
+  if(fallbacks){
+    for(const fb of fallbacks){ if(P.stats[fb] !== undefined) return fb; }
+  }
+  return null;
+}
+
+function applyStatEffect(key, amount){
+  const target = mapStatEffect(key);
+  if(target){
+    P.stats[target] = clamp((P.stats[target]||0)+amount, 1, 99);
+    return target;
+  }
+  return null;
+}
+
+function applyStatEffects(e){
+  if(!e) return "";
+  let out = "";
+  for(const [k,v] of Object.entries(e)){
+    if(typeof v !== "number") continue;
+    if(!ALL_STAT_KEYS.includes(k) && !STAT_FALLBACKS[k]) continue;
+    const target = applyStatEffect(k, v);
+    if(target){
+      const name = STAT_NAMES[target].name;
+      const sign = v>0?"+":"";
+      out += `📈 ${name} ${sign}${v}<br>`;
+    }
+  }
+  return out;
+}
 
 function randomPartner(){
   const names = ["Valentina","Sofía","Camila","Isabella","Luciana","Mariana","Renata","Daniela","Andrea","Carolina","Alejandro","Mateo","Sebastián","Nicolás","Diego"];
   return pick(names);
 }
 
+function getWeightedScore(weightsObj){
+  if(!weightsObj) return 50;
+  let total = 0, sum = 0;
+  for(const [k,w] of Object.entries(weightsObj)){
+    total += (P.stats[k]||0) * w;
+    sum += w;
+  }
+  return sum>0 ? total/sum : 50;
+}
+
 function getOverall(){
-  const s = P.stats;
-  // Position-specific weights for overall calculation
-  const weights = {
-    DC:{ritmo:20,tiro:35,pase:10,defensa:0,fisico:15,regate:20},
-    EI:{ritmo:25,tiro:25,pase:15,defensa:0,fisico:10,regate:25},
-    ED:{ritmo:25,tiro:25,pase:15,defensa:0,fisico:10,regate:25},
-    MCO:{ritmo:10,tiro:20,pase:35,defensa:0,fisico:5,regate:30},
-    MC:{ritmo:15,tiro:15,pase:30,defensa:10,fisico:15,regate:15},
-    MCD:{ritmo:5,tiro:5,pase:25,defensa:35,fisico:20,regate:10},
-    DFI:{ritmo:10,tiro:0,pase:15,defensa:40,fisico:25,regate:10},
-    DFD:{ritmo:10,tiro:0,pase:15,defensa:40,fisico:25,regate:10},
-    LI:{ritmo:25,tiro:5,pase:20,defensa:25,fisico:15,regate:10},
-    LD:{ritmo:25,tiro:5,pase:20,defensa:25,fisico:15,regate:10},
-    PO:{ritmo:5,tiro:0,pase:10,defensa:40,fisico:35,regate:10}
-  };
-  const w = weights[P.position]||weights.DC;
-  const total = w.ritmo*s.ritmo + w.tiro*s.tiro + w.pase*s.pase + w.defensa*s.defensa + w.fisico*s.fisico + w.regate*s.regate;
-  const sum = w.ritmo+w.tiro+w.pase+w.defensa+w.fisico+w.regate;
-  return Math.round(total/sum);
+  const w = POSITION_WEIGHTS[P.position]||POSITION_WEIGHTS.DC;
+  return Math.round(getWeightedScore(w));
 }
 
 function refreshOverall(){
@@ -1891,21 +2166,23 @@ function generateSeasonStats(){
   P.seasonMatches = Math.floor(baseMatches * (P.injured?0.3:1) * (0.6+roleMul*0.4));
   P.careerMatches += P.seasonMatches;
 
-  // Goals based on position and overall
-  if(pos==="DC") P.seasonGoals = Math.floor(ovr*0.2 + roleMul*5 + randomBetween(-3,6));
-  else if(pos==="EI"||pos==="ED") P.seasonGoals = Math.floor(ovr*0.15 + roleMul*4 + randomBetween(-2,5));
-  else if(pos==="MCO") P.seasonGoals = Math.floor(ovr*0.12 + roleMul*3 + randomBetween(-2,4));
-  else if(pos==="MC"||pos==="MCD") P.seasonGoals = Math.floor(ovr*0.08 + randomBetween(0,3));
-  else if(pos==="DFI"||pos==="DFD"||pos==="LI"||pos==="LD") P.seasonGoals = Math.floor(ovr*0.04 + randomBetween(0,2));
-  else P.seasonGoals = 0; // PO
-  P.seasonGoals = Math.max(0, P.seasonGoals);
+  // Goals and assists based on position stats
+  const attackScore = getWeightedScore(ATTACK_SCORE_WEIGHTS[pos]);
+  const assistScore = getWeightedScore(ASSIST_SCORE_WEIGHTS[pos]);
+  const baseGoals = BASE_GOALS[pos] || 0;
+  const baseAssists = BASE_ASSISTS[pos] || 0;
 
-  // Assists based on position
-  if(pos==="MCO"||pos==="MC") P.seasonAssists = Math.floor(ovr*0.18 + roleMul*4 + randomBetween(-2,5));
-  else if(pos==="EI"||pos==="ED") P.seasonAssists = Math.floor(ovr*0.12 + roleMul*3 + randomBetween(-1,4));
-  else if(pos==="DC") P.seasonAssists = Math.floor(ovr*0.08 + randomBetween(0,4));
-  else if(pos==="MCD"||pos==="LI"||pos==="LD") P.seasonAssists = Math.floor(ovr*0.1 + randomBetween(0,3));
-  else P.seasonAssists = Math.floor(ovr*0.03 + randomBetween(0,2));
+  if(baseGoals>0){
+    P.seasonGoals = Math.floor(baseGoals * (attackScore/65) * roleMul + randomBetween(-2,4));
+  } else {
+    P.seasonGoals = 0;
+  }
+  if(baseAssists>0){
+    P.seasonAssists = Math.floor(baseAssists * (assistScore/65) * roleMul + randomBetween(-2,4));
+  } else {
+    P.seasonAssists = 0;
+  }
+  P.seasonGoals = Math.max(0, P.seasonGoals);
   P.seasonAssists = Math.max(0, P.seasonAssists);
 
   // Age scaling: youth score less, prime normal, veterans less
@@ -2112,11 +2389,10 @@ function updateCanteraOptions(){
 function refreshPreviewStats(){
   const pos = selectedPosition || "DC";
   const container = document.getElementById("stats-preview");
-  const base = {ritmo:50,tiro:50,pase:50,defensa:50,fisico:50,regate:50};
-  const mods = POSITIONS[pos].stats;
+  const mods = POSITION_STATS[pos].stats;
   container.innerHTML = "";
-  for(const [k,v] of Object.entries(base)){
-    const val = clamp(v+mods[k]+randomBetween(-5,5),1,99);
+  for(const [k,mod] of Object.entries(mods)){
+    const val = clamp(50+mod+randomBetween(-5,5),1,99);
     const badge = document.createElement("div");
     badge.className = "stat-badge";
     badge.innerHTML = `<span style="font-size:10px">${STAT_NAMES[k].name}</span><span class="val">${val}</span>`;
@@ -2140,9 +2416,10 @@ function handleStart(){
   P.salary = 0;
   P.clubName = "Sin club";
   P.clubStars = 0;
-  const posMod = POSITIONS[P.position].stats;
-  for(const k of Object.keys(P.stats)){
-    P.stats[k] = clamp(50 + posMod[k] + randomBetween(-4,6), 30, 72);
+  P.stats = {};
+  const posMod = POSITION_STATS[P.position].stats;
+  for(const [k,mod] of Object.entries(posMod)){
+    P.stats[k] = clamp(50 + mod + randomBetween(-4,6), 30, 72);
   }
   P.morale = 60;
   P.energyAvailable = true;
@@ -2239,6 +2516,18 @@ function getEligibleEvents(){
     if(e.type==="national" && P.age<18) ok = false;
     if(e.type==="relationship" && P.age<18) ok = false;
     if(e.type==="injury" && P.injured) ok = false;
+
+    // Position-specific filtering
+    if(e.positions && !e.positions.includes(P.position)) ok = false;
+    if(P.position==="PO"){
+      const opts = e.options||[];
+      const hasGoal = opts.some(o=>{
+        const eff = o.effects||{};
+        const fail = o.failEffects||{};
+        return eff.careerGoals || eff.seasonGoals || eff.worldCupGoal || fail.careerGoals || fail.seasonGoals || fail.worldCupGoal;
+      });
+      if(hasGoal) ok = false;
+    }
 
     // Free agent: only personal off-pitch events
     if((P.clubName==="Sin club" || P.clubName==="Agente libre") && !["life","relationship","drama","humor","random"].includes(e.type)) ok = false;
@@ -2673,6 +2962,8 @@ function resolveEvent(event, option){
 
     // Apply success effects
     if(option.effects){
+      effectsHTML += applyStatEffects(option.effects);
+
       const e = option.effects;
       if(e.careerGoals) P.careerGoals += e.careerGoals;
       else if(e.seasonGoals) P.careerGoals += e.seasonGoals;
@@ -2830,6 +3121,7 @@ function resolveEvent(event, option){
     effectsHTML = option.failText ? `<span style='color:#f85149'>✗ ${failTag}: ${option.failText}</span><br>` : "";
     if(option.failEffects){
       const fe = option.failEffects;
+      effectsHTML += applyStatEffects(fe);
       if(fe.morale!==undefined) P.morale = clamp(P.morale+fe.morale,0,100);
       else P.morale = clamp(P.morale-3,0,100); // small default morale drop on failure
       if(fe.money){
@@ -3584,17 +3876,19 @@ function renderTrainOptions(){
     div.innerHTML = "<p style='color:#8b949e;font-size:13px'>Sin entrenamientos este año. Haz 'Gimnasio extra' en Acciones para ganar uno más.</p>";
     return;
   }
-  for(const [k,v] of Object.entries(STAT_NAMES)){
+  for(const [k,v] of Object.entries(P.stats)){
+    const st = STAT_NAMES[k];
+    if(!st) continue;
     const btn = document.createElement("button");
     btn.className = "btn btn-outline";
     btn.style.cssText = "width:100%;margin-bottom:8px;text-align:left;display:flex;justify-content:space-between";
-    btn.innerHTML = `<span>${v.name}</span><span style='color:${v.color}'>${P.stats[k]} → ${Math.min(99,P.stats[k]+randomBetween(1,3))}</span>`;
+    btn.innerHTML = `<span>${st.name}</span><span style='color:${st.color}'>${v} → ${Math.min(99,v+randomBetween(1,3))}</span>`;
     btn.onclick = ()=>{
       const gain = randomBetween(1,3);
       P.stats[k] = Math.min(99, P.stats[k]+gain);
       P.trainingsLeft--;
-      P.timeline.push(`Edad ${P.age}: Entrenó ${v.name} (+${gain})`);
-      showToast(`¡${v.name} +${gain}!`);
+      P.timeline.push(`Edad ${P.age}: Entrenó ${st.name} (+${gain})`);
+      showToast(`¡${st.name} +${gain}!`);
       updateUI();
     };
     div.appendChild(btn);
@@ -3694,13 +3988,14 @@ function renderStats(){
       </div>
     </div>
   `;
-  for(const [k,v] of Object.entries(STAT_NAMES)){
-    const val = P.stats[k];
+  for(const [k,val] of Object.entries(P.stats)){
+    const st = STAT_NAMES[k];
+    if(!st) continue;
     div.innerHTML += `
       <div class="stat-row">
-        <span class="stat-name">${v.name}</span>
-        <div class="stat-bar-wrap"><div class="stat-bar-fill" style="width:${val}%;background:${v.color}"></div></div>
-        <span class="stat-num" style="color:${val>=90?'#ffd700':v.color}">${val}</span>
+        <span class="stat-name">${st.name}</span>
+        <div class="stat-bar-wrap"><div class="stat-bar-fill" style="width:${val}%;background:${st.color}"></div></div>
+        <span class="stat-num" style="color:${val>=90?'#ffd700':st.color}">${val}</span>
       </div>
     `;
   }
@@ -3853,12 +4148,7 @@ function doAction(action){
   if(e.amigos) P.relationships.amigos = clamp(P.relationships.amigos+e.amigos,0,100);
   if(e.rel_entrenador) P.relationships.entrenador = clamp(P.relationships.entrenador+e.rel_entrenador,0,100);
   if(e.rel_compañeros) P.relationships.compañeros = clamp(P.relationships.compañeros+e.rel_compañeros,0,100);
-  if(e.ritmo) P.stats.ritmo = clamp(P.stats.ritmo+e.ritmo,1,99);
-  if(e.tiro) P.stats.tiro = clamp(P.stats.tiro+e.tiro,1,99);
-  if(e.pase) P.stats.pase = clamp(P.stats.pase+e.pase,1,99);
-  if(e.defensa) P.stats.defensa = clamp(P.stats.defensa+e.defensa,1,99);
-  if(e.fisico) P.stats.fisico = clamp(P.stats.fisico+e.fisico,1,99);
-  if(e.regate) P.stats.regate = clamp(P.stats.regate+e.regate,1,99);
+  applyStatEffects(e);
 
   if(e.overall_boost) for(const k of Object.keys(P.stats)) P.stats[k]=clamp(P.stats[k]+1,1,99);
   if(e.followers){
@@ -4151,7 +4441,12 @@ function renderMenuSlots(){
   list.innerHTML = "";
   for(let i=0;i<3;i++){
     const data = localStorage.getItem("futlife_save_"+i);
-    const saved = data?JSON.parse(data):null;
+    let saved = data?JSON.parse(data):null;
+    if(saved && saved.version !== SAVE_VERSION){
+      localStorage.removeItem("futlife_save_"+i);
+      saved = null;
+      showToast("🗑 Partida antigua incompatible. Ranura "+(i+1)+" reiniciada.");
+    }
     const card = document.createElement("div");
     card.className = "menu-slot"+(saved?" saved":"");
     if(saved){
@@ -4188,6 +4483,10 @@ function startFromSave(slot){
   const data = localStorage.getItem("futlife_save_"+slot);
   if(!data) return;
   const saved = JSON.parse(data);
+  if(saved.version !== SAVE_VERSION){
+    showToast("❌ Partida incompatible. Crea una nueva carrera.");
+    return;
+  }
   Object.assign(P,saved.P);
   P._saveSlot = slot;
   document.getElementById("menu-screen").classList.remove("active");
@@ -4226,7 +4525,7 @@ function goToMenu(){
 function quickSave(){
   if(!P.name||P.age<17) return;
   const slot = P._saveSlot||0;
-  const saveData = {name:P.name+" ("+P.age+"a)",P:JSON.parse(JSON.stringify(P)),savedAt:new Date().toISOString()};
+  const saveData = {name:P.name+" ("+P.age+"a)",version:SAVE_VERSION,P:JSON.parse(JSON.stringify(P)),savedAt:new Date().toISOString()};
   localStorage.setItem("futlife_save_"+slot,JSON.stringify(saveData));
 }
 
