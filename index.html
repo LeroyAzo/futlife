@@ -1054,6 +1054,8 @@ const YOUTH_PARENT = {
   "Wydad Sub-20":"Wydad Casablanca","Al Ahly Sub-20":"Al Ahly"
 };
 
+function isYouthClub(name){ return !!YOUTH_PARENT[name]; }
+
 const LIFE_ITEMS = [
   {id:"casa_peq",name:"Casa pequeña",price:150000,icon:"🏠"},
   {id:"casa_grande",name:"Casa grande",price:800000,icon:"🏡"},
@@ -1949,6 +1951,22 @@ function formatMoney(n){
   return "€"+n;
 }
 
+function applyMoneyDelta(amount){
+  // Scale penalties for young players so they don't lose millions at age 17
+  if(amount<0){
+    let maxPenalty;
+    if(P.age<=18) maxPenalty = 10000;
+    else if(P.age<=25) maxPenalty = 100000;
+    else maxPenalty = Math.max(100000, Math.floor(P.money*0.5)); // adults can't lose more than 50% in one event
+    amount = Math.max(amount, -maxPenalty);
+  }
+  P.money += amount;
+  // Never leave the player completely broke (keep minimum living money)
+  if(P.age<=21) P.money = Math.max(0, P.money);
+  else P.money = Math.max(-500000, P.money); // allow some debt for adults
+  return amount;
+}
+
 function formatFollowers(n){
   if(n>=1000000000) return (n/1000000000).toFixed(1)+"B";
   if(n>=1000000) return (n/1000000).toFixed(1)+"M";
@@ -2176,6 +2194,7 @@ function getEligibleEvents(){
 
     // Career-stage coherence
     if(e.title==="Último baile" && P.age<30) ok = false;
+    if(e.title==="Debut soñado") ok = false; // unified with "Debut profesional"
     // Continent/competition filtering
     if(e.continent && e.continent!==clubContinent) ok = false;
     if(e.competition && e.competition!==clubComp) ok = false;
@@ -2323,7 +2342,8 @@ function advanceYear(){
   }
 
   // Debut event - only when first reaching a professional club
-  if(P.clubStars>=2 && P.careerMatches===0 && P.age>=17){
+  if(P.clubStars>=2 && P.careerMatches===0 && P.age>=17 && !P.onceEvents.includes("Debut profesional")){
+    P.onceEvents.push("Debut profesional");
     currentYearEvents.unshift({title:"Debut profesional",text:"Es tu primer partido en el fútbol profesional de verdad. La camiseta te pesa distinto. La grada ruge. Hoy dejas de ser un juvenil.",emoji:"🌟",type:"match",magnitude:"big",options:[
       {text:"Juegas simple y seguro. No quieres cagarla",effects:{careerMatches:3, morale:8, rel_entrenador:8, followers:5000},tag:"Prudente",chance:0.85, failText:"Los nervios te traicionan. Pero al menos debutaste.", failEffects:{careerMatches:1, morale:-5}},
       {text:"Vas a por todas. Si debutas, que sea con gol",effects:{careerMatches:3, careerGoals:1, seasonGoals:1, morale:15, followers:20000},tag:"Valiente",chance:0.45, failText:"Intentaste demasiado. Casi metes un gol en propia.", failEffects:{careerMatches:1, morale:-8}},
@@ -2334,17 +2354,19 @@ function advanceYear(){
   // World Cup logic (every 4 years: ages 18,22,26,30,34)
   if([18,22,26,30,34].includes(P.age) && P.nationalTeam && P.overall>=70){
     P.worldCupParticipated = true;
-    P.timeline.push(`Edad ${P.age}: Participa en el Mundial con ${P.country}`);
+    P.timeline.push(`Edad ${P.age}: Convocado al Mundial con ${P.country}`);
+    // Convocation event so the user sees the call-up
+    currentYearEvents.unshift({title:"¡Convocado para el Mundial!",text:`La selección de ${getCountryEmoji(P.country)} ${P.country} te incluye en la lista final para el Mundial. Todo un país sueña contigo.`,emoji:"🌍",type:"worldcup",magnitude:"big",options:[{text:"Afrontar el reto con ilusión",effects:{morale:10,followers:100000},chance:0.9,failText:"",failEffects:{}}]});
     const wcEvent = ALL_EVENTS.find(e=>e.type==="worldcup"&&e.title.includes("grupos"));
-    if(wcEvent) currentYearEvents.push(wcEvent);
+    if(wcEvent) currentYearEvents.push({...wcEvent});
     // Semifinal/final chance
     if(P.overall>=80 && Math.random()<0.5){
       const deep = ALL_EVENTS.find(e=>e.type==="worldcup"&&e.title.includes("eliminación"));
-      if(deep) currentYearEvents.push(deep);
+      if(deep) currentYearEvents.push({...deep});
     }
     if(P.overall>=85 && Math.random()<0.35){
       const final = ALL_EVENTS.find(e=>e.type==="worldcup"&&e.title.includes("final"));
-      if(final) currentYearEvents.push(final);
+      if(final) currentYearEvents.push({...final});
     }
   }
 
@@ -2380,6 +2402,18 @@ function advanceYear(){
 
   // Initialize season competitions at start of year (always reinit league)
   // Clear old competition data before reinit
+  // Store last season league position for continental qualification
+  if(P.leagueData){
+    P.lastLeaguePosition = getLeaguePosition();
+    if(P.lastLeaguePosition===1){
+      const title = `Campeón de liga (${P.age})`;
+      if(!P.titles.includes(title)){P.titles.push(title);P.seasonWonLeague=true;P.timeline.push(`Edad ${P.age}: ¡Campeón de ${P.clubLeague}!`);}
+    }
+  } else if(!P.lastLeaguePosition){
+    const defaults = {5:1,4:2,3:randomBetween(2,4),2:randomBetween(4,7)};
+    P.lastLeaguePosition = defaults[P.clubStars] || 6;
+  }
+
   P.leagueData = null; P.cd = null; P.cupData = null; P.wcData = null;
   initSeasonData();
   // World Cup every 4 years at eligible ages
@@ -2585,7 +2619,11 @@ function resolveEvent(event, option){
       if(e.careerMatches) P.careerMatches += e.careerMatches;
       if(e.morale!==undefined) P.morale = clamp(P.morale+e.morale,0,100);
       else if(success) P.morale = clamp(P.morale+2,0,100); // small default morale boost on success
-      if(e.money){P.money += e.money;effectsHTML+=`💰 ${formatMoney(e.money)}<br>`}
+      if(e.money){
+        const actual = applyMoneyDelta(e.money);
+        effectsHTML+=`💰 ${formatMoney(actual)}<br>`;
+        if(actual!==e.money) effectsHTML+=`<span style="font-size:11px;color:#8b949e">(ajustado por edad)</span><br>`;
+      }
       if(e.rel_entrenador){P.relationships.entrenador=clamp(P.relationships.entrenador+e.rel_entrenador,0,100);effectsHTML+=`👔 Relación DT: ${e.rel_entrenador>0?'+':''}${e.rel_entrenador}<br>`}
       if(e.rel_compañeros){P.relationships.compañeros=clamp(P.relationships.compañeros+e.rel_compañeros,0,100);effectsHTML+=`🤝 Relación compañeros: ${e.rel_compañeros>0?'+':''}${e.rel_compañeros}<br>`}
       if(e.familia){P.relationships.familia=clamp(P.relationships.familia+e.familia,0,100);effectsHTML+=`👨‍👩‍👦 Relación familiar: ${e.familia>0?'+':''}${e.familia}<br>`}
@@ -2609,7 +2647,10 @@ function resolveEvent(event, option){
       if(e.married && !P.married){P.married=true;effectsHTML+="💒 ¡Te has casado!<br>"}
       if(e.ballonDorWin){P.ballonDorResult="won";effectsHTML+="🏅 ¡BALÓN DE ORO!<br>"}
       if(!e.ballonDorWin && event.title.includes("Balón de Oro")) P.ballonDorResult = "nominated";
-      if(e.dinero_extra){P.money+=e.dinero_extra;effectsHTML+=`💰 Bono: ${formatMoney(e.dinero_extra)}<br>`}
+      if(e.dinero_extra){
+        const actual = applyMoneyDelta(e.dinero_extra);
+        effectsHTML+=`💰 Bono: ${formatMoney(actual)}<br>`;
+      }
       if(e.clubChange){
         if(e.clubChange==="big") transferToBigClub();
         else if(e.clubChange==="random") transferRandomClub();
@@ -2632,7 +2673,9 @@ function resolveEvent(event, option){
       }
       if(e.injured){P.injured=true;P.injuryWeeks=e.injuryWeeks||4;effectsHTML+=`🤕 Lesión: ${P.injuryWeeks} semanas<br>`}
       if(e.freeAgent){
+        document.getElementById("event-modal").classList.remove("active");
         P.clubName = "Agente libre"; P.clubStars = 0; P.salary = 0; P.contractYears = 0;
+        P.clubLeague = ""; P.clubCountry = "";
         showFreeAgentPicker(); return;
       }
       if(e.renewalNegotiation){
@@ -2691,7 +2734,11 @@ function resolveEvent(event, option){
       const fe = option.failEffects;
       if(fe.morale!==undefined) P.morale = clamp(P.morale+fe.morale,0,100);
       else P.morale = clamp(P.morale-3,0,100); // small default morale drop on failure
-      if(fe.money){P.money+=fe.money;effectsHTML+=`💰 ${formatMoney(fe.money)}<br>`}
+      if(fe.money){
+        const actual = applyMoneyDelta(fe.money);
+        effectsHTML+=`💰 ${formatMoney(actual)}<br>`;
+        if(actual!==fe.money) effectsHTML+=`<span style="font-size:11px;color:#8b949e">(ajustado por edad)</span><br>`;
+      }
       if(fe.rel_entrenador){P.relationships.entrenador=clamp(P.relationships.entrenador+fe.rel_entrenador,0,100)}
       if(fe.rel_compañeros){P.relationships.compañeros=clamp(P.relationships.compañeros+fe.rel_compañeros,0,100)}
       if(fe.familia){P.relationships.familia=clamp(P.relationships.familia+fe.familia,0,100)}
@@ -2720,7 +2767,7 @@ function resolveEvent(event, option){
         else{effectsHTML+="⚠️ Contrato vigente. No pueden echarte sin causa.<br>"}
       }
       if(fe.investmentValue){P.investmentValue+=fe.investmentValue}
-      if(fe.dinero_extra){P.money+=fe.dinero_extra}
+      if(fe.dinero_extra){applyMoneyDelta(fe.dinero_extra);}
       if(fe.followers){
         const scale = Math.max(0.3, Math.min(8, Math.sqrt(Math.max(100,P.followers)/5000)));
         let gained = Math.floor(Math.abs(fe.followers) * scale) * (fe.followers>0?1:-1);
@@ -2808,7 +2855,7 @@ function transferToRetirementLeague(){
 
 function checkClubOffers(){
   if(P.clubStars===0||P.age<18||P.clubStars===1) return; // No offers in first year or at cantera
-  const betterClubs = CLUBS.filter(c=>c.stars>P.clubStars && c.minOverall<=P.overall+3 && c.name!==P.clubName);
+  const betterClubs = CLUBS.filter(c=>c.stars>P.clubStars && c.minOverall<=P.overall+3 && c.name!==P.clubName && !isYouthClub(c.name));
   if(betterClubs.length>0 && Math.random()<0.35){
     const club = pick(betterClubs);
     doTransfer(club);
@@ -2824,7 +2871,13 @@ function openNegotiation(club){
   P.pendingTransfer = club;
   P._renewalBase = null; P._renewalMin = null; P._renewalMax = null;
   const modal = document.getElementById("transfer-modal");
-  
+
+  // Always reset submit button state
+  const submitBtn = document.getElementById("tf-submit");
+  submitBtn.disabled = false;
+  submitBtn.textContent = "Negociar contrato";
+  submitBtn.onclick = submitNegotiation;
+
   // Restore controls if they were wiped by free agent picker
   if(!document.getElementById("tf-years")){
     document.getElementById("tf-controls").innerHTML = '<div style="background:#0d1117;border-radius:10px;padding:16px;margin-bottom:16px"><div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="font-size:13px">💰 Salario anual</span><span style="font-weight:700;color:#7ee787" id="tf-salary-val">0</span></div><input type="range" id="tf-salary" min="0" max="100" value="50" style="width:100%"><div style="display:flex;justify-content:space-between;font-size:11px;color:#8b949e"><span id="tf-salary-min">0</span><span id="tf-salary-max">0</span></div></div><div style="background:#0d1117;border-radius:10px;padding:16px;margin-bottom:16px"><div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="font-size:13px">📅 Años de contrato</span><span style="font-weight:700;color:#79c0ff" id="tf-years-val">3</span></div><input type="range" id="tf-years" min="1" max="5" value="3" style="width:100%"><div style="display:flex;justify-content:space-between;font-size:11px;color:#8b949e"><span>1 año</span><span>5 años</span></div></div><div style="background:#0d1117;border-radius:10px;padding:16px;margin-bottom:16px"><div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="font-size:13px">⭐ Rol en el equipo</span><span style="font-weight:700;color:#d29922" id="tf-role-val">Titular</span></div><input type="range" id="tf-role" min="0" max="4" value="2" style="width:100%"><div style="display:flex;justify-content:space-between;font-size:11px;color:#8b949e"><span>Promesa</span><span>Rotación</span><span>Titular</span><span>Importante</span><span>Estrella</span></div></div><div style="background:#0d1117;border-radius:10px;padding:16px;margin-bottom:16px"><div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="font-size:13px">💎 Cláusula de rescisión</span><span style="font-weight:700;color:#a371f7" id="tf-clause-val">Sin cláusula</span></div><input type="range" id="tf-clause" min="0" max="100" value="0" style="width:100%"><div style="display:flex;justify-content:space-between;font-size:11px;color:#8b949e"><span>Sin cláusula</span><span>Baja</span><span>Alta</span></div></div>';
@@ -3107,8 +3160,13 @@ function openRenewalNegotiation(){
 }
 
 function showFreeAgentPicker(){
-  // Pick clubs from different leagues AND continents matching player's overall
-  const allCandidates = CLUBS.filter(c=>c.minOverall<=P.overall+5 && c.stars>=1 && c.name!==P.clubName);
+  // Pick clubs matching player's overall and fame (bigger players get bigger offers)
+  const minStars = Math.max(1, Math.min(5, Math.floor(P.overall/18)));
+  const maxStars = Math.min(5, Math.max(minStars, Math.floor(P.overall/15) + Math.floor(P.fameLevel/20)));
+  let allCandidates = CLUBS.filter(c=>c.minOverall<=P.overall+8 && c.stars>=minStars && c.stars<=maxStars && c.name!==P.clubName && c.stars>=2 && !isYouthClub(c.name));
+  if(allCandidates.length<3){
+    allCandidates = CLUBS.filter(c=>c.minOverall<=P.overall+5 && c.stars>=1 && c.name!==P.clubName && !isYouthClub(c.name));
+  }
   const shuffled = shuffle([...allCandidates]);
   const usedLeagues = new Set();
   const usedCountries = new Set();
@@ -3135,7 +3193,7 @@ function showFreeAgentPicker(){
       if(!picked.includes(c)) picked.push(c);
     }
   }
-  if(picked.length===0){showToast("Ningún club interesado...");return}
+  if(picked.length===0){P.clubName="Sin club";P.clubStars=0;P.salary=0;showToast("Ningún club interesado...");return}
 
   const modal = document.getElementById("transfer-modal");
   document.getElementById("tf-club-name").innerHTML = "🆓 ERES AGENTE LIBRE";
@@ -3152,12 +3210,14 @@ function showFreeAgentPicker(){
   });
   // Store picked clubs temporarily
   window._faClubs = picked;
-  document.getElementById("tf-submit").textContent = "Cancelar";
+  document.getElementById("tf-submit").textContent = "Quedarme sin club";
   document.getElementById("tf-submit").onclick = ()=>{
     document.getElementById("transfer-modal").classList.remove("active");
     document.getElementById("tf-submit").textContent = "Negociar contrato";
     document.getElementById("tf-submit").onclick = submitNegotiation;
+    P.clubName = "Sin club"; P.clubStars = 0; P.salary = 0; P.contractYears = 0;
     showToast("Te quedaste sin club...");
+    updateUI();
   };
   const btnOut = document.querySelector("#transfer-modal .btn-outline");
   if(btnOut) btnOut.style.display = "none";
@@ -3625,7 +3685,7 @@ function doAction(action){
   const block = checkActionReq(action);
   if(block){showToast("❌ "+block);return}
   P.actionsThisYear++;
-  if(action.cost>0){P.money -= action.cost;}
+  if(action.cost>0){applyMoneyDelta(-action.cost);}
   // Extra training for gym/practice actions
   if(action.id==="sesion_gym"||action.id==="practicar_tiros"){
     P.trainingsLeft++;
@@ -3653,7 +3713,7 @@ function doAction(action){
     P.followers = Math.max(0,P.followers);
   }
   if(e.investmentValue) P.investmentValue += e.investmentValue;
-  if(e.money) P.money += e.money;
+  if(e.money) applyMoneyDelta(e.money);
   P.timeline.push(`Edad ${P.age}: ${action.desc}`);
   showToast(`✅ ${action.name}: ¡Hecho!`);
   // Set year-long effects based on action
@@ -3994,9 +4054,11 @@ function initSeasonData(){
   const sameLeague = CLUBS.filter(c=>c.league===league && c.stars>=1 && c.name!==P.clubName);
   let teams = sameLeague.slice(0,19).map(t=>({name:t.name, stars:t.stars}));
   teams.push({name:P.clubName, stars:P.clubStars, isPlayer:true});
+  // Fill remaining spots with fictional teams from same country so leagues don't mix
+  let placeholderIdx = 1;
   while(teams.length<20){
-    const extra = CLUBS.find(c=>c.stars>=1 && !teams.find(t=>t.name===c.name));
-    if(!extra) break; teams.push({name:extra.name, stars:extra.stars});
+    teams.push({name:`${P.clubCountry} FC ${placeholderIdx}`, stars:randomBetween(1,3), isPlaceholder:true});
+    placeholderIdx++;
   }
   P.leagueData = {teams: shuffle(teams), currentMD:0, playedMatches:[]};
   P.cd = null; P.cupData = null;
@@ -4047,17 +4109,20 @@ function initContinental(){
   const cont = club?club.continent:"europe";
   // Only elite clubs (2+ stars) participate in continental competition
   if(P.clubStars<2){P.cd=null;return}
+  // Must have finished top 4 in league last season (or favorable default for first season)
+  const position = P.lastLeaguePosition || 6;
+  if(position>4){P.cd=null;return}
   const contClubs = CLUBS.filter(c=>c.continent===cont&&c.stars>=2);
   let selected = shuffle(contClubs);
   const playerClub = CLUBS.find(c=>c.name===P.clubName);
   if(playerClub && playerClub.stars>=2 && !selected.find(t=>t.name===P.clubName)) selected.unshift(playerClub);
-  // Champions League format: 8 groups of 6 = 48 teams
+  // Official format: 8 groups of 4 = 32 teams, top 2 per group advance to 16-team knockout
   let placeholderIdx = 1;
-  while(selected.length<48){
+  while(selected.length<32){
     selected.push({name:"Clasificado "+placeholderIdx, stars:randomBetween(2,4), isPlaceholder:true});
     placeholderIdx++;
   }
-  if(selected.length>48) selected = selected.slice(0,48);
+  if(selected.length>32) selected = selected.slice(0,32);
   const names = {
     europe:"Champions League",
     americas:"Copa Libertadores",
@@ -4090,8 +4155,8 @@ function advanceContinental(){
   cd.stage++;
   if(cd.stage===1){cd.phase="Fase de grupos"; return;}
   if(cd.stage===2){
-    // 8 groups of 6, top 2 advance to knockout (16 teams)
-    cd.groups=Array.from({length:8},()=>cd.teams.splice(0,6));
+    // Official format: 8 groups of 4, top 2 advance to knockout (16 teams)
+    cd.groups=Array.from({length:8},()=>cd.teams.splice(0,4));
     cd.advancers=[];
     cd.groups.forEach(g=>{
       const sorted=[...g].sort((a,b)=>(b.stars||2)-(a.stars||2)+randomBetween(-2,2));
@@ -4104,17 +4169,17 @@ function advanceContinental(){
   }
   else if(cd.stage===3 && cd.advancers){
     cd.phase="Octavos de final (Ida y Vuelta)";
-    cd.current=simKnockoutTL(shuffle(cd.advancers),8);
+    cd.current=simKnockoutTL(shuffle(cd.advancers),8); // 16 → 8
     if(!cd.playerEliminated && !cd.current.teams.find(t=>t.isPlayer||t.name===P.clubName)) cd.playerEliminated="Octavos de final";
   }
   else if(cd.stage===4 && cd.current?.teams){
     cd.phase="Cuartos de final (Ida y Vuelta)";
-    cd.current=simKnockoutTL(cd.current.teams,4);
+    cd.current=simKnockoutTL(cd.current.teams,4); // 8 → 4
     if(!cd.playerEliminated && !cd.current.teams.find(t=>t.isPlayer||t.name===P.clubName)) cd.playerEliminated="Cuartos de final";
   }
   else if(cd.stage===5 && cd.current?.teams){
     cd.phase="Semifinal (Ida y Vuelta)";
-    cd.current=simKnockoutTL(cd.current.teams,2);
+    cd.current=simKnockoutTL(cd.current.teams,2); // 4 → 2
     if(!cd.playerEliminated && !cd.current.teams.find(t=>t.isPlayer||t.name===P.clubName)) cd.playerEliminated="Semifinal";
   }
   else if(cd.stage===6 && cd.current?.teams && cd.current.teams.length>=2){
@@ -4220,13 +4285,17 @@ function showTeamDetail(name){
 
 function renderContinentalTable(){
   const d=document.getElementById("continental-table"); const cd=P.cd;
-  if(!cd||cd.stage===0){d.innerHTML="<p style='color:#8b949e;font-size:12px'>🌍 No participas en competición continental</p>";return}
+  if(!cd){d.innerHTML="<p style='color:#8b949e;font-size:12px'>🌍 No participas en competición continental este año</p>";return}
+  if(cd.stage===0){
+    d.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><strong style="font-size:14px">🏆 ${cd.name}</strong><span style="color:#8b949e;font-size:12px">Fase previa</span></div><div style="background:#0d1117;border-radius:8px;padding:10px;font-size:12px;color:#8b949e;text-align:center">Próximamente comenzará la fase de grupos</div>`;
+    return;
+  }
   let h=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><strong style="font-size:14px">🏆 ${cd.name}</strong><span style="color:#8b949e;font-size:12px">${cd.phase}</span></div>`;
 
   // Group stage display
   const inGroupPhase = cd.groups && (cd.phase.includes("grupos") || cd.playerEliminated==="Fase de grupos");
   if(inGroupPhase){
-    h+=`<div style="font-size:12px;margin-bottom:10px;color:#8b949e">8 grupos · Top 2 clasifican a octavos</div>`;
+    h+=`<div style="font-size:12px;margin-bottom:10px;color:#8b949e">8 grupos de 4 · Top 2 clasifican a octavos</div>`;
     cd.groups.forEach((g,i)=>{
       const sorted=[...g].sort((a,b)=>(b.stars||2)-(a.stars||2)+randomBetween(-1,1));
       h+=`<div style="background:#0d1117;border-radius:8px;padding:8px;margin-bottom:8px">`;
@@ -4254,9 +4323,18 @@ function renderContinentalTable(){
     }
     h+=renderBracket(cd.current.teams, cd.current.results||[], cd.phase);
   }
-  if(cd.playerEliminated) h+=`<div style="background:rgba(248,81,73,0.08);border:1px solid #f85149;border-radius:6px;padding:8px;margin-top:8px;text-align:center;font-size:12px;color:#f85149">❌ Eliminado en ${cd.playerEliminated}</div>`;
+  const playerWon = cd.winner && (cd.winner.isPlayer || cd.winner.name===P.clubName);
+  if(cd.playerEliminated && !playerWon){
+    h+=`<div style="background:rgba(248,81,73,0.08);border:1px solid #f85149;border-radius:6px;padding:8px;margin-top:8px;text-align:center;font-size:12px;color:#f85149">❌ Eliminado en ${cd.playerEliminated}</div>`;
+  }
   if(cd.finalResult) h+=`<div style="font-weight:700;color:#d29922;margin-top:8px;font-size:13px">⚡ ${cd.finalResult}</div>`;
-  if(cd.winner) h+=`<div style="color:#7ee787;font-size:14px;font-weight:700;margin-top:4px">🏆 ¡${cd.winner.name} campeón!</div>`;
+  if(cd.winner){
+    if(playerWon){
+      h+=`<div style="color:#7ee787;font-size:14px;font-weight:700;margin-top:4px">🏆 ¡${P.clubName} campeón de la ${cd.name}!</div>`;
+    } else {
+      h+=`<div style="color:#8b949e;font-size:14px;font-weight:700;margin-top:4px">🏆 Campeón: ${cd.winner.name}</div>`;
+    }
+  }
   d.innerHTML=h;
 }
 
@@ -4294,14 +4372,19 @@ function renderBracketList(teams, results){
 function renderCupTable(){
   const d=document.getElementById("cup-table"); const cup=P.cupData;
   if(!cup||cup.round===""){d.innerHTML="<p style='color:#8b949e;font-size:12px'>🏅 No participas en copa doméstica</p>";return}
-  let h=`<div style="display:flex;justify-content:space-between;margin-bottom:6px"><strong style="font-size:14px">🏅 Copa</strong><span style="color:#8b949e;font-size:11px">${cup.round}</span></div>`;
-  if(cup.playerEliminated){h+=`<div style="background:rgba(248,81,73,0.08);border:1px solid #f85149;border-radius:6px;padding:8px;margin-bottom:8px;text-align:center;color:#f85149;font-size:12px">❌ Eliminado en ${cup.playerEliminated}</div>`}
+  let h=`<div style="display:flex;justify-content:space-between;margin-bottom:6px"><strong style="font-size:14px">🏅 Copa ${P.clubCountry}</strong><span style="color:#8b949e;font-size:11px">${cup.round}</span></div>`;
+  const playerStillIn = cup.teams && cup.teams.some(t=>t.isPlayer||t.name===P.clubName);
+  const playerWon = cup.round==="Campeón" && cup.teams[0] && (cup.teams[0].isPlayer||cup.teams[0].name===P.clubName);
+  if(cup.playerEliminated && !playerWon){
+    h+=`<div style="background:rgba(248,81,73,0.08);border:1px solid #f85149;border-radius:6px;padding:8px;margin-bottom:8px;text-align:center;color:#f85149;font-size:12px">❌ Eliminado en ${cup.playerEliminated}</div>`;
+  }
   if(cup.teams&&cup.teams.length<=8&&cup.teams.length>1){
     const pt = cup.teams.find(t=>t.isPlayer||t.name===P.clubName);
     if(pt){const idx=cup.teams.indexOf(pt);const op=idx%2===0?cup.teams[idx+1]:cup.teams[idx-1];if(op)h+=`<div style="background:rgba(46,160,67,0.1);border:1px solid #2ea043;border-radius:6px;padding:6px 10px;margin-bottom:8px;font-size:11px;text-align:center">⭐ Tu rival: <strong style="color:#7ee787">${op.name}</strong></div>`}
     h+=renderBracket(cup.teams,[]);
   }
-  if(cup.round==="Campeón"){h+=`<div style="text-align:center;color:#7ee787;font-size:14px;font-weight:700;margin-top:4px">🏆 ¡${P.clubName} campeón!</div>`}
+  if(playerWon){h+=`<div style="text-align:center;color:#7ee787;font-size:14px;font-weight:700;margin-top:4px">🏆 ¡${P.clubName} campeón de copa!</div>`}
+  else if(cup.round==="Campeón"){h+=`<div style="text-align:center;color:#8b949e;font-size:14px;font-weight:700;margin-top:4px">🏆 Campeón: ${cup.teams[0].name}</div>`}
   d.innerHTML=h;
 }
 
@@ -4331,25 +4414,25 @@ function advanceWorldCup(){
       g.advanced=s.slice(0,2).map(t=>t.name);
     });
     wc.advancers=adv;
-    if(!wc.advancers.find(t=>t.name===P.country)) wc.playerEliminated="Fase de grupos";
+    if(!wc.playerEliminated && !wc.advancers.find(t=>t.name===P.country)) wc.playerEliminated="Fase de grupos";
   }
   else if(wc.stage===3 && wc.advancers){
     wc.phase="Octavos de final";
     const r=simKnockoutTL(shuffle(wc.advancers),8);
     wc.current=r;
-    if(!r.teams.find(t=>t.name===P.country)) wc.playerEliminated="Octavos de final";
+    if(!wc.playerEliminated && !r.teams.find(t=>t.name===P.country)) wc.playerEliminated="Octavos de final";
   }
   else if(wc.stage===4 && wc.current?.teams){
     wc.phase="Cuartos de final";
     const r=simKnockoutTL(wc.current.teams,4);
     wc.current=r;
-    if(!r.teams.find(t=>t.name===P.country)) wc.playerEliminated="Cuartos de final";
+    if(!wc.playerEliminated && !r.teams.find(t=>t.name===P.country)) wc.playerEliminated="Cuartos de final";
   }
   else if(wc.stage===5 && wc.current?.teams){
     wc.phase="Semifinal";
     const r=simKnockoutTL(wc.current.teams,2);
     wc.current=r;
-    if(!r.teams.find(t=>t.name===P.country)) wc.playerEliminated="Semifinal";
+    if(!wc.playerEliminated && !r.teams.find(t=>t.name===P.country)) wc.playerEliminated="Semifinal";
   }
   else if(wc.stage===6 && wc.current?.teams && wc.current.teams.length>=2){
     wc.phase="Final";
@@ -4370,7 +4453,8 @@ function renderWorldCupTable(){
   const wc=P.wcData;
   if(!wc||!wc.playerCalled){d.innerHTML="<p style='color:#8b949e;font-size:12px'>No fuiste convocado para este Mundial</p>";return}
   let h=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><strong style="font-size:14px">🌍 Copa del Mundo</strong><span style="color:#8b949e;font-size:12px">${wc.phase}</span></div>`;
-  if(wc.playerEliminated){h+=`<div style="background:rgba(248,81,73,0.08);border:1px solid #f85149;border-radius:6px;padding:8px;margin-bottom:8px;text-align:center;color:#f85149;font-size:12px">❌ ${P.country} eliminado en ${wc.playerEliminated}</div>`}
+  const playerWonWC = wc.winner && wc.winner.name===P.country;
+  if(wc.playerEliminated && !playerWonWC){h+=`<div style="background:rgba(248,81,73,0.08);border:1px solid #f85149;border-radius:6px;padding:8px;margin-bottom:8px;text-align:center;color:#f85149;font-size:12px">❌ ${P.country} eliminado en ${wc.playerEliminated}</div>`}
 
   // Group stage display
   const inGroupPhase = wc.groups && (wc.phase.includes("grupos") || wc.playerEliminated==="Fase de grupos");
@@ -4395,7 +4479,10 @@ function renderWorldCupTable(){
 
   if(wc.current && wc.current.teams && wc.phase!=="Finalizada" && !inGroupPhase) h+=renderBracket(wc.current.teams,wc.current.results||[]);
   if(wc.finalResult) h+=`<div style="font-weight:700;color:#d29922;margin-top:8px;font-size:13px">⚡ ${wc.finalResult}</div>`;
-  if(wc.winner) h+=`<div style="color:#7ee787;font-size:14px;font-weight:700;margin-top:4px">🏆 ¡${wc.winner.name} Campeón del Mundo!</div>`;
+  if(wc.winner){
+    if(playerWonWC) h+=`<div style="color:#ffd700;font-size:14px;font-weight:700;margin-top:4px">🏆 ¡${P.country} Campeón del Mundo!</div>`;
+    else h+=`<div style="color:#8b949e;font-size:14px;font-weight:700;margin-top:4px">🏆 Campeón: ${wc.winner.name}</div>`;
+  }
   d.innerHTML=h;
   document.getElementById("wc-section").style.display="block";
 }
@@ -4417,17 +4504,18 @@ function shootAt(zone){
   document.querySelectorAll(".pen-zone").forEach(z=>z.style.pointerEvents="none");
   const chances = {"top-left":0.7,"top-right":0.7,"mid-left":0.5,"mid-right":0.5,"center":0.3};
   const success = Math.random() < (chances[zone]||0.5);
+  const rd = document.getElementById("penalty-result");
+  rd.style.display = "block";
+  rd.innerHTML = '<span style="color:#d29922">🧤 El portero se lanza...</span>';
   const flash = document.createElement("div");
   flash.className = "flash";
   document.getElementById("penalty-modal").appendChild(flash);
   setTimeout(()=>{
     flash.remove();
-    const rd = document.getElementById("penalty-result");
-    rd.style.display = "block";
     if(success){rd.innerHTML='<span style="color:#7ee787">⚽ ¡GOOOOOOL!</span>';if(_penaltyCallback)_penaltyCallback("goal")}
     else{rd.innerHTML='<span style="color:#f85149">❌ ¡Fallaste!</span>';if(_penaltyCallback)_penaltyCallback("miss")}
-    setTimeout(()=>{document.getElementById("penalty-modal").classList.remove("active");_penaltyCallback=null},1500);
-  },800);
+    setTimeout(()=>{document.getElementById("penalty-modal").classList.remove("active");_penaltyCallback=null},2200);
+  },1400);
 }
 
 function init(){
