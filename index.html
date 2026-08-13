@@ -282,7 +282,16 @@ body::before{
 .summary-log{text-align:left;max-height:300px;overflow-y:auto;margin-bottom:20px}
 .summary-log li{font-size:13px;padding:6px 0;border-bottom:1px solid #21262d}
 
-.retirement-grade{font-size:64px;font-weight:900;margin-bottom:8px}
+.retirement-grade{font-size:80px;font-weight:900;margin-bottom:4px;line-height:1;text-shadow:0 4px 20px rgba(0,0,0,0.4);animation:popIn .5s cubic-bezier(0.175,0.885,0.32,1.275)}
+@keyframes popIn{from{opacity:0;transform:scale(0.3)}to{opacity:1;transform:scale(1)}}
+.retirement-card-stat{background:#0d1117;border:1px solid #21262d;border-radius:12px;padding:16px;text-align:center;transition:transform .15s,border-color .15s}
+.retirement-card-stat:hover{transform:translateY(-2px);border-color:#30363d}
+.retirement-card-stat .sval{font-size:28px;font-weight:800;color:#7ee787;line-height:1}
+.retirement-card-stat .slbl{font-size:11px;color:#8b949e;margin-top:6px;text-transform:uppercase;letter-spacing:.5px}
+.retirement-title-pill{display:inline-block;background:#0d1117;border:1px solid #d29922;border-radius:20px;padding:5px 12px;margin:4px;font-size:12px;color:#d29922;font-weight:600}
+.retirement-timeline-item{padding:8px 0;border-bottom:1px solid #21262d;font-size:13px;display:flex;gap:10px;align-items:flex-start}
+.retirement-timeline-year{color:#d29922;font-weight:700;min-width:42px}
+.retirement-timeline-text{color:#c9d1d9;flex:1}
 
 .toast{
   position:fixed;top:20px;right:20px;z-index:200;
@@ -568,14 +577,29 @@ input[type=range]::-webkit-slider-thumb{
 
 <!-- RETIREMENT MODAL -->
 <div id="retirement-modal" class="modal-overlay">
-  <div class="summary-card">
-    <div class="retirement-grade" id="ret-grade"></div>
-    <h2 style="margin-bottom:8px" id="ret-player-name"></h2>
-    <p style="color:#8b949e;margin-bottom:20px">Carrera profesional: <span id="ret-years"></span> años</p>
+  <div class="summary-card" style="max-width:680px;max-height:92vh;overflow-y:auto;background:linear-gradient(180deg,#161b22 0%,#0d1117 100%)">
+    <div style="text-align:center;margin-bottom:20px">
+      <div class="retirement-grade" id="ret-grade"></div>
+      <h2 style="margin-bottom:6px;font-size:26px" id="ret-player-name"></h2>
+      <p style="color:#8b949e;margin-bottom:4px">Carrera profesional: <span id="ret-years" style="color:#e6edf3;font-weight:700"></span> años</p>
+      <div id="ret-reason" style="display:inline-block;background:#21262d;border-radius:20px;padding:6px 14px;font-size:12px;color:#d29922;font-weight:600"></div>
+    </div>
+
+    <div id="ret-highlights" style="background:linear-gradient(90deg,rgba(46,160,67,0.1),rgba(210,153,34,0.1));border:1px solid #30363d;border-radius:12px;padding:14px;margin-bottom:20px;text-align:center;font-size:14px;color:#e6edf3"></div>
+
+    <h3 style="text-align:left;font-size:13px;color:#8b949e;margin-bottom:10px;text-transform:uppercase;letter-spacing:1px">Estadísticas de carrera</h3>
     <div class="summary-grid" id="ret-stats"></div>
-    <h3 style="text-align:left;font-size:14px;color:#8b949e;margin-bottom:8px">Línea de tiempo</h3>
+
+    <h3 style="text-align:left;font-size:13px;color:#8b949e;margin-bottom:10px;text-transform:uppercase;letter-spacing:1px">Palmarés</h3>
+    <div id="ret-titles" style="margin-bottom:20px"></div>
+
+    <h3 style="text-align:left;font-size:13px;color:#8b949e;margin-bottom:10px;text-transform:uppercase;letter-spacing:1px">Línea de tiempo</h3>
     <ul class="summary-log" id="ret-timeline"></ul>
-    <button class="btn btn-primary" onclick="location.reload()">Nueva Carrera</button>
+
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-primary" style="flex:1" onclick="location.reload()">🔄 Nueva Carrera</button>
+      <button class="btn btn-outline" style="flex:1" onclick="downloadCareerSummary()">💾 Guardar resumen</button>
+    </div>
   </div>
 </div>
 
@@ -4030,43 +4054,90 @@ function showRetirement(){
   document.getElementById("summary-modal").classList.remove("active");
 
   const modal = document.getElementById("retirement-modal");
-  document.getElementById("ret-player-name").textContent = P.name + " ("+P.country+")";
+  document.getElementById("ret-player-name").innerHTML = `${P.name} <span style="font-size:22px">${getCountryEmoji(P.country)}</span>`;
   document.getElementById("ret-years").textContent = P.age - 16;
 
+  // Reason
+  const reasonText = P.retirementReason==="voluntario"?"Retiro voluntario":P.retirementReason==="edad avanzada"?"Retiro por edad":"Fin de carrera";
+  document.getElementById("ret-reason").textContent = reasonText;
+
   // Grade
-  let grade = "C", gradeEmoji = "🥉";
-  if(P.worldCupWinner){grade="S";gradeEmoji="👑"}
-  else if(P.overall>=90){grade="A";gradeEmoji="⭐"}
-  else if(P.overall>=80){grade="B";gradeEmoji="🌟"}
-  else if(P.careerGoals>=50){grade="B";gradeEmoji="🌟"}
-  document.getElementById("ret-grade").textContent = gradeEmoji;
+  let grade = "C", gradeEmoji = "🥉", gradeColor = "#d29922";
+  if(P.worldCupWinner){grade="S";gradeEmoji="👑";gradeColor="#ffd700"}
+  else if(P.overall>=90){grade="A";gradeEmoji="⭐";gradeColor="#7ee787"}
+  else if(P.overall>=80 || P.careerGoals>=50){grade="B";gradeEmoji="🌟";gradeColor="#79c0ff"}
+  const gradeEl = document.getElementById("ret-grade");
+  gradeEl.textContent = gradeEmoji;
+  gradeEl.style.color = gradeColor;
+  gradeEl.setAttribute("title","Nota de carrera: "+grade);
+
+  // Highlights
+  const titleList = getTitleList();
+  const highlights = [];
+  if(P.worldCupWinner) highlights.push("🏆 Campeón del Mundo");
+  if(hasTitle("Balón de Oro")) highlights.push(`🏅 ${getTitleCount("Balón de Oro")} Balon${getTitleCount("Balón de Oro")>1?"es":""} de Oro`);
+  if(P.overall>=85) highlights.push(`⭐ Overall máximo ${P.overall}`);
+  if(P.careerGoals>=100) highlights.push(`⚽ ${P.careerGoals} goles de carrera`);
+  else if(P.careerGoals>=50) highlights.push(`⚽ ${P.careerGoals} goles`);
+  if(P.money>=100000000) highlights.push(`💰 Fortuna ${formatMoney(P.money)}`);
+  if(titleList.length>0) highlights.push(`🏆 ${totalTitleCount()} títulos`);
+  const hlText = highlights.length>0 ? highlights.join(" · ") : "Una carrera digna de recordar.";
+  document.getElementById("ret-highlights").textContent = hlText;
 
   const statsDiv = document.getElementById("ret-stats");
   statsDiv.innerHTML = `
-    <div class="summary-stat"><div class="sval">${P.overall}</div><div class="slbl">Overall máx</div></div>
-    <div class="summary-stat"><div class="sval">${P.careerGoals}</div><div class="slbl">Goles totales</div></div>
-    <div class="summary-stat"><div class="sval">${P.careerAssists}</div><div class="slbl">Asistencias</div></div>
-    <div class="summary-stat"><div class="sval">${P.clubHistory.length}</div><div class="slbl">Clubes</div></div>
-    <div class="summary-stat"><div class="sval">${formatMoney(P.money)}</div><div class="slbl">Fortuna final</div></div>
-    <div class="summary-stat"><div class="sval">${totalTitleCount()}</div><div class="slbl">Títulos</div></div>
-    <div class="summary-stat"><div class="sval">${P.achievements.length}/${ACHIEVEMENTS.length}</div><div class="slbl">Logros</div></div>
-    <div class="summary-stat"><div class="sval">${P.age}</div><div class="slbl">Edad retiro</div></div>
+    <div class="retirement-card-stat"><div class="sval" style="color:${gradeColor}">${grade}</div><div class="slbl">Nota carrera</div></div>
+    <div class="retirement-card-stat"><div class="sval">${P.overall}</div><div class="slbl">Overall máx</div></div>
+    <div class="retirement-card-stat"><div class="sval">${P.careerGoals}</div><div class="slbl">Goles totales</div></div>
+    <div class="retirement-card-stat"><div class="sval">${P.careerAssists}</div><div class="slbl">Asistencias</div></div>
+    <div class="retirement-card-stat"><div class="sval">${P.clubHistory.length}</div><div class="slbl">Clubes</div></div>
+    <div class="retirement-card-stat"><div class="sval">${formatMoney(P.money)}</div><div class="slbl">Fortuna final</div></div>
+    <div class="retirement-card-stat"><div class="sval">${totalTitleCount()}</div><div class="slbl">Títulos</div></div>
+    <div class="retirement-card-stat"><div class="sval">${P.achievements.length}/${ACHIEVEMENTS.length}</div><div class="slbl">Logros</div></div>
   `;
 
   // Titles
-  const titleList = getTitleList();
+  const titlesDiv = document.getElementById("ret-titles");
   if(titleList.length>0){
-    statsDiv.innerHTML += `<div style="grid-column:1/-1;margin-top:8px;font-size:13px;text-align:left"><strong>🏆 Títulos:</strong> ${titleList.join(", ")}</div>`;
+    titlesDiv.innerHTML = titleList.map(t=>`<span class="retirement-title-pill">🏆 ${t}</span>`).join("");
+  } else {
+    titlesDiv.innerHTML = `<p style="color:#8b949e;font-size:13px">Sin títulos oficiales, pero con una carrera llena de historias.</p>`;
   }
 
   const timelineDiv = document.getElementById("ret-timeline");
   timelineDiv.innerHTML = "";
   P.timeline.forEach(t=>{
-    timelineDiv.innerHTML += `<li>${t}</li>`;
+    const m = t.match(/^Edad\s+(\d+):\s*(.*)$/);
+    if(m){
+      timelineDiv.innerHTML += `<li class="retirement-timeline-item"><span class="retirement-timeline-year">${m[1]}a</span><span class="retirement-timeline-text">${m[2]}</span></li>`;
+    } else {
+      timelineDiv.innerHTML += `<li class="retirement-timeline-item"><span class="retirement-timeline-year">•</span><span class="retirement-timeline-text">${t}</span></li>`;
+    }
   });
 
   checkAchievements();
   modal.classList.add("active");
+}
+
+function downloadCareerSummary(){
+  const titleList = getTitleList();
+  const text = `RESUMEN DE CARRERA - ${P.name} (${P.country})\n`+
+    `Nota: ${P.worldCupWinner?'S 👑':P.overall>=90?'A ⭐':P.overall>=80?'B 🌟':'C 🥉'}\n`+
+    `Años profesionales: ${P.age-16}\n`+
+    `Edad de retiro: ${P.age}\n`+
+    `Overall máximo: ${P.overall}\n`+
+    `Goles: ${P.careerGoals} · Asistencias: ${P.careerAssists}\n`+
+    `Clubes: ${P.clubHistory.length} · Títulos: ${totalTitleCount()}\n`+
+    `Fortuna final: ${formatMoney(P.money)}\n\n`+
+    `TÍTULOS:\n${titleList.length>0?titleList.join('\n'):'Sin títulos'}\n\n`+
+    `LÍNEA DE TIEMPO:\n${P.timeline.join('\n')}`;
+  const blob = new Blob([text],{type:"text/plain"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `carrera_${P.name.replace(/\s+/g,"_")}.txt`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 // ============================================================
