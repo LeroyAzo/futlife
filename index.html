@@ -663,10 +663,35 @@ input[type=range]::-webkit-slider-thumb{
   </div>
 </div>
 
+<!-- DATING APP MODAL -->
+<div id="dating-modal" class="modal-overlay">
+  <div class="modal-card" style="max-width:420px;text-align:center">
+    <h2 style="font-size:22px;margin-bottom:4px">💘 App de Citas</h2>
+    <p style="color:#8b949e;font-size:12px;margin-bottom:16px">Intentos restantes: <span id="dating-attempts">3</span></p>
+    <div id="dating-profile" style="background:#0d1117;border:1px solid #30363d;border-radius:16px;padding:20px;margin-bottom:16px">
+      <div style="font-size:48px;margin-bottom:8px" id="dating-avatar">👤</div>
+      <div style="font-size:18px;font-weight:700;margin-bottom:4px" id="dating-name">Nombre</div>
+      <div style="font-size:12px;color:#8b949e;margin-bottom:16px" id="dating-age">25 años</div>
+      <div id="dating-stats" style="text-align:left"></div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-outline" style="flex:1" onclick="datingPass()">❌ Pasar</button>
+      <button class="btn btn-primary" style="flex:1" onclick="datingMatch()">💚 Match</button>
+    </div>
+    <button class="btn btn-outline btn-small" style="margin-top:12px;width:100%" onclick="closeDatingModal()">Cerrar</button>
+  </div>
+</div>
+
 <style>
 .pen-zone:hover{background:rgba(255,255,255,0.08)}
 #penalty-modal .flash{position:fixed;inset:0;background:#fff;z-index:300;animation:flashBang 0.8s ease-out forwards;pointer-events:none}
 @keyframes flashBang{0%{opacity:1}40%{opacity:1}100%{opacity:0}}
+
+/* Dating app */
+.dating-stat-row{margin-bottom:10px}
+.dating-stat-row .dsl{display:flex;justify-content:space-between;font-size:11px;color:#8b949e;margin-bottom:3px}
+.dating-stat-row .dst{height:7px;background:#21262d;border-radius:4px;overflow:hidden}
+.dating-stat-row .dsf{height:100%;border-radius:4px;transition:width .4s ease}
 </style>
 
 <script>
@@ -684,6 +709,15 @@ const COUNTRIES = [
   "Camerún","Marruecos","Egipto","Corea del Sur","Japón","Estados Unidos",
   "Canadá","Australia","Arabia Saudí","Turquía","Suecia"
 ];
+
+const COUNTRY_EMOJIS = {
+  "Argentina":"🇦🇷","Brasil":"🇧🇷","México":"🇲🇽","España":"🇪🇸","Inglaterra":"🏴󠁧󠁢󠁥󠁮󠁧󠁿","Francia":"🇫🇷","Alemania":"🇩🇪",
+  "Italia":"🇮🇹","Portugal":"🇵🇹","Países Bajos":"🇳🇱","Bélgica":"🇧🇪","Uruguay":"🇺🇾","Colombia":"🇨🇴","Chile":"🇨🇱",
+  "Perú":"🇵🇪","Ecuador":"🇪🇨","Paraguay":"🇵🇾","Croacia":"🇭🇷","Senegal":"🇸🇳","Ghana":"🇬🇭","Nigeria":"🇳🇬",
+  "Camerún":"🇨🇲","Marruecos":"🇲🇦","Egipto":"🇪🇬","Corea del Sur":"🇰🇷","Japón":"🇯🇵","Estados Unidos":"🇺🇸",
+  "Canadá":"🇨🇦","Australia":"🇦🇺","Arabia Saudí":"🇸🇦","Turquía":"🇹🇷","Suecia":"🇸🇪"
+};
+function getCountryEmoji(c){return COUNTRY_EMOJIS[c]||"🏳️";}
 
 const POSITIONS = {
   PO:{name:"Portero",stats:{ritmo:-15,tiro:-15,pase:-5,defensa:20,fisico:10,regate:-10}},
@@ -1001,7 +1035,7 @@ const YOUTH_PARENT = {
   "Boca Juvenil":"Buenos Aires Boca","River Juvenil":"River Buenos Aires","Banfield B":"Buenos Aires Boca",
   "Flamengo Sub-20":"Río Flamengo","São Paulo Sub-20":"São Paulo FC","Santos Sub-20":"Santos FC",
   "Santos Laguna B":"Monterrey Rayados","Chivas Sub-20":"Guadalajara Chivas","Pachuca Sub-20":"Pachuca",
-  "La Fábrica":"Madrid CF","La Masia B":"FC Cataluña","Rayo B":"Real Madrid",
+  "La Fábrica":"Madrid CF","La Masia B":"FC Cataluña","Rayo B":"Madrid CF",
   "Red Devils Sub-21":"Manchester Reds","Cityzens Sub-21":"Manchester Cityzens","Blues Sub-21":"London Blues",
   "Milán Primavera":"Milán Rossoneri","Atalanta Sub-19":"Atalanta Bérgamo",
   "Múnich Sub-19":"Múnich Baviera","Dortmund Sub-19":"Dortmund Amarillo",
@@ -1047,7 +1081,7 @@ const P = {
   morale:60, energyAvailable:true, injured:false, injuryWeeks:0,
   trainingsLeft:2,
   relationships:{entrenador:60,compañeros:60,pareja:0,familia:70,amigos:60},
-  hasPartner:false, partnerName:"", married:false, hasKids:false, kidNames:[],
+  hasPartner:false, partnerName:"", partnerGender:"mujer", partnerStats:{aspecto:5,cuerpo:5,personalidad:5,inteligencia:5}, married:false, hasKids:false, kidNames:[],
   seasonGoals:0, seasonAssists:0, seasonMatches:0, careerGoals:0, careerAssists:0,
   careerMatches:0,
   titles:[], achievements:[],
@@ -1879,16 +1913,22 @@ function updateUI(){
   document.getElementById("top-role").style.color = P.squadRole>=4?"#ffd700":P.squadRole>=3?"#7ee787":P.squadRole>=2?"#79c0ff":"#8b949e";
   renderPersonality();
   renderClasses();
-  const moods = {
-    80:"😄",60:"😊",40:"😐",20:"😟",0:"😢"
-  };
-  let moodEmoji = "😐";
-  for(const [k,v] of Object.entries(moods)){
-    if(P.morale>=parseInt(k)){moodEmoji=v;break}
-  }
-  if(P.morale<0) moodEmoji = "😢";
-  document.getElementById("top-mood").textContent = moodEmoji;
-  document.getElementById("top-mood").title = "Moral: "+P.morale;
+  const moods = [
+    {min:90,emoji:"🤩",color:"#ffd700"},
+    {min:75,emoji:"😄",color:"#7ee787"},
+    {min:60,emoji:"😊",color:"#79c0ff"},
+    {min:45,emoji:"😐",color:"#8b949e"},
+    {min:25,emoji:"😟",color:"#d29922"},
+    {min:10,emoji:"😢",color:"#f85149"},
+    {min:0,emoji:"😭",color:"#da3633"}
+  ];
+  const mood = moods.find(m=>P.morale>=m.min)||moods[moods.length-1];
+  const moodEmoji = mood.emoji;
+  const moodEl = document.getElementById("top-mood");
+  moodEl.textContent = moodEmoji;
+  moodEl.style.textShadow = `0 0 12px ${mood.color}`;
+  moodEl.title = `Moral: ${P.morale}/100`;
+  P._lastMoodColor = mood.color;
   refreshOverall();
   renderStats();
   renderRelationships();
@@ -2036,7 +2076,7 @@ function handleStart(){
   P.energyAvailable = true;
   P.injured = false;
   P.relationships = {entrenador:60,compañeros:60,pareja:0,familia:70,amigos:60};
-  P.hasPartner = false; P.married = false; P.hasKids = false; P.kidNames = [];
+  P.hasPartner = false; P.partnerName = ""; P.partnerGender = "mujer"; P.partnerStats = {aspecto:5,cuerpo:5,personalidad:5,inteligencia:5}; P.married = false; P.hasKids = false; P.kidNames = [];
   P.seasonGoals = 0; P.seasonAssists = 0; P.seasonMatches = 0; P.careerGoals = 0; P.careerAssists = 0;
   P.careerMatches = 0;
   P.titles = []; P.achievements = [];
@@ -2059,6 +2099,7 @@ function handleStart(){
   P.lastTags = [];
   P.onceEvents = [];
   P.actionsThisYear = 0;
+  P.datingAttemptsThisYear = 0;
   P.yearActionEffects = {};
   P.trainingsLeft = 1;
   P.timeline.push(`Edad 16: Comienza su carrera futbolística en ${P.country}`);
@@ -2126,6 +2167,15 @@ function getEligibleEvents(){
     if(e.type==="national" && P.age<18) ok = false;
     if(e.type==="relationship" && P.age<18) ok = false;
     if(e.type==="injury" && P.injured) ok = false;
+
+    // Relationship state coherence
+    if(e.title==="Flechazo en la grada" && P.hasPartner) ok = false;
+    if((e.title==="Crisis de pareja" || e.title==="Escándalo de infidelidad") && !P.hasPartner) ok = false;
+    if(e.title==="Boda de ensueño" && (!P.hasPartner || P.married)) ok = false;
+    if(e.title==="Vas a ser padre" && (!P.hasPartner || P.hasKids)) ok = false;
+
+    // Career-stage coherence
+    if(e.title==="Último baile" && P.age<30) ok = false;
     // Continent/competition filtering
     if(e.continent && e.continent!==clubContinent) ok = false;
     if(e.competition && e.competition!==clubComp) ok = false;
@@ -2259,6 +2309,14 @@ function advanceYear(){
     P.money += roi;
   }
 
+  // Partner influence on morale
+  if(P.hasPartner && P.partnerStats){
+    const s = P.partnerStats;
+    if(s.personalidad>=7){P.morale=clamp(P.morale+2,0,100);}
+    else if(s.personalidad<=4){P.morale=clamp(P.morale-2,0,100);}
+    if(s.inteligencia>=8 && Math.random()<0.3){P.discipline=clamp(P.discipline+1,0,100);}
+  }
+
   // Club upgrade/downgrade based on overall
   if(!P.injured && P.clubStars>0 && P.age<35){
     checkClubOffers();
@@ -2389,6 +2447,9 @@ function advanceYear(){
   P.seasonProgress = 0;
   P.yearEvents = [];
   P.actionsThisYear = 0;
+  P.datingAttemptsThisYear = 0;
+  P.yearActionEffects = {};
+  P.seasonMatchRegistry = null;
   updateAdvanceButton();
   updateUI();
 }
@@ -2431,6 +2492,7 @@ function showNextEvent(){
     return;
   }
   const event = currentYearEvents[currentEventIndex];
+  if(event.title==="Convocatoria soñada") event.emoji = getCountryEmoji(P.country);
   currentEventResolved = false;
   const modal = document.getElementById("event-modal");
   document.getElementById("ev-emoji").textContent = event.emoji;
@@ -2521,7 +2583,8 @@ function resolveEvent(event, option){
       if(e.seasonAssists) P.seasonAssists += e.seasonAssists;
       else if(e.careerAssists) P.seasonAssists += e.careerAssists;
       if(e.careerMatches) P.careerMatches += e.careerMatches;
-      if(e.morale) P.morale = clamp(P.morale+e.morale,0,100);
+      if(e.morale!==undefined) P.morale = clamp(P.morale+e.morale,0,100);
+      else if(success) P.morale = clamp(P.morale+2,0,100); // small default morale boost on success
       if(e.money){P.money += e.money;effectsHTML+=`💰 ${formatMoney(e.money)}<br>`}
       if(e.rel_entrenador){P.relationships.entrenador=clamp(P.relationships.entrenador+e.rel_entrenador,0,100);effectsHTML+=`👔 Relación DT: ${e.rel_entrenador>0?'+':''}${e.rel_entrenador}<br>`}
       if(e.rel_compañeros){P.relationships.compañeros=clamp(P.relationships.compañeros+e.rel_compañeros,0,100);effectsHTML+=`🤝 Relación compañeros: ${e.rel_compañeros>0?'+':''}${e.rel_compañeros}<br>`}
@@ -2541,7 +2604,7 @@ function resolveEvent(event, option){
         effectsHTML+=`👥 ${gained>=0?'+':''}${formatFollowers(Math.abs(gained))} seguidores<br>`;
       }
       if(e.discipline){P.discipline=clamp(P.discipline+e.discipline,0,100);effectsHTML+=`⚡ Disciplina ${e.discipline>0?'+':''}${e.discipline}<br>`}
-      if(e.hasPartner && !P.hasPartner){P.hasPartner=true;P.partnerName=e.partnerName||randomPartner();P.relationships.pareja=65;effectsHTML+=`💘 Nueva pareja: ${P.partnerName}<br>`}
+      if(e.hasPartner && !P.hasPartner){P.hasPartner=true;P.partnerName=e.partnerName||randomPartner();P.partnerGender="mujer";P.partnerStats={aspecto:randomBetween(5,9),cuerpo:randomBetween(5,9),personalidad:randomBetween(4,9),inteligencia:randomBetween(4,9)};P.relationships.pareja=65;effectsHTML+=`💘 Nueva pareja: ${P.partnerName}<br>`}
       if(e.hasKids && !P.hasKids){P.hasKids=true;P.kidNames=e.kidNames||["Junior"];effectsHTML+="👶 ¡Has sido padre!<br>"}
       if(e.married && !P.married){P.married=true;effectsHTML+="💒 ¡Te has casado!<br>"}
       if(e.ballonDorWin){P.ballonDorResult="won";effectsHTML+="🏅 ¡BALÓN DE ORO!<br>"}
@@ -2626,15 +2689,16 @@ function resolveEvent(event, option){
     effectsHTML = option.failText ? `<span style='color:#f85149'>✗ ${failTag}: ${option.failText}</span><br>` : "";
     if(option.failEffects){
       const fe = option.failEffects;
-      if(fe.morale) P.morale = clamp(P.morale+fe.morale,0,100);
+      if(fe.morale!==undefined) P.morale = clamp(P.morale+fe.morale,0,100);
+      else P.morale = clamp(P.morale-3,0,100); // small default morale drop on failure
       if(fe.money){P.money+=fe.money;effectsHTML+=`💰 ${formatMoney(fe.money)}<br>`}
       if(fe.rel_entrenador){P.relationships.entrenador=clamp(P.relationships.entrenador+fe.rel_entrenador,0,100)}
       if(fe.rel_compañeros){P.relationships.compañeros=clamp(P.relationships.compañeros+fe.rel_compañeros,0,100)}
       if(fe.familia){P.relationships.familia=clamp(P.relationships.familia+fe.familia,0,100)}
       if(fe.amigos){P.relationships.amigos=clamp(P.relationships.amigos+fe.amigos,0,100)}
       if(fe.injured){P.injured=true;P.injuryWeeks=fe.injuryWeeks||4;effectsHTML+=`🤕 Lesión: ${P.injuryWeeks} semanas<br>`}
-      if(fe.hasPartner===false){P.hasPartner=false;P.married=false;P.relationships.pareja=0;effectsHTML+="💔 Relación terminada<br>"}
-      if(fe.hasPartner===true && !P.hasPartner){P.hasPartner=true;P.partnerName=fe.partnerName||randomPartner()}
+      if(fe.hasPartner===false){P.hasPartner=false;P.married=false;P.partnerName="";P.partnerStats={aspecto:5,cuerpo:5,personalidad:5,inteligencia:5};P.relationships.pareja=0;effectsHTML+="💔 Relación terminada<br>"}
+      if(fe.hasPartner===true && !P.hasPartner){P.hasPartner=true;P.partnerName=fe.partnerName||randomPartner();P.partnerGender="mujer";P.partnerStats={aspecto:randomBetween(5,9),cuerpo:randomBetween(5,9),personalidad:randomBetween(4,9),inteligencia:randomBetween(4,9)};}
       if(fe.hasKids===true && !P.hasKids){P.hasKids=true;P.kidNames=fe.kidNames||["Junior"]}
       if(fe.married===true && !P.married){P.married=true}
       if(fe.careerGoals) P.careerGoals += fe.careerGoals;
@@ -3199,36 +3263,41 @@ function generateMatchRegistry(){
   const assists = P.seasonAssists||0;
   const matches = P.seasonMatches||0;
   if(matches===0) return "";
-  const opponents = ["Rival Local","Atlético Unido","Deportivo Norte","San Martín","Ciudad FC","Estrella Roja","León Blanco","Racing Sur"];
+  // Return cached registry if already generated this year
+  if(P.seasonMatchRegistry) return P.seasonMatchRegistry;
+  const opponents = ["Rival Local","Atlético Unido","Deportivo Norte","San Martín","Ciudad FC","Estrella Roja","León Blanco","Racing Sur","Sporting Capital","Unión Este","Deportivo Oeste","Atlético del Norte"];
   const n = Math.min(6,matches);
+  // Deterministic shuffle based on season data so it doesn't change on re-render
+  const shuffled = shuffle([...opponents]);
   // Only show ~70% of goals in featured matches (rest were in other games)
   let remainingGoals = Math.floor(goals * 0.7);
   let remainingAssists = Math.floor(assists * 0.7);
-  let html = '<h4 style="color:#8b949e;font-size:12px;text-transform:uppercase;letter-spacing:1px;margin-top:12px;margin-bottom:8px">⚽ Partidos destacados</h4><div style="background:#0d1117;border-radius:10px;padding:12px;font-size:12px;line-height:2">';
-  
+  const registry = [];
   for(let i=0;i<n;i++){
-    const opp = opponents[Math.floor(Math.random()*opponents.length)];
-    const g = remainingGoals>0?Math.min(randomBetween(0, Math.min(3,remainingGoals)), remainingGoals):0;
+    const opp = shuffled[i % shuffled.length] + (i>=shuffled.length?` ${Math.floor(i/shuffled.length)+1}`:"");
+    let maxG = Math.min(3, remainingGoals);
+    const g = remainingGoals>0?Math.min(maxG, Math.max(0, Math.round(remainingGoals/(n-i)*0.6 + randomBetween(-1,1)))):0;
     remainingGoals -= g;
-    const a = (remainingAssists>0&&Math.random()<0.35)?Math.min(randomBetween(0,2),remainingAssists):0;
+    const a = (remainingAssists>0 && Math.random()<0.35 && g<3)?Math.min(2, Math.max(0, Math.round(remainingAssists*0.25))):0;
     remainingAssists -= a;
-    
-    // Make score consistent with player's goals
     const teamGoals = Math.max(g, randomBetween(g, g+3));
     const oppGoals = teamGoals>g+1?randomBetween(0,teamGoals-1):randomBetween(0,teamGoals);
     let result = "";
     if(teamGoals>oppGoals) result = `<span style="color:#7ee787">Victoria ${teamGoals}-${oppGoals}</span>`;
     else if(teamGoals===oppGoals) result = `<span style="color:#d29922">Empate ${teamGoals}-${oppGoals}</span>`;
     else result = `<span style="color:#f85149">Derrota ${teamGoals}-${oppGoals}</span>`;
-    
     let extra = "";
     if(g>0) extra += ` ⚽x${g}`;
     if(a>0) extra += ` 🎯x${a}`;
-    if(g===0&&a===0) extra = "";
-    html += `<div style="padding:3px 0;display:flex;justify-content:space-between;border-bottom:1px solid #21262d">
-      <span>vs ${opp}</span><span>${result}${extra?` · ${extra}`:""}</span></div>`;
+    registry.push({opp,result,extra});
   }
+  let html = '<h4 style="color:#8b949e;font-size:12px;text-transform:uppercase;letter-spacing:1px;margin-top:12px;margin-bottom:8px">⚽ Partidos destacados</h4><div style="background:#0d1117;border-radius:10px;padding:12px;font-size:12px;line-height:2">';
+  registry.forEach(r=>{
+    html += `<div style="padding:3px 0;display:flex;justify-content:space-between;border-bottom:1px solid #21262d">
+      <span>vs ${r.opp}</span><span>${r.result}${r.extra?` · ${r.extra}`:""}</span></div>`;
+  });
   html += `<div style="margin-top:4px;color:#8b949e;font-size:11px">📊 ${n} de ${matches} partidos</div></div>`;
+  P.seasonMatchRegistry = html;
   return html;
 }
 
@@ -3341,6 +3410,20 @@ function renderRelationships(){
       </div>
     `;
   });
+  if(P.hasPartner){
+    const s = P.partnerStats||{};
+    const labels = {aspecto:"Aspecto",cuerpo:"Cuerpo",personalidad:"Personalidad",inteligencia:"Inteligencia"};
+    const colors = {aspecto:"#f0883e",cuerpo:"#f85149",personalidad:"#79c0ff",inteligencia:"#a371f7"};
+    div.innerHTML += `<div style='margin-top:12px;background:#0d1117;border-radius:10px;padding:12px'>
+      <div style='font-size:12px;color:#8b949e;margin-bottom:8px'>💘 Stats de ${P.partnerName}</div>
+      ${Object.entries(s).map(([k,v])=>`
+        <div style='margin-bottom:6px'>
+          <div style='display:flex;justify-content:space-between;font-size:11px;color:#8b949e;margin-bottom:2px'><span>${labels[k]}</span><span>${v}/10</span></div>
+          <div style='height:5px;background:#21262d;border-radius:3px;overflow:hidden'><div style='height:100%;width:${v*10}%;background:${colors[k]};border-radius:3px'></div></div>
+        </div>
+      `).join('')}
+    </div>`;
+  }
   if(P.hasKids && P.kidNames.length>0){
     div.innerHTML += `<p style='margin-top:8px;font-size:13px;color:#8b949e'>👶 Hijos: ${P.kidNames.join(", ")}</p>`;
   }
@@ -3384,6 +3467,19 @@ function renderPersonality(){
 function renderStats(){
   const div = document.getElementById("stats-display");
   div.innerHTML = "";
+  // Morale bar
+  const moodColor = P._lastMoodColor || "#8b949e";
+  div.innerHTML += `
+    <div style="background:#0d1117;border-radius:10px;padding:12px;margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font-size:13px;color:#8b949e">Moral</span>
+        <span style="font-weight:700;color:${moodColor}">${P.morale}/100</span>
+      </div>
+      <div style="height:10px;background:#21262d;border-radius:5px;overflow:hidden">
+        <div style="height:100%;width:${P.morale}%;background:linear-gradient(90deg,${moodColor},#e6edf3);border-radius:5px;transition:width .5s"></div>
+      </div>
+    </div>
+  `;
   for(const [k,v] of Object.entries(STAT_NAMES)){
     const val = P.stats[k];
     div.innerHTML += `
@@ -3488,6 +3584,7 @@ const ACTIONS = [
   {id:"practicar_tiros",name:"Practicar disparos",icon:"🎯",desc:"Te quedas después del entreno practicando tiros libres.",eff:{tiro:2,regate:1,discipline:8},cost:0,req:{}},
   // Pequeño costo
   {id:"cena_equipo",name:"Invitar cena al equipo",icon:"🍽️",desc:"Pagas la cena para todo el equipo. Une al vestuario.",eff:{rel_compañeros:15,morale:10,familia:3},cost:5000,req:{money:5000}},
+  {id:"app_citas",name:"App de citas",icon:"💘",desc:"Abres la app. ¿A quién le das match hoy? Tienes 3 intentos por año.",eff:{},cost:0,req:{age:18}},
   {id:"fiesta_amigos",name:"Fiesta con amigos",icon:"🎉",desc:"Noche de fiesta. Diversión asegurada, rendimiento dudoso mañana.",eff:{morale:15,amigos:12,discipline:-25,fisico:-1},cost:3000,req:{money:3000,age:18}},
   {id:"curso_idiomas",name:"Curso de idiomas",icon:"🗣️",desc:"Aprender idiomas abre puertas a ligas extranjeras.",eff:{overall_boost:1,discipline:8,familia:3},cost:8000,req:{money:8000}},
   // Nivel medio
@@ -3509,6 +3606,8 @@ const ACTIONS = [
 
 function checkActionReq(action){
   const r = action.req;
+  if(action.id==="app_citas" && P.hasPartner) return "Ya tienes pareja";
+  if(action.id==="app_citas" && (P.datingAttemptsThisYear||0)>=3) return "Sin intentos este año en la app";
   if(r.money && P.money<r.money) return `Necesitas ${formatMoney(r.money)}`;
   if(r.age && P.age<r.age) return `Debes tener ${r.age} años`;
   if(r.followers && P.followers<r.followers) return `Necesitas ${formatFollowers(r.followers)} seguidores`;
@@ -3517,8 +3616,12 @@ function checkActionReq(action){
 }
 
 function doAction(action){
-  if(P.actionsThisYear>=1){showToast("❌ Ya hiciste una acción este año. Espera al siguiente.");return}
+  if(P.actionsThisYear>=1 && action.id!=="app_citas"){showToast("❌ Ya hiciste una acción este año. Espera al siguiente.");return}
   if(action.id==="retirarse"){if(confirm("¿Estás seguro de que quieres retirarte?")){P.retirementReason="voluntario";showRetirement()}return}
+  if(action.id==="app_citas"){
+    openDatingApp();
+    return;
+  }
   const block = checkActionReq(action);
   if(block){showToast("❌ "+block);return}
   P.actionsThisYear++;
@@ -3566,12 +3669,13 @@ function renderActions(){
   div.innerHTML = "";
   ACTIONS.forEach(a=>{
     const block = checkActionReq(a);
-    const usedThisYear = P.actionsThisYear>=1;
+    const usedThisYear = P.actionsThisYear>=1 && a.id!=="app_citas";
     const locked = !!block || usedThisYear;
     const card = document.createElement("div");
     card.style.cssText = `background:#0d1117;border:1px solid ${locked?'#21262d':'#30363d'};border-radius:10px;padding:14px;text-align:center;cursor:${locked?'default':'pointer'};transition:all .2s;opacity:${locked?'0.5':'1'}`;
     let lockText = "";
-    if(usedThisYear) lockText = "⏳ Ya usada este año";
+    if(a.id==="app_citas") lockText = `💘 ${3-(P.datingAttemptsThisYear||0)} intentos`;
+    else if(usedThisYear) lockText = "⏳ Ya usada este año";
     else if(block) lockText = "🔒 "+block;
     card.innerHTML = `<div style="font-size:28px;margin-bottom:4px">${a.icon}</div><div style="font-size:13px;font-weight:600;margin-bottom:4px">${a.name}</div><div style="font-size:10px;color:#8b949e;margin-bottom:6px">${a.desc}</div>${a.cost>0?`<div style="font-size:11px;color:#d29922">${formatMoney(a.cost)}</div>`:''}${lockText?`<div style="font-size:10px;color:${usedThisYear?'#79c0ff':'#f85149'};margin-top:4px">${lockText}</div>`:''}`;
     card.onmouseenter = function(){if(!locked){card.style.borderColor="#2ea043";card.style.transform="translateY(-2px)"}};
@@ -3579,6 +3683,82 @@ function renderActions(){
     if(!locked) card.onclick = ()=>doAction(a);
     div.appendChild(card);
   });
+}
+
+// ============================================================
+// DATING APP
+// ============================================================
+function openDatingApp(){
+  if(P.hasPartner){showToast("Ya tienes pareja");return}
+  if((P.datingAttemptsThisYear||0)>=3){showToast("Sin intentos este año en la app");return}
+  generateDatingProfile();
+  document.getElementById("dating-modal").classList.add("active");
+}
+
+function closeDatingModal(){
+  document.getElementById("dating-modal").classList.remove("active");
+  P._datingProfile = null;
+}
+
+function generateDatingProfile(){
+  const isMale = Math.random()<0.2;
+  const namesM = ["Lucas","Mateo","Santiago","Daniel","Alejandro","Martín","Leo","Adrián","Carlos","Javier"];
+  const namesF = ["Valentina","Sofía","Camila","Isabella","Luciana","Mariana","Renata","Daniela","Andrea","Carolina","Martina","Paula"];
+  const name = isMale?pick(namesM):pick(namesF);
+  const age = randomBetween(20,32);
+  const stats = {
+    aspecto: randomBetween(4,10),
+    cuerpo: randomBetween(4,10),
+    personalidad: randomBetween(3,10),
+    inteligencia: randomBetween(4,10)
+  };
+  P._datingProfile = {name, gender:isMale?"hombre":"mujer", age, stats};
+  document.getElementById("dating-attempts").textContent = 3 - (P.datingAttemptsThisYear||0);
+  document.getElementById("dating-avatar").textContent = isMale?"👨":"👩";
+  document.getElementById("dating-name").textContent = name;
+  document.getElementById("dating-age").textContent = age+" años";
+  const statsDiv = document.getElementById("dating-stats");
+  const labels = {aspecto:"Aspecto",cuerpo:"Cuerpo",personalidad:"Personalidad",inteligencia:"Inteligencia"};
+  const colors = {aspecto:"#f0883e",cuerpo:"#f85149",personalidad:"#79c0ff",inteligencia:"#a371f7"};
+  statsDiv.innerHTML = Object.entries(stats).map(([k,v])=>`
+    <div class="dating-stat-row">
+      <div class="dsl"><span>${labels[k]}</span><span>${v}/10</span></div>
+      <div class="dst"><div class="dsf" style="width:${v*10}%;background:${colors[k]}"></div></div>
+    </div>
+  `).join("");
+}
+
+function datingPass(){
+  if(!P._datingProfile) return;
+  P.datingAttemptsThisYear = (P.datingAttemptsThisYear||0)+1;
+  if(P.datingAttemptsThisYear>=3){closeDatingModal();return}
+  generateDatingProfile();
+}
+
+function datingMatch(){
+  if(!P._datingProfile) return;
+  P.datingAttemptsThisYear = (P.datingAttemptsThisYear||0)+1;
+  const profile = P._datingProfile;
+  // Acceptance depends on player's appeal: fame, overall, money and candidate's expectations
+  const moneyAppeal = Math.min(10, Math.max(0, Math.log10(Math.max(1,P.money))/2));
+  const appeal = (P.fameLevel||1)*0.8 + (P.overall/12) + moneyAppeal + (profile.stats.aspecto*0.3);
+  const accepted = Math.random() < Math.min(0.92, 0.22 + appeal*0.045);
+  if(accepted){
+    P.hasPartner = true;
+    P.partnerName = profile.name;
+    P.partnerGender = profile.gender;
+    P.partnerStats = profile.stats;
+    P.relationships.pareja = 65 + randomBetween(5,15);
+    P.timeline.push(`Edad ${P.age}: Comienza a salir con ${profile.name}`);
+    showToast(`💘 ¡${profile.name} aceptó tu match!`);
+    closeDatingModal();
+  } else {
+    P.morale = clamp(P.morale-randomBetween(5,10),0,100);
+    showToast(`💔 ${profile.name} no respondió tu match...`);
+    if(P.datingAttemptsThisYear>=3){closeDatingModal();}
+    else {generateDatingProfile();}
+  }
+  updateUI();
 }
 
 // ============================================================
@@ -3820,8 +4000,8 @@ function initSeasonData(){
   }
   P.leagueData = {teams: shuffle(teams), currentMD:0, playedMatches:[]};
   P.cd = null; P.cupData = null;
-  try{initContinental()}catch(e){P.cd=null}
-  try{initCup()}catch(e){P.cupData=null}
+  if(P.clubStars>=2){try{initContinental()}catch(e){P.cd=null}}
+  if(P.clubStars>=2){try{initCup()}catch(e){P.cupData=null}}
 }
 
 function simulateMatchday(mdIdx){
@@ -3865,43 +4045,84 @@ function getTeamStats(teamName){
 function initContinental(){
   const club = CLUBS.find(c=>c.name===P.clubName);
   const cont = club?club.continent:"europe";
+  // Only elite clubs (2+ stars) participate in continental competition
+  if(P.clubStars<2){P.cd=null;return}
   const contClubs = CLUBS.filter(c=>c.continent===cont&&c.stars>=2);
-  const selected = shuffle(contClubs).slice(0,47);
+  let selected = shuffle(contClubs);
   const playerClub = CLUBS.find(c=>c.name===P.clubName);
-  if(playerClub&&!selected.find(t=>t.name===P.clubName)) selected[0]=playerClub;
-  P.cd = {name:cont==="europe"?"Champions League":cont==="americas"?"Libertadores":"Continental Cup", teams:selected.map(t=>({name:t.name,stars:t.stars,isPlayer:t.name===P.clubName})), phase:"-", stage:0, playerEliminated:null};
+  if(playerClub && playerClub.stars>=2 && !selected.find(t=>t.name===P.clubName)) selected.unshift(playerClub);
+  // Champions League format: 8 groups of 6 = 48 teams
+  let placeholderIdx = 1;
+  while(selected.length<48){
+    selected.push({name:"Clasificado "+placeholderIdx, stars:randomBetween(2,4), isPlaceholder:true});
+    placeholderIdx++;
+  }
+  if(selected.length>48) selected = selected.slice(0,48);
+  const names = {
+    europe:"Champions League",
+    americas:"Copa Libertadores",
+    asia:"AFC Champions League",
+    africa:"CAF Champions League",
+    middleeast:"AFC Champions League"
+  };
+  P.cd = {name:names[cont]||"Continental Cup", teams:selected.map(t=>({name:t.name,stars:t.stars,isPlayer:t.name===P.clubName,isPlaceholder:!!t.isPlaceholder})), phase:"Fase previa", stage:0, playerEliminated:null};
 }
 
 function initCup(){
-  const cupTeams = CLUBS.filter(c=>c.country===P.clubCountry);
-  const selected = shuffle(cupTeams).slice(0,31);
+  if(P.clubStars<2){P.cupData=null;return}
+  // Domestic cup: professional clubs from player's country (exclude youth/reserve teams)
+  let cupTeams = CLUBS.filter(c=>c.country===P.clubCountry && c.stars>=2);
+  let selected = shuffle(cupTeams);
   const playerClub = CLUBS.find(c=>c.name===P.clubName);
-  if(playerClub&&!selected.find(t=>t.name===P.clubName)) selected[0]=playerClub;
-  P.cupData = {teams:selected.map(t=>({name:t.name,stars:t.stars,isPlayer:t.name===P.clubName})), round:"32avos", playerEliminated:null};
+  if(playerClub && playerClub.stars>=2 && !selected.find(t=>t.name===P.clubName)) selected.unshift(playerClub);
+  // Fill to 32 teams for a clean knockout bracket
+  let placeholderIdx = 1;
+  while(selected.length<32){
+    selected.push({name:"Equipo "+placeholderIdx, stars:randomBetween(1,3), isPlaceholder:true});
+    placeholderIdx++;
+  }
+  if(selected.length>32) selected = selected.slice(0,32);
+  P.cupData = {teams:selected.map(t=>({name:t.name,stars:t.stars,isPlayer:t.name===P.clubName,isPlaceholder:!!t.isPlaceholder})), round:"32avos", playerEliminated:null};
 }
 
 function advanceContinental(){
   const cd = P.cd; if(!cd) return;
   cd.stage++;
-  if(cd.stage===1) return;
-  if(cd.stage===2){cd.phase="Fase de grupos"; cd.groups=Array.from({length:8},()=>cd.teams.splice(0,6)); cd.advancers=cd.groups.map(g=>{
-    const sorted=[...g].sort((a,b)=>(b.stars||2)-(a.stars||2)+randomBetween(-2,2));
-    return sorted.slice(0,4);
-  }).flat();}
-  else if(cd.stage===3&&cd.advancers){cd.phase="Octavos (Ida y Vuelta)"; cd.current=simKnockoutTL(shuffle(cd.advancers),16);
-    if(!cd.current.teams.find(t=>t.isPlayer||t.name===P.clubName)) cd.playerEliminated="Octavos";}
-  else if(cd.stage===4&&cd.current.teams){cd.phase="Cuartos (Ida y Vuelta)"; cd.current=simKnockoutTL(cd.current.teams,8);
-    if(!cd.current.teams.find(t=>t.isPlayer||t.name===P.clubName)) cd.playerEliminated="Cuartos";}
-  else if(cd.stage===5&&cd.current.teams){cd.phase="Semifinal (Ida y Vuelta)"; cd.current=simKnockoutTL(cd.current.teams,4);
-    if(!cd.current.teams.find(t=>t.isPlayer||t.name===P.clubName)) cd.playerEliminated="Semifinal";}
-  else if(cd.stage===6&&cd.current.teams&&cd.current.teams.length>=2){
-    // Check if player's team is in the final
+  if(cd.stage===1){cd.phase="Fase de grupos"; return;}
+  if(cd.stage===2){
+    // 8 groups of 6, top 2 advance to knockout (16 teams)
+    cd.groups=Array.from({length:8},()=>cd.teams.splice(0,6));
+    cd.advancers=[];
+    cd.groups.forEach(g=>{
+      const sorted=[...g].sort((a,b)=>(b.stars||2)-(a.stars||2)+randomBetween(-2,2));
+      const adv=sorted.slice(0,2);
+      cd.advancers.push(...adv);
+      g.advanced=adv.map(t=>t.name);
+    });
+    cd.phase="Fase de grupos";
+    if(!cd.playerEliminated && !cd.advancers.find(t=>t.isPlayer||t.name===P.clubName)) cd.playerEliminated="Fase de grupos";
+  }
+  else if(cd.stage===3 && cd.advancers){
+    cd.phase="Octavos de final (Ida y Vuelta)";
+    cd.current=simKnockoutTL(shuffle(cd.advancers),8);
+    if(!cd.playerEliminated && !cd.current.teams.find(t=>t.isPlayer||t.name===P.clubName)) cd.playerEliminated="Octavos de final";
+  }
+  else if(cd.stage===4 && cd.current?.teams){
+    cd.phase="Cuartos de final (Ida y Vuelta)";
+    cd.current=simKnockoutTL(cd.current.teams,4);
+    if(!cd.playerEliminated && !cd.current.teams.find(t=>t.isPlayer||t.name===P.clubName)) cd.playerEliminated="Cuartos de final";
+  }
+  else if(cd.stage===5 && cd.current?.teams){
+    cd.phase="Semifinal (Ida y Vuelta)";
+    cd.current=simKnockoutTL(cd.current.teams,2);
+    if(!cd.playerEliminated && !cd.current.teams.find(t=>t.isPlayer||t.name===P.clubName)) cd.playerEliminated="Semifinal";
+  }
+  else if(cd.stage===6 && cd.current?.teams && cd.current.teams.length>=2){
     const t1=cd.current.teams[0], t2=cd.current.teams[1];
     const playerIn = t1.isPlayer||t2.isPlayer||t1.name===P.clubName||t2.name===P.clubName;
-    if(playerIn&&!cd.finalPlayed){
+    if(playerIn && !cd.finalPlayed){
       cd.finalPlayed = true;
-      cd.phase="Final (Ida y Vuelta)";
-      // Push penalty minigame event
+      cd.phase="Final";
       currentYearEvents.push({
         title:"🎯 ¡La final! Tiro Decisivo",
         text:`Es la final de ${cd.name}. Último minuto. Penalti a favor. Todo depende de ti. ¿A dónde disparas?`,
@@ -3909,15 +4130,17 @@ function advanceContinental(){
           {text:"¡Voy a disparar!",effects:{penaltyGame:true},chance:0.95}
         ]
       });
-    } else if(cd.finalPlayed||!playerIn){
-      // Auto-simulate if already played or player not in final  
-      if(cd.penaltyResolved) return; // Penalty minigame already handled it
+    } else if(cd.finalPlayed || !playerIn){
+      if(cd.penaltyResolved) return;
       cd.finalPlayed = false;
-      cd.phase="Final (Ida y Vuelta)";
+      cd.phase="Final";
       const final=simTwoLegged(t1,t2);
       cd.finalResult=`${t1.name} ${final.result} ${t2.name}`;
       cd.winner=final.winner; cd.phase="Finalizada";
-      if(final.winner.isPlayer){P.titles.push("🏆 "+cd.name);P.seasonWonTitle=true;}
+      if(final.winner.isPlayer){
+        const title = "🏆 "+cd.name;
+        if(!P.titles.includes(title)){P.titles.push(title);P.seasonWonTitle=true;P.timeline.push(`Edad ${P.age}: ¡Campeón de la ${cd.name}!`);}
+      }
     }
   }
 }
@@ -3949,19 +4172,22 @@ function simKnockoutTL(teams, target){
 
 function advanceCup(){
   const cup=P.cupData; if(!cup||cup.teams.length<=1) return;
-  // 1 round per event
-  if(cup.teams.length<=1){cup.round="Campeón";if(cup.teams[0].isPlayer){P.titles.push("🏆 Copa");P.timeline.push(`Edad ${P.age}: ¡Campeón de Copa!`)}return}
-  const nr=[]; const rounds=["32avos","16avos","Octavos","Cuartos","Semifinal","Final","Campeón"];
+  const rounds={32:"32avos",16:"16avos",8:"Octavos",4:"Cuartos",2:"Final"};
+  const prevRound = rounds[cup.teams.length]||"Final";
+  const nr=[];
   for(let i=0;i<cup.teams.length;i+=2){
     if(i+1>=cup.teams.length){nr.push(cup.teams[i]);break}
     const res=simMatch(cup.teams[i].stars,cup.teams[i+1].stars);
     nr.push(res.home>res.away?cup.teams[i]:res.away>res.home?cup.teams[i+1]:(Math.random()<0.5?cup.teams[i]:cup.teams[i+1]));
   }
-  const prevCupRound = cup.round;
-  cup.teams=nr; cup.round=rounds[rounds.indexOf(cup.round)+1]||"Campeón";
-  // Track if player was eliminated
-  if(!cup.teams.find(t=>t.isPlayer||t.name===P.clubName)) cup.playerEliminated = prevCupRound;
-  if(cup.round==="Campeón"&&cup.teams[0].isPlayer){P.titles.push("🏆 Copa");P.timeline.push(`Edad ${P.age}: ¡Campeón de Copa!`)}
+  cup.teams=nr;
+  cup.round = cup.teams.length===1?"Campeón":(rounds[cup.teams.length]||"Final");
+  // Track if player was eliminated (only set once)
+  if(!cup.playerEliminated && !cup.teams.find(t=>t.isPlayer||t.name===P.clubName)) cup.playerEliminated = prevRound;
+  if(cup.round==="Campeón"&&cup.teams[0].isPlayer){
+    const title = "🏆 Copa " + P.clubCountry;
+    if(!P.titles.includes(title)){P.titles.push(title);P.timeline.push(`Edad ${P.age}: ¡Campeón de Copa!`);P.seasonWonTitle=true;}
+  }
 }
 
 function renderTables(){
@@ -3994,10 +4220,32 @@ function showTeamDetail(name){
 
 function renderContinentalTable(){
   const d=document.getElementById("continental-table"); const cd=P.cd;
-  if(!cd||cd.stage===0||(cd.stage===1&&(!cd.teams||cd.teams.length===0))){d.innerHTML="<p style='color:#8b949e;font-size:12px'>🌍 No participas en competición continental</p>";return}
+  if(!cd||cd.stage===0){d.innerHTML="<p style='color:#8b949e;font-size:12px'>🌍 No participas en competición continental</p>";return}
   let h=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><strong style="font-size:14px">🏆 ${cd.name}</strong><span style="color:#8b949e;font-size:12px">${cd.phase}</span></div>`;
-  // Show player's opponent if still in
-  if(cd.current&&cd.current.teams&&cd.phase!=="Finalizada"){
+
+  // Group stage display
+  const inGroupPhase = cd.groups && (cd.phase.includes("grupos") || cd.playerEliminated==="Fase de grupos");
+  if(inGroupPhase){
+    h+=`<div style="font-size:12px;margin-bottom:10px;color:#8b949e">8 grupos · Top 2 clasifican a octavos</div>`;
+    cd.groups.forEach((g,i)=>{
+      const sorted=[...g].sort((a,b)=>(b.stars||2)-(a.stars||2)+randomBetween(-1,1));
+      h+=`<div style="background:#0d1117;border-radius:8px;padding:8px;margin-bottom:8px">`;
+      h+=`<div style="font-size:11px;color:#d29922;font-weight:600;margin-bottom:4px">Grupo ${String.fromCharCode(65+i)}</div>`;
+      h+=`<table style="width:100%;font-size:11px;border-collapse:collapse">`;
+      sorted.forEach((t,idx)=>{
+        const isP=t.isPlayer||t.name===P.clubName;
+        const qualified=g.advanced && g.advanced.includes(t.name);
+        h+=`<tr style="color:${isP?'#7ee787':qualified?'#e6edf3':'#8b949e'};font-weight:${isP?'700':'400'}">
+          <td style="padding:2px 0">${isP?'⭐ ':''}${idx+1}. ${t.name}</td>
+          <td style="text-align:right">${qualified?'✅':'—'}</td>
+        </tr>`;
+      });
+      h+=`</table></div>`;
+    });
+  }
+
+  // Knockout bracket
+  if(cd.current && cd.current.teams && cd.phase!=="Finalizada" && !inGroupPhase){
     const playerTeam = cd.current.teams.find(t=>t.isPlayer||t.name===P.clubName);
     if(playerTeam){
       const idx = cd.current.teams.indexOf(playerTeam);
@@ -4006,7 +4254,7 @@ function renderContinentalTable(){
     }
     h+=renderBracket(cd.current.teams, cd.current.results||[], cd.phase);
   }
-  if(cd.playerEliminated&&cd.stage>=3) h+=`<div style="background:rgba(248,81,73,0.08);border:1px solid #f85149;border-radius:6px;padding:8px;margin-top:8px;text-align:center;font-size:12px;color:#f85149">❌ Eliminado en ${cd.playerEliminated}</div>`;
+  if(cd.playerEliminated) h+=`<div style="background:rgba(248,81,73,0.08);border:1px solid #f85149;border-radius:6px;padding:8px;margin-top:8px;text-align:center;font-size:12px;color:#f85149">❌ Eliminado en ${cd.playerEliminated}</div>`;
   if(cd.finalResult) h+=`<div style="font-weight:700;color:#d29922;margin-top:8px;font-size:13px">⚡ ${cd.finalResult}</div>`;
   if(cd.winner) h+=`<div style="color:#7ee787;font-size:14px;font-weight:700;margin-top:4px">🏆 ¡${cd.winner.name} campeón!</div>`;
   d.innerHTML=h;
@@ -4074,15 +4322,46 @@ function advanceWorldCup(){
   const wc = P.wcData; if(!wc||!wc.playerCalled) return;
   wc.stage++;
   if(wc.stage===1){wc.phase="Fase de grupos"; wc.groups=Array.from({length:8},(_,i)=>wc.teams.slice(i*4,(i+1)*4));}
-  else if(wc.stage===2){wc.phase="Fase de grupos"; const adv=[]; wc.groups.forEach(g=>{const s=[...g].sort((a,b)=>(b.stars||2)+randomBetween(-2,2)-(a.stars||2));adv.push(s[0],s[1])});wc.advancers=adv;}
-  else if(wc.stage===3&&wc.advancers){wc.phase="Octavos"; const r=simKnockoutTL(shuffle(wc.advancers),8);wc.current=r;if(!r.teams.find(t=>t.name===P.country))wc.playerEliminated="Octavos";}
-  else if(wc.stage===4&&wc.current.teams){wc.phase="Cuartos"; const r=simKnockoutTL(wc.current.teams,4);wc.current=r;if(!r.teams.find(t=>t.name===P.country))wc.playerEliminated="Cuartos";}
-  else if(wc.stage===5&&wc.current.teams){wc.phase="Semifinal"; const r=simKnockoutTL(wc.current.teams,2);wc.current=r;if(!r.teams.find(t=>t.name===P.country))wc.playerEliminated="Semifinal";}
-  else if(wc.stage===6&&wc.current.teams&&wc.current.teams.length>=2){
-    wc.phase="Final"; const final=simTwoLegged(wc.current.teams[0],wc.current.teams[1]);
-    wc.finalResult=`${wc.current.teams[0].name} ${final.result} ${wc.current.teams[1].name}`;
-    wc.winner=final.winner;wc.phase="Finalizada";
-    if(wc.winner.name===P.country){P.titles.push("🏆 Copa del Mundo");P.timeline.push(`Edad ${P.age}: ¡Campeón del Mundo con ${P.country}!`);P.seasonWonTitle=true;}
+  else if(wc.stage===2){
+    wc.phase="Fase de grupos";
+    const adv=[];
+    wc.groups.forEach(g=>{
+      const s=[...g].sort((a,b)=>(b.stars||2)+randomBetween(-2,2)-(a.stars||2));
+      adv.push(s[0],s[1]);
+      g.advanced=s.slice(0,2).map(t=>t.name);
+    });
+    wc.advancers=adv;
+    if(!wc.advancers.find(t=>t.name===P.country)) wc.playerEliminated="Fase de grupos";
+  }
+  else if(wc.stage===3 && wc.advancers){
+    wc.phase="Octavos de final";
+    const r=simKnockoutTL(shuffle(wc.advancers),8);
+    wc.current=r;
+    if(!r.teams.find(t=>t.name===P.country)) wc.playerEliminated="Octavos de final";
+  }
+  else if(wc.stage===4 && wc.current?.teams){
+    wc.phase="Cuartos de final";
+    const r=simKnockoutTL(wc.current.teams,4);
+    wc.current=r;
+    if(!r.teams.find(t=>t.name===P.country)) wc.playerEliminated="Cuartos de final";
+  }
+  else if(wc.stage===5 && wc.current?.teams){
+    wc.phase="Semifinal";
+    const r=simKnockoutTL(wc.current.teams,2);
+    wc.current=r;
+    if(!r.teams.find(t=>t.name===P.country)) wc.playerEliminated="Semifinal";
+  }
+  else if(wc.stage===6 && wc.current?.teams && wc.current.teams.length>=2){
+    wc.phase="Final";
+    const t1=wc.current.teams[0], t2=wc.current.teams[1];
+    const final=simMatch(t1.stars,t2.stars);
+    const winner = final.home>final.away?t1:final.away>final.home?t2:(Math.random()<0.5?t1:t2);
+    wc.finalResult=`${t1.name} ${final.home}-${final.away} ${t2.name}`;
+    wc.winner=winner; wc.phase="Finalizada";
+    if(wc.winner.name===P.country){
+      const title = "🏆 Copa del Mundo";
+      if(!P.titles.includes(title)){P.titles.push(title);P.timeline.push(`Edad ${P.age}: ¡Campeón del Mundo con ${P.country}!`);P.seasonWonTitle=true;P.worldCupWinner=true;}
+    }
   }
 }
 
@@ -4092,7 +4371,29 @@ function renderWorldCupTable(){
   if(!wc||!wc.playerCalled){d.innerHTML="<p style='color:#8b949e;font-size:12px'>No fuiste convocado para este Mundial</p>";return}
   let h=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><strong style="font-size:14px">🌍 Copa del Mundo</strong><span style="color:#8b949e;font-size:12px">${wc.phase}</span></div>`;
   if(wc.playerEliminated){h+=`<div style="background:rgba(248,81,73,0.08);border:1px solid #f85149;border-radius:6px;padding:8px;margin-bottom:8px;text-align:center;color:#f85149;font-size:12px">❌ ${P.country} eliminado en ${wc.playerEliminated}</div>`}
-  if(wc.current&&wc.current.teams&&wc.phase!=="Finalizada") h+=renderBracket(wc.current.teams,wc.current.results||[]);
+
+  // Group stage display
+  const inGroupPhase = wc.groups && (wc.phase.includes("grupos") || wc.playerEliminated==="Fase de grupos");
+  if(inGroupPhase){
+    h+=`<div style="font-size:12px;margin-bottom:10px;color:#8b949e">8 grupos · Top 2 clasifican</div>`;
+    wc.groups.forEach((g,i)=>{
+      const sorted=[...g].sort((a,b)=>(b.stars||2)-(a.stars||2)+randomBetween(-1,1));
+      h+=`<div style="background:#0d1117;border-radius:8px;padding:8px;margin-bottom:8px">`;
+      h+=`<div style="font-size:11px;color:#d29922;font-weight:600;margin-bottom:4px">Grupo ${String.fromCharCode(65+i)}</div>`;
+      h+=`<table style="width:100%;font-size:11px;border-collapse:collapse">`;
+      sorted.forEach((t,idx)=>{
+        const isP=t.isPlayer||t.name===P.country;
+        const qualified=g.advanced && g.advanced.includes(t.name);
+        h+=`<tr style="color:${isP?'#7ee787':qualified?'#e6edf3':'#8b949e'};font-weight:${isP?'700':'400'}">
+          <td style="padding:2px 0">${isP?'⭐ ':''}${idx+1}. ${t.name}</td>
+          <td style="text-align:right">${qualified?'✅':'—'}</td>
+        </tr>`;
+      });
+      h+=`</table></div>`;
+    });
+  }
+
+  if(wc.current && wc.current.teams && wc.phase!=="Finalizada" && !inGroupPhase) h+=renderBracket(wc.current.teams,wc.current.results||[]);
   if(wc.finalResult) h+=`<div style="font-weight:700;color:#d29922;margin-top:8px;font-size:13px">⚡ ${wc.finalResult}</div>`;
   if(wc.winner) h+=`<div style="color:#7ee787;font-size:14px;font-weight:700;margin-top:4px">🏆 ¡${wc.winner.name} Campeón del Mundo!</div>`;
   d.innerHTML=h;
