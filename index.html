@@ -2390,14 +2390,24 @@ function refreshPreviewStats(){
   const pos = selectedPosition || "DC";
   const container = document.getElementById("stats-preview");
   const mods = POSITION_STATS[pos].stats;
+  const weights = POSITION_WEIGHTS[pos];
   container.innerHTML = "";
+  let total = 0, sum = 0;
   for(const [k,mod] of Object.entries(mods)){
     const val = clamp(50+mod+randomBetween(-5,5),1,99);
+    const w = weights[k]||0;
+    total += val*w; sum += w;
+    const st = STAT_NAMES[k];
     const badge = document.createElement("div");
     badge.className = "stat-badge";
-    badge.innerHTML = `<span style="font-size:10px">${STAT_NAMES[k].name}</span><span class="val">${val}</span>`;
+    badge.innerHTML = `<span style="font-size:10px">${st.name}</span><span class="val" style="color:${st.color}">${val}</span>`;
     container.appendChild(badge);
   }
+  const previewOvr = sum>0 ? Math.round(total/sum) : 0;
+  const ovrBadge = document.createElement("div");
+  ovrBadge.className = "stat-badge";
+  ovrBadge.innerHTML = `<span style="font-size:10px">Overall</span><span class="val" style="color:${previewOvr>=80?'#ffd700':'#7ee787'}">${previewOvr}</span>`;
+  container.appendChild(ovrBadge);
 }
 
 // ============================================================
