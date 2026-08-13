@@ -643,23 +643,33 @@ input[type=range]::-webkit-slider-thumb{
 
 <!-- PENALTY MINIGAME MODAL -->
 <div id="penalty-modal" class="modal-overlay">
-  <div class="modal-card" style="max-width:500px;text-align:center">
-    <h2 style="font-size:20px;margin-bottom:4px">🎯 Tiro Decisivo</h2>
-    <p style="color:#8b949e;font-size:13px;margin-bottom:16px" id="penalty-text"></p>
-    <div id="penalty-goal" style="position:relative;width:100%;aspect-ratio:2/1;background:linear-gradient(180deg,#1a6e1a,#0d3d0d);border-radius:8px;border:3px solid #fff;margin:0 auto 16px;overflow:hidden">
-      <div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#fff"></div>
-      <div style="position:absolute;right:0;top:0;bottom:0;width:3px;background:#fff"></div>
-      <div style="position:absolute;left:3px;right:3px;top:0;height:3px;background:#fff"></div>
-      <div style="position:absolute;left:20%;right:20%;top:0;bottom:35%;border:2px dashed rgba(255,255,255,0.2);border-top:none"></div>
-      <div id="penalty-zones" style="position:absolute;inset:0;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:30% 40% 30%">
-        <div class="pen-zone" data-zone="top-left" onclick="shootAt('top-left')" style="cursor:pointer"></div>
-        <div class="pen-zone" data-zone="top-right" onclick="shootAt('top-right')" style="cursor:pointer"></div>
-        <div class="pen-zone" data-zone="mid-left" onclick="shootAt('mid-left')" style="cursor:pointer"></div>
-        <div class="pen-zone" data-zone="mid-right" onclick="shootAt('mid-right')" style="cursor:pointer"></div>
-        <div class="pen-zone" data-zone="center" onclick="shootAt('center')" style="cursor:pointer;grid-column:1/-1;border-top:1px solid rgba(255,255,255,0.1)"></div>
+  <div class="modal-card" style="max-width:520px;text-align:center;background:linear-gradient(180deg,#161b22 0%,#0d1117 100%)">
+    <h2 style="font-size:22px;margin-bottom:4px">🎯 Tiro Decisivo</h2>
+    <p style="color:#8b949e;font-size:13px;margin-bottom:18px" id="penalty-text"></p>
+    <div id="penalty-goal" style="position:relative;width:100%;aspect-ratio:2/1;background:linear-gradient(180deg,#1f7a1f 0%,#0f4d0f 60%,#0a330a 100%);border-radius:10px;border:4px solid #fff;box-shadow:0 10px 40px rgba(0,0,0,0.5), inset 0 0 30px rgba(0,0,0,0.3);margin:0 auto 20px;overflow:hidden">
+      <!-- Goal net pattern -->
+      <div style="position:absolute;inset:4px;opacity:0.15;background-image:linear-gradient(#fff 1px,transparent 1px),linear-gradient(90deg,#fff 1px,transparent 1px);background-size:18px 18px"></div>
+      <!-- Posts -->
+      <div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:#fff;box-shadow:2px 0 4px rgba(0,0,0,0.3)"></div>
+      <div style="position:absolute;right:0;top:0;bottom:0;width:4px;background:#fff;box-shadow:-2px 0 4px rgba(0,0,0,0.3)"></div>
+      <div style="position:absolute;left:4px;right:4px;top:0;height:4px;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,0.3)"></div>
+      <!-- Keeper -->
+      <div id="penalty-keeper" style="position:absolute;left:50%;bottom:8%;transform:translateX(-50%);width:34px;height:54px;background:linear-gradient(180deg,#ffd700,#d29922);border-radius:8px 8px 4px 4px;box-shadow:0 4px 12px rgba(0,0,0,0.4);transition:left 0.6s ease-out;z-index:5">
+        <div style="position:absolute;top:-12px;left:50%;transform:translateX(-50%);width:16px;height:16px;background:#ffcc80;border-radius:50%"></div>
+        <div style="position:absolute;top:8px;left:50%;transform:translateX(-50%);width:22px;height:8px;background:#1f6feb;border-radius:2px"></div>
+      </div>
+      <!-- Ball -->
+      <div id="penalty-ball" style="position:absolute;left:50%;bottom:-20px;transform:translateX(-50%);width:0;height:0;opacity:0;transition:all 0.7s cubic-bezier(0.25,0.46,0.45,0.94);z-index:6">⚽</div>
+      <!-- Zones -->
+      <div id="penalty-zones" style="position:absolute;inset:0;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:30% 40% 30%;z-index:10">
+        <div class="pen-zone" data-zone="top-left" onclick="shootAt('top-left')"><span class="pen-label">↖ Esquina</span></div>
+        <div class="pen-zone" data-zone="top-right" onclick="shootAt('top-right')"><span class="pen-label">↗ Esquina</span></div>
+        <div class="pen-zone" data-zone="mid-left" onclick="shootAt('mid-left')"><span class="pen-label">← Lado</span></div>
+        <div class="pen-zone" data-zone="mid-right" onclick="shootAt('mid-right')"><span class="pen-label">→ Lado</span></div>
+        <div class="pen-zone" data-zone="center" onclick="shootAt('center')" style="grid-column:1/-1"><span class="pen-label">⬇ Centro</span></div>
       </div>
     </div>
-    <div id="penalty-result" style="font-size:28px;font-weight:900;min-height:40px;display:none"></div>
+    <div id="penalty-result" style="font-size:30px;font-weight:900;min-height:44px;display:none;text-shadow:0 2px 8px rgba(0,0,0,0.4)"></div>
   </div>
 </div>
 
@@ -683,7 +693,11 @@ input[type=range]::-webkit-slider-thumb{
 </div>
 
 <style>
-.pen-zone:hover{background:rgba(255,255,255,0.08)}
+.pen-zone{position:relative;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background 0.2s,transform 0.15s}
+.pen-zone:hover{background:rgba(255,255,255,0.12);transform:scale(1.01)}
+.pen-zone:active{transform:scale(0.98)}
+.pen-label{color:rgba(255,255,255,0.35);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;pointer-events:none}
+.pen-zone:hover .pen-label{color:rgba(255,255,255,0.75)}
 #penalty-modal .flash{position:fixed;inset:0;background:#fff;z-index:300;animation:flashBang 0.8s ease-out forwards;pointer-events:none}
 @keyframes flashBang{0%{opacity:1}40%{opacity:1}100%{opacity:0}}
 
@@ -718,6 +732,22 @@ const COUNTRY_EMOJIS = {
   "Canadá":"🇨🇦","Australia":"🇦🇺","Arabia Saudí":"🇸🇦","Turquía":"🇹🇷","Suecia":"🇸🇪"
 };
 function getCountryEmoji(c){return COUNTRY_EMOJIS[c]||"🏳️";}
+
+// Title helpers: titles are stored as {name: count}
+function addTitle(name){
+  if(!name) return;
+  P.titles[name] = (P.titles[name]||0)+1;
+}
+function hasTitle(name){ return !!P.titles[name]; }
+function getTitleCount(name){ return P.titles[name]||0; }
+function totalTitleCount(){ return Object.values(P.titles||{}).reduce((a,b)=>a+b,0); }
+function formatTitleEntry(name, count){
+  return count>1 ? `${name} x${count}` : name;
+}
+function getTitleList(){
+  const t = P.titles||{};
+  return Object.keys(t).map(name => formatTitleEntry(name, t[name]));
+}
 
 const POSITIONS = {
   PO:{name:"Portero",stats:{ritmo:-15,tiro:-15,pase:-5,defensa:20,fisico:10,regate:-10}},
@@ -1086,7 +1116,7 @@ const P = {
   hasPartner:false, partnerName:"", partnerGender:"mujer", partnerStats:{aspecto:5,cuerpo:5,personalidad:5,inteligencia:5}, married:false, hasKids:false, kidNames:[],
   seasonGoals:0, seasonAssists:0, seasonMatches:0, careerGoals:0, careerAssists:0,
   careerMatches:0,
-  titles:[], achievements:[],
+  titles:{}, achievements:[],
   clubHistory:[], timeline:[],
   ownedItems:[],
   investments:[], investmentValue:0,
@@ -1136,9 +1166,9 @@ function getPlayerClasses(){
 
   // ⚽ Carrera
   if(A<=20) classes.push("Promesa");
-  else if(O>=80||CS>=4||P.titles.length>=3) classes.push("Crack");
+  else if(O>=80||CS>=4||totalTitleCount()>=3) classes.push("Crack");
   else if(O>=65||CS>=2) classes.push("En Ascenso");
-  if(A>=28&&(O>=85||P.clubHistory.some(c=>c.stars>=5)||P.titles.includes("Copa del Mundo ("+A+")")||P.worldCupWinner)) classes.push("Leyenda");
+  if(A>=28&&(O>=85||P.clubHistory.some(c=>c.stars>=5)||hasTitle("Copa del Mundo")||P.worldCupWinner)) classes.push("Leyenda");
 
   // 🧓 Edad
   if(A<=21) classes.push("Joven");
@@ -1591,8 +1621,8 @@ ev("Predicción de un vidente","Un vidente callejero te para. Dice que ve grande
   {text:"Te ríes y sigues tu camino",effects:{morale:3},chance:0.9, failText:"", failEffects:{}}
 ]);
 ev("Tu equipo gana la liga","Último partido de liga. Dependen de sí mismos. Una victoria y son campeones. El estadio es una caldera.","🏆","match",[
-  {text:"Juegas el partido de tu vida. Sin presión",effects:{careerMatches:1,morale:20,rel_compañeros:15,rel_entrenador:15,titles:["Campeón de liga ("+P.age+")"]},chance:0.7, failText:"Empatan. El otro resultado les da el título igual. Campeones sufriendo.", failEffects:{morale:10,titles:["Campeón de liga ("+P.age+")"]}},
-  {text:"Administras la ventaja. Juego conservador",effects:{careerMatches:1,morale:15,rel_entrenador:10,winTitle:"liga"},chance:0.85, failText:"", failEffects:{}}
+  {text:"Juegas el partido de tu vida. Sin presión",effects:{careerMatches:1,morale:20,rel_compañeros:15,rel_entrenador:15,winLeagueTitle:true},chance:0.7, failText:"Empatan. El otro resultado les da el título igual. Campeones sufriendo.", failEffects:{morale:10,winLeagueTitle:true}},
+  {text:"Administras la ventaja. Juego conservador",effects:{careerMatches:1,morale:15,rel_entrenador:10,winLeagueTitle:true},chance:0.85, failText:"", failEffects:{}}
 ]);
 ev("Goleada histórica","Tu equipo mete 8 goles. Es una paliza histórica. La afición rival abandona el estadio al descanso.","🔨","match",[
   {text:"Sigues metiendo goles sin piedad",effects:{careerGoals:3,seasonGoals:3, morale:20,rel_entrenador:10},chance:0.7, failText:"El rival se enfada y empieza a dar patadas. Acabas lesionado.", failEffects:{injured:true,injuryWeeks:4,morale:-5,careerGoals:1,seasonGoals:1}},
@@ -1641,8 +1671,8 @@ ev("Problemas de apuestas","Sale a la luz que apostaste en partidos... pero no e
   {text:"Contratas al mejor abogado y luchas",effects:{money:-500000, morale:-10},chance:0.35, failText:"Pierdes el caso. Sanción ejemplar. Tu carrera tiembla.", failEffects:{injured:true,injuryWeeks:26,morale:-35,money:-1000000,clubChange:"forcedOut"}}
 ]);
 ev("Fiesta de campeones","¡Ganaron el título! El vestuario es una locura. Champán, música, bailes. Esto quedará para la historia.","🍾","match",[
-  {text:"Celebras hasta que salga el sol. ¡Campeones!",effects:{morale:25, rel_compañeros:15, followers:200000, winTitle:"trofeo"},chance:0.8, failText:"La resaca te dura 3 días. El DT no está contento.", failEffects:{morale:15, rel_entrenador:-5, winTitle:"trofeo"}},
-  {text:"Celebración moderada. Ya habrá tiempo de festejar",effects:{morale:10, rel_entrenador:5, winTitle:"trofeo", followers:50000},chance:0.9, failText:"", failEffects:{}}
+  {text:"Celebras hasta que salga el sol. ¡Campeones!",effects:{morale:25, rel_compañeros:15, followers:200000},chance:0.8, failText:"La resaca te dura 3 días. El DT no está contento.", failEffects:{morale:15, rel_entrenador:-5}},
+  {text:"Celebración moderada. Ya habrá tiempo de festejar",effects:{morale:10, rel_entrenador:5, followers:50000},chance:0.9, failText:"", failEffects:{}}
 ]);
 ev("Tu familia en el ojo público","Un familiar tuyo hace declaraciones polémicas en TV. Dicen cosas que te dejan en evidencia. Tu DM explota.","👨‍👩‍👦","drama",[
   {text:"Llamas a tu familiar y arreglan las cosas en privado",effects:{familia:10, morale:-5},chance:0.7, failText:"Tu familiar vuelve a hablar en TV. Incontrolable.", failEffects:{familia:-15, morale:-15, followers:-40000}},
@@ -2097,7 +2127,7 @@ function handleStart(){
   P.hasPartner = false; P.partnerName = ""; P.partnerGender = "mujer"; P.partnerStats = {aspecto:5,cuerpo:5,personalidad:5,inteligencia:5}; P.married = false; P.hasKids = false; P.kidNames = [];
   P.seasonGoals = 0; P.seasonAssists = 0; P.seasonMatches = 0; P.careerGoals = 0; P.careerAssists = 0;
   P.careerMatches = 0;
-  P.titles = []; P.achievements = [];
+  P.titles = {}; P.achievements = [];
   P.clubHistory = []; P.timeline = [];
   P.ownedItems = []; P.investments = []; P.investmentValue = 0;
   P.yearEvents = []; P.year = 0;
@@ -2186,6 +2216,9 @@ function getEligibleEvents(){
     if(e.type==="relationship" && P.age<18) ok = false;
     if(e.type==="injury" && P.injured) ok = false;
 
+    // Free agent: only personal off-pitch events
+    if((P.clubName==="Sin club" || P.clubName==="Agente libre") && !["life","relationship","drama","humor","random"].includes(e.type)) ok = false;
+
     // Relationship state coherence
     if(e.title==="Flechazo en la grada" && P.hasPartner) ok = false;
     if((e.title==="Crisis de pareja" || e.title==="Escándalo de infidelidad") && !P.hasPartner) ok = false;
@@ -2249,6 +2282,7 @@ function advanceYear(){
   P.age++;
   P.year++;
   P.midYearTransfer = false;
+  P._oldSeasonStats = null;
   P.seasonGoals = 0;
   P.seasonAssists = 0;
   P.seasonMatches = 0;
@@ -2292,6 +2326,11 @@ function advanceYear(){
       for(let i=0;i<clubBoost;i++) P.stats[keys[i]] = Math.min(99, P.stats[keys[i]]+1);
     }
     if(P.discipline<=35) P.followers += Math.floor(P.followers*0.08);
+  }
+
+  // Free agent offers: if clubless, clubs come calling during the year
+  if((P.clubName==="Sin club" || P.clubName==="Agente libre") && P.age>=17){
+    generateFreeAgentOfferEvents();
   }
 
   // Youth promotion check
@@ -2405,9 +2444,12 @@ function advanceYear(){
   // Store last season league position for continental qualification
   if(P.leagueData){
     P.lastLeaguePosition = getLeaguePosition();
-    if(P.lastLeaguePosition===1){
-      const title = `Campeón de liga (${P.age})`;
-      if(!P.titles.includes(title)){P.titles.push(title);P.seasonWonLeague=true;P.timeline.push(`Edad ${P.age}: ¡Campeón de ${P.clubLeague}!`);}
+    if(P.lastLeaguePosition===1 && P.clubStars>=2){
+      if(!P.seasonWonLeague && P.clubLeague){
+        addTitle(P.clubLeague);
+        P.seasonWonLeague=true;
+        P.timeline.push(`Edad ${P.age}: ¡Campeón de ${P.clubLeague}!`);
+      }
     }
   } else if(!P.lastLeaguePosition){
     const defaults = {5:1,4:2,3:randomBetween(2,4),2:randomBetween(4,7)};
@@ -2630,7 +2672,7 @@ function resolveEvent(event, option){
       if(e.amigos){P.relationships.amigos=clamp(P.relationships.amigos+e.amigos,0,100);effectsHTML+=`👥 Amigos: ${e.amigos>0?'+':''}${e.amigos}<br>`}
       if(e.overall_boost){for(const k of Object.keys(P.stats)){P.stats[k]=clamp(P.stats[k]+1,1,99)};effectsHTML+="📈 Atributos +1<br>"}
       if(e.investmentValue){P.investmentValue+=e.investmentValue;P.investments.push({name:"Startup",value:e.investmentValue});effectsHTML+="📊 Inversión realizada<br>"}
-      if(e.worldCupWinner){P.worldCupWinner=true;P.titles.push(`Copa del Mundo (${P.age})`);effectsHTML+="🏆 ¡GANASTE EL MUNDIAL!<br>"}
+      if(e.worldCupWinner){P.worldCupWinner=true;addTitle("Copa del Mundo");effectsHTML+="🏆 ¡GANASTE EL MUNDIAL!<br>"}
       if(e.worldCupGoal) effectsHTML+="⚽ Gol en el Mundial<br>";
       if(e.followers){
         const scale = Math.max(0.3, Math.min(8, Math.sqrt(Math.max(100,P.followers)/5000)));
@@ -2645,7 +2687,7 @@ function resolveEvent(event, option){
       if(e.hasPartner && !P.hasPartner){P.hasPartner=true;P.partnerName=e.partnerName||randomPartner();P.partnerGender="mujer";P.partnerStats={aspecto:randomBetween(5,9),cuerpo:randomBetween(5,9),personalidad:randomBetween(4,9),inteligencia:randomBetween(4,9)};P.relationships.pareja=65;effectsHTML+=`💘 Nueva pareja: ${P.partnerName}<br>`}
       if(e.hasKids && !P.hasKids){P.hasKids=true;P.kidNames=e.kidNames||["Junior"];effectsHTML+="👶 ¡Has sido padre!<br>"}
       if(e.married && !P.married){P.married=true;effectsHTML+="💒 ¡Te has casado!<br>"}
-      if(e.ballonDorWin){P.ballonDorResult="won";effectsHTML+="🏅 ¡BALÓN DE ORO!<br>"}
+      if(e.ballonDorWin){P.ballonDorResult="won";addTitle("Balón de Oro");effectsHTML+="🏅 ¡BALÓN DE ORO!<br>"}
       if(!e.ballonDorWin && event.title.includes("Balón de Oro")) P.ballonDorResult = "nominated";
       if(e.dinero_extra){
         const actual = applyMoneyDelta(e.dinero_extra);
@@ -2670,16 +2712,47 @@ function resolveEvent(event, option){
           if(promClub) doTransfer(promClub);
           else transferToBigClub();
         }
+        else if(e.clubChange==="freeAgentOffer"){
+          const offerClub = CLUBS.find(c=>c.name===e.offerClub);
+          if(offerClub){
+            document.getElementById("event-modal").classList.remove("active");
+            currentEventIndex++;
+            P.seasonProgress = Math.min(6, currentEventIndex);
+            P.yearEvents.push({title:event.title,text:option.text,result:"neutral"});
+            document.getElementById("event-log").insertAdjacentHTML("afterbegin",
+              `<div class="event-log-item neutral"><strong>${event.emoji} ${event.title}:</strong> ${option.text}</div>`);
+            doTransfer(offerClub);
+            updateUI();
+            return;
+          }
+        }
       }
       if(e.injured){P.injured=true;P.injuryWeeks=e.injuryWeeks||4;effectsHTML+=`🤕 Lesión: ${P.injuryWeeks} semanas<br>`}
       if(e.freeAgent){
         document.getElementById("event-modal").classList.remove("active");
         P.clubName = "Agente libre"; P.clubStars = 0; P.salary = 0; P.contractYears = 0;
         P.clubLeague = ""; P.clubCountry = "";
-        showFreeAgentPicker(); return;
+        // Mark event as resolved so it doesn't repeat after signing
+        currentEventIndex++;
+        P.seasonProgress = Math.min(6, currentEventIndex);
+        P.yearEvents.push({title:event.title,text:option.text,result:"neutral"});
+        document.getElementById("event-log").insertAdjacentHTML("afterbegin",
+          `<div class="event-log-item neutral"><strong>${event.emoji} ${event.title}:</strong> ${option.text}</div>`);
+        showFreeAgentPicker();
+        updateUI();
+        return;
       }
       if(e.renewalNegotiation){
-        openRenewalNegotiation(); return;
+        document.getElementById("event-modal").classList.remove("active");
+        // Mark event as resolved before opening negotiation so it doesn't repeat
+        currentEventIndex++;
+        P.seasonProgress = Math.min(6, currentEventIndex);
+        P.yearEvents.push({title:event.title,text:option.text,result:"neutral"});
+        document.getElementById("event-log").insertAdjacentHTML("afterbegin",
+          `<div class="event-log-item neutral"><strong>${event.emoji} ${event.title}:</strong> ${option.text}</div>`);
+        openRenewalNegotiation();
+        updateUI();
+        return;
       }
       if(e.penaltyGame){
         document.getElementById("event-modal").classList.remove("active");
@@ -2689,7 +2762,7 @@ function resolveEvent(event, option){
             if(result==="goal"){
               const winner = cd.current.teams.find(t=>t.name===P.clubName)||cd.current.teams[0];
               cd.winner = winner; cd.finalResult = `⚽ ${P.clubName} gana en penales`;
-              P.titles.push("🏆 "+cd.name); P.seasonWonTitle=true;
+              addTitle(cd.name); P.seasonWonTitle=true;
               P.timeline.push(`Edad ${P.age}: ¡Campeón de la ${cd.name}!`);
             } else {
               const loser = cd.current.teams.find(t=>t.name!==P.clubName)||cd.current.teams[1];
@@ -2705,8 +2778,9 @@ function resolveEvent(event, option){
         });
         return;
       }
-      if(e.titles){e.titles.forEach(t=>{P.titles.push(t);effectsHTML+=`🏆 ${t}<br>`;if(t.includes("Campeón de liga")||t.includes("liga"))P.seasonWonLeague=true;else P.seasonWonTitle=true;})}
-      if(e.winTitle){const t="Campeón de liga ("+P.age+")";P.titles.push(t);effectsHTML+=`🏆 ${t}<br>`;P.seasonWonLeague=true}
+      if(e.winLeagueTitle && P.clubLeague){addTitle(P.clubLeague);effectsHTML+=`🏆 ${P.clubLeague}<br>`;P.seasonWonLeague=true;}
+      if(e.winTitle && P.clubLeague){addTitle(P.clubLeague);effectsHTML+=`🏆 ${P.clubLeague}<br>`;P.seasonWonLeague=true;}
+      if(e.titles){e.titles.forEach(t=>{addTitle(t);effectsHTML+=`🏆 ${t}<br>`;});P.seasonWonTitle=true;}
       if(e.overallPenalty){for(const k of Object.keys(P.stats)){P.stats[k]=Math.max(10,P.stats[k]-5)};effectsHTML+="📉 Atributos -5 (declive)<br>"}
     }
   } else {
@@ -2757,7 +2831,7 @@ function resolveEvent(event, option){
       if(fe.seasonAssists) P.seasonAssists += fe.seasonAssists;
       else if(fe.careerAssists) P.seasonAssists += fe.careerAssists;
       if(fe.careerMatches) P.careerMatches += fe.careerMatches;
-      if(fe.worldCupWinner){P.worldCupWinner=true;P.titles.push(`Copa del Mundo (${P.age})`)}
+      if(fe.worldCupWinner){P.worldCupWinner=true;addTitle("Copa del Mundo");}
       if(fe.clubChange==="forcedTransfer"){
         if(P.contractYears<=0){P.forcedTransfer=true;transferRandomClub();effectsHTML+="🔄 Traspaso forzado<br>"}
         else{P.contractWarnings++;effectsHTML+="⚠️ El club te pone transferible pero tienes contrato<br>"}
@@ -2779,8 +2853,8 @@ function resolveEvent(event, option){
       }
       if(fe.discipline){P.discipline=clamp(P.discipline+fe.discipline,0,100);effectsHTML+=`⚡ Disciplina ${fe.discipline>0?'+':''}${fe.discipline}<br>`}
       if(fe.overall_boost){for(const k of Object.keys(P.stats)){P.stats[k]=clamp(P.stats[k]+1,1,99)}}
-      if(fe.titles){fe.titles.forEach(t=>{P.titles.push(t);effectsHTML+=`🏆 ${t}<br>`})}
-      if(fe.winTitle){const t="Campeón de liga ("+P.age+")";P.titles.push(t);effectsHTML+=`🏆 ${t}<br>`}
+      if(fe.titles){fe.titles.forEach(t=>{addTitle(t);effectsHTML+=`🏆 ${t}<br>`;});P.seasonWonTitle=true;}
+      if(fe.winTitle && P.clubLeague){addTitle(P.clubLeague);effectsHTML+=`🏆 ${P.clubLeague}<br>`;P.seasonWonLeague=true;}
       if(fe.overallPenalty){for(const k of Object.keys(P.stats)){P.stats[k]=Math.max(10,P.stats[k]-5)};effectsHTML+="📉 Atributos -5 (declive)<br>"}
     }
   }
@@ -3062,6 +3136,14 @@ function finalizeTransfer(club, salary, years, role, clausePct){
   document.getElementById("tf-submit").disabled = true;
   document.getElementById("tf-submit").textContent = "✓ Firmado";
   P.midYearTransfer = (oldClub !== club.name);
+  // Save season stats at the moment of transfer so the year summary can sum both clubs
+  if(P.midYearTransfer){
+    P._oldSeasonStats = {club:oldClub, goals:P.seasonGoals||0, assists:P.seasonAssists||0, matches:P.seasonMatches||0};
+  }
+  // If signed from free agency, stop further offers and bring back football events
+  if(oldClub==="Sin club" || oldClub==="Agente libre"){
+    onFreeAgentSigned();
+  }
   // Save old club league data for year summary (only if actual transfer to new club)
   if(P.midYearTransfer && P.leagueData){
     P.oldLeagueData = {
@@ -3233,6 +3315,53 @@ function openNegotiationFromPicker(idx){
   openNegotiation(club);
 }
 
+function generateFreeAgentOfferEvents(){
+  // Clubs matching player's level send offers as events during the year
+  const minStars = Math.max(1, Math.min(5, Math.floor(P.overall/18)));
+  const maxStars = Math.min(5, Math.max(minStars, Math.floor(P.overall/15) + Math.floor(P.fameLevel/20)));
+  let candidates = CLUBS.filter(c=>c.minOverall<=P.overall+8 && c.stars>=minStars && c.stars<=maxStars && c.stars>=2 && !isYouthClub(c.name));
+  if(candidates.length<2) candidates = CLUBS.filter(c=>c.minOverall<=P.overall+5 && c.stars>=1 && !isYouthClub(c.name));
+  candidates = shuffle([...candidates]);
+  const used = new Set();
+  const count = Math.min(3, Math.max(1, Math.floor(candidates.length/3)));
+  let created = 0;
+  for(const c of candidates){
+    if(created>=count) break;
+    if(used.has(c.name)) continue;
+    used.add(c.name);
+    currentYearEvents.push({
+      title:`Oferta de ${c.name}`,
+      text:`${c.name} (${c.league}, ${c.country}) ${"⭐".repeat(c.stars)} te ofrece un contrato. ¿Quieres negociar?`,
+      emoji:"📋",
+      type:"life",
+      _freeAgentOffer:true,
+      options:[
+        {text:"Negociar contrato", effects:{clubChange:"freeAgentOffer", offerClub:c.name}, chance:0.98, failText:"El club cambia de opinión de última hora.", failEffects:{morale:-5}},
+        {text:"Rechazar oferta", effects:{morale:-2}, chance:1.0, failText:"", failEffects:{}}
+      ]
+    });
+    created++;
+  }
+}
+
+function onFreeAgentSigned(){
+  // Remove any remaining free-agent offer events; no more offers until next window
+  currentYearEvents = currentYearEvents.filter(e=>!e._freeAgentOffer);
+  // Add football/match events for the rest of the season now that the player has a club
+  const eligible = getEligibleEvents();
+  const footballTypes = ["match","national","coach","drama"];
+  const additions = [];
+  const usedTitles = new Set(currentYearEvents.map(e=>e.title));
+  for(const e of shuffle([...eligible])){
+    if(additions.length>=3) break;
+    if(!footballTypes.includes(e.type)) continue;
+    if(usedTitles.has(e.title)) continue;
+    additions.push({...e});
+    usedTitles.add(e.title);
+  }
+  currentYearEvents.push(...additions);
+}
+
 // ============================================================
 // YEAR SUMMARY
 // ============================================================
@@ -3256,6 +3385,7 @@ function showYearSummary(){
         <div><span style="font-size:22px;font-weight:700;color:#f0883e">${P.seasonGoals||0}</span><br><span style="font-size:10px;color:#8b949e">Goles</span></div>
         <div><span style="font-size:22px;font-weight:700;color:#79c0ff">${P.seasonAssists||0}</span><br><span style="font-size:10px;color:#8b949e">Asistencias</span></div>
       </div>
+      ${P.midYearTransfer && P._oldSeasonStats ? `<div style="text-align:center;font-size:11px;color:#8b949e;margin-bottom:8px">Suma total de la temporada · ${P._oldSeasonStats.club}: ${P._oldSeasonStats.goals}G/${P._oldSeasonStats.assists}A/${P._oldSeasonStats.matches}PJ · ${P.clubName}: ${(P.seasonGoals||0)-P._oldSeasonStats.goals}G/${(P.seasonAssists||0)-P._oldSeasonStats.assists}A/${(P.seasonMatches||0)-P._oldSeasonStats.matches}PJ</div>` : ''}
       ${P.midYearTransfer?'':`<div style="text-align:center;font-size:18px;font-weight:700;color:#d29922">🏆 ${getPositionMedal(leaguePos)} ${leaguePos}° lugar</div>${getPositionText(leaguePos)}`}
       ${P.midYearTransfer?renderDualClubSummary():''}
     </div>
@@ -3575,9 +3705,10 @@ function renderStats(){
 function renderTitles(){
   const div = document.getElementById("titles-display");
   if(!div) return;
-  const titles = P.titles||[];
-  if(titles.length===0){div.innerHTML="<span style='font-size:12px;color:#8b949e'>Aún sin títulos. ¡A ganar!</span>";return}
-  div.innerHTML = titles.map(t=>`<span style="background:#0d1117;border:1px solid #d29922;border-radius:8px;padding:6px 12px;font-size:11px;color:#d29922;font-weight:600">🏆 ${t}</span>`).join("");
+  const titles = P.titles||{};
+  const list = getTitleList();
+  if(list.length===0){div.innerHTML="<span style='font-size:12px;color:#8b949e'>Aún sin títulos. ¡A ganar!</span>";return}
+  div.innerHTML = list.map(t=>`<span style="background:#0d1117;border:1px solid #d29922;border-radius:8px;padding:6px 12px;font-size:11px;color:#d29922;font-weight:600">🏆 ${t}</span>`).join("");
 }
 
 function renderClubHistory(){
@@ -3917,14 +4048,15 @@ function showRetirement(){
     <div class="summary-stat"><div class="sval">${P.careerAssists}</div><div class="slbl">Asistencias</div></div>
     <div class="summary-stat"><div class="sval">${P.clubHistory.length}</div><div class="slbl">Clubes</div></div>
     <div class="summary-stat"><div class="sval">${formatMoney(P.money)}</div><div class="slbl">Fortuna final</div></div>
-    <div class="summary-stat"><div class="sval">${P.titles.length}</div><div class="slbl">Títulos</div></div>
+    <div class="summary-stat"><div class="sval">${totalTitleCount()}</div><div class="slbl">Títulos</div></div>
     <div class="summary-stat"><div class="sval">${P.achievements.length}/${ACHIEVEMENTS.length}</div><div class="slbl">Logros</div></div>
     <div class="summary-stat"><div class="sval">${P.age}</div><div class="slbl">Edad retiro</div></div>
   `;
 
   // Titles
-  if(P.titles.length>0){
-    statsDiv.innerHTML += `<div style="grid-column:1/-1;margin-top:8px;font-size:13px;text-align:left"><strong>🏆 Títulos:</strong> ${P.titles.join(", ")}</div>`;
+  const titleList = getTitleList();
+  if(titleList.length>0){
+    statsDiv.innerHTML += `<div style="grid-column:1/-1;margin-top:8px;font-size:13px;text-align:left"><strong>🏆 Títulos:</strong> ${titleList.join(", ")}</div>`;
   }
 
   const timelineDiv = document.getElementById("ret-timeline");
@@ -4203,8 +4335,7 @@ function advanceContinental(){
       cd.finalResult=`${t1.name} ${final.result} ${t2.name}`;
       cd.winner=final.winner; cd.phase="Finalizada";
       if(final.winner.isPlayer){
-        const title = "🏆 "+cd.name;
-        if(!P.titles.includes(title)){P.titles.push(title);P.seasonWonTitle=true;P.timeline.push(`Edad ${P.age}: ¡Campeón de la ${cd.name}!`);}
+        addTitle(cd.name); P.seasonWonTitle=true; P.timeline.push(`Edad ${P.age}: ¡Campeón de la ${cd.name}!`);
       }
     }
   }
@@ -4237,21 +4368,31 @@ function simKnockoutTL(teams, target){
 
 function advanceCup(){
   const cup=P.cupData; if(!cup||cup.teams.length<=1) return;
-  const rounds={32:"32avos",16:"16avos",8:"Octavos",4:"Cuartos",2:"Final"};
+  const rounds={32:"32avos de final",16:"16avos de final",8:"Octavos de final",4:"Cuartos de final",2:"Final"};
   const prevRound = rounds[cup.teams.length]||"Final";
   const nr=[];
+  const results=[];
   for(let i=0;i<cup.teams.length;i+=2){
     if(i+1>=cup.teams.length){nr.push(cup.teams[i]);break}
-    const res=simMatch(cup.teams[i].stars,cup.teams[i+1].stars);
-    nr.push(res.home>res.away?cup.teams[i]:res.away>res.home?cup.teams[i+1]:(Math.random()<0.5?cup.teams[i]:cup.teams[i+1]));
+    const home=cup.teams[i], away=cup.teams[i+1];
+    const res=simMatch(home.stars,away.stars);
+    const winner = res.home>res.away?home:res.away>res.home?away:(Math.random()<0.5?home:away);
+    nr.push(winner);
+    results.push(`${home.name} ${res.home}-${res.away} ${away.name}`);
   }
   cup.teams=nr;
   cup.round = cup.teams.length===1?"Campeón":(rounds[cup.teams.length]||"Final");
+  if(!cup.history) cup.history=[];
+  cup.history.push({round:prevRound, results});
   // Track if player was eliminated (only set once)
-  if(!cup.playerEliminated && !cup.teams.find(t=>t.isPlayer||t.name===P.clubName)) cup.playerEliminated = prevRound;
-  if(cup.round==="Campeón"&&cup.teams[0].isPlayer){
-    const title = "🏆 Copa " + P.clubCountry;
-    if(!P.titles.includes(title)){P.titles.push(title);P.timeline.push(`Edad ${P.age}: ¡Campeón de Copa!`);P.seasonWonTitle=true;}
+  const playerIn = cup.teams.find(t=>t.isPlayer||t.name===P.clubName);
+  if(!cup.playerEliminated && !playerIn) cup.playerEliminated = prevRound;
+  if(cup.round==="Campeón"){
+    cup.champion = cup.teams[0];
+    if(cup.teams[0].isPlayer||cup.teams[0].name===P.clubName){
+      const title = "Copa " + P.clubCountry;
+      addTitle(title);P.timeline.push(`Edad ${P.age}: ¡Campeón de Copa!`);P.seasonWonTitle=true;
+    }
   }
 }
 
@@ -4285,7 +4426,7 @@ function showTeamDetail(name){
 
 function renderContinentalTable(){
   const d=document.getElementById("continental-table"); const cd=P.cd;
-  if(!cd){d.innerHTML="<p style='color:#8b949e;font-size:12px'>🌍 No participas en competición continental este año</p>";return}
+  if(!cd){d.innerHTML="<p style='color:#8b949e;font-size:12px'>🌍 No clasificaste a competición continental este año</p>";return}
   if(cd.stage===0){
     d.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><strong style="font-size:14px">🏆 ${cd.name}</strong><span style="color:#8b949e;font-size:12px">Fase previa</span></div><div style="background:#0d1117;border-radius:8px;padding:10px;font-size:12px;color:#8b949e;text-align:center">Próximamente comenzará la fase de grupos</div>`;
     return;
@@ -4372,19 +4513,45 @@ function renderBracketList(teams, results){
 function renderCupTable(){
   const d=document.getElementById("cup-table"); const cup=P.cupData;
   if(!cup||cup.round===""){d.innerHTML="<p style='color:#8b949e;font-size:12px'>🏅 No participas en copa doméstica</p>";return}
-  let h=`<div style="display:flex;justify-content:space-between;margin-bottom:6px"><strong style="font-size:14px">🏅 Copa ${P.clubCountry}</strong><span style="color:#8b949e;font-size:11px">${cup.round}</span></div>`;
   const playerStillIn = cup.teams && cup.teams.some(t=>t.isPlayer||t.name===P.clubName);
-  const playerWon = cup.round==="Campeón" && cup.teams[0] && (cup.teams[0].isPlayer||cup.teams[0].name===P.clubName);
-  if(cup.playerEliminated && !playerWon){
-    h+=`<div style="background:rgba(248,81,73,0.08);border:1px solid #f85149;border-radius:6px;padding:8px;margin-bottom:8px;text-align:center;color:#f85149;font-size:12px">❌ Eliminado en ${cup.playerEliminated}</div>`;
-  }
-  if(cup.teams&&cup.teams.length<=8&&cup.teams.length>1){
+  const playerWon = cup.round==="Campeón" && cup.champion && (cup.champion.isPlayer||cup.champion.name===P.clubName);
+  let statusColor = playerWon ? '#7ee787' : cup.playerEliminated ? '#f85149' : '#d29922';
+  let statusText = playerWon ? 'Campeón' : cup.playerEliminated ? `Eliminado en ${cup.playerEliminated}` : playerStillIn ? 'En competición' : 'Finalizada';
+  let h=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #21262d"><strong style="font-size:15px">🏅 Copa ${P.clubCountry}</strong><span style="color:${statusColor};font-size:12px;font-weight:700">${statusText}</span></div>`;
+
+  // Current bracket (if cup still running and player still in or size small)
+  if(cup.teams && cup.teams.length>1 && cup.teams.length<=8){
     const pt = cup.teams.find(t=>t.isPlayer||t.name===P.clubName);
-    if(pt){const idx=cup.teams.indexOf(pt);const op=idx%2===0?cup.teams[idx+1]:cup.teams[idx-1];if(op)h+=`<div style="background:rgba(46,160,67,0.1);border:1px solid #2ea043;border-radius:6px;padding:6px 10px;margin-bottom:8px;font-size:11px;text-align:center">⭐ Tu rival: <strong style="color:#7ee787">${op.name}</strong></div>`}
+    if(pt){
+      const idx=cup.teams.indexOf(pt);
+      const op=idx%2===0?cup.teams[idx+1]:cup.teams[idx-1];
+      if(op) h+=`<div style="background:rgba(46,160,67,0.1);border:1px solid #2ea043;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:12px;text-align:center">⭐ Tu próximo rival: <strong style="color:#7ee787">${op.name}</strong></div>`;
+    }
     h+=renderBracket(cup.teams,[]);
   }
-  if(playerWon){h+=`<div style="text-align:center;color:#7ee787;font-size:14px;font-weight:700;margin-top:4px">🏆 ¡${P.clubName} campeón de copa!</div>`}
-  else if(cup.round==="Campeón"){h+=`<div style="text-align:center;color:#8b949e;font-size:14px;font-weight:700;margin-top:4px">🏆 Campeón: ${cup.teams[0].name}</div>`}
+
+  // History of rounds played this season
+  if(cup.history && cup.history.length>0){
+    h+=`<div style="margin-top:10px;font-size:12px;font-weight:700;color:#8b949e">Resultados</div>`;
+    h+=`<div style="background:#0d1117;border-radius:8px;padding:8px;margin-top:6px">`;
+    cup.history.forEach(round=>{
+      const playerMatch = round.results.find(r=>r.includes(P.clubName));
+      h+=`<div style="margin-bottom:6px"><div style="font-size:11px;color:#d29922;margin-bottom:2px">${round.round}</div>`;
+      if(playerMatch){
+        h+=`<div style="font-size:12px;color:#e6edf3">${playerMatch}</div>`;
+      } else {
+        h+=`<div style="font-size:11px;color:#8b949e">Ya eliminado · ${round.results.length} partidos disputados</div>`;
+      }
+      h+=`</div>`;
+    });
+    h+=`</div>`;
+  }
+
+  if(playerWon){
+    h+=`<div style="text-align:center;color:#7ee787;font-size:16px;font-weight:800;margin-top:12px;padding:10px;background:rgba(126,231,135,0.08);border:1px solid #7ee787;border-radius:10px">🏆 ¡${P.clubName} campeón de copa!</div>`;
+  } else if(cup.round==="Campeón"){
+    h+=`<div style="text-align:center;color:#8b949e;font-size:14px;font-weight:700;margin-top:12px">🏆 Campeón: ${cup.champion.name}</div>`;
+  }
   d.innerHTML=h;
 }
 
@@ -4443,7 +4610,7 @@ function advanceWorldCup(){
     wc.winner=winner; wc.phase="Finalizada";
     if(wc.winner.name===P.country){
       const title = "🏆 Copa del Mundo";
-      if(!P.titles.includes(title)){P.titles.push(title);P.timeline.push(`Edad ${P.age}: ¡Campeón del Mundo con ${P.country}!`);P.seasonWonTitle=true;P.worldCupWinner=true;}
+      addTitle(title);P.timeline.push(`Edad ${P.age}: ¡Campeón del Mundo con ${P.country}!`);P.seasonWonTitle=true;P.worldCupWinner=true;
     }
   }
 }
@@ -4497,6 +4664,11 @@ function startPenaltyGame(text, callback){
   document.getElementById("penalty-result").style.display = "none";
   document.getElementById("penalty-result").textContent = "";
   document.querySelectorAll(".pen-zone").forEach(z=>z.style.pointerEvents="auto");
+  // Reset ball and keeper
+  const ball = document.getElementById("penalty-ball");
+  ball.style.width="0";ball.style.height="0";ball.style.opacity="0";ball.style.filter="none";
+  ball.style.left="50%";ball.style.top="100%";ball.style.transform="translateX(-50%)";
+  document.getElementById("penalty-keeper").style.left="50%";
   document.getElementById("penalty-modal").classList.add("active");
 }
 
@@ -4504,17 +4676,54 @@ function shootAt(zone){
   document.querySelectorAll(".pen-zone").forEach(z=>z.style.pointerEvents="none");
   const chances = {"top-left":0.7,"top-right":0.7,"mid-left":0.5,"mid-right":0.5,"center":0.3};
   const success = Math.random() < (chances[zone]||0.5);
+
+  // Move keeper to a random zone
+  const keeperZones = {"top-left":"15%","top-right":"85%","mid-left":"25%","mid-right":"75%","center":"50%"};
+  const keeperTarget = Object.keys(keeperZones)[Math.floor(Math.random()*5)];
+  const keeper = document.getElementById("penalty-keeper");
+  keeper.style.left = keeperZones[keeperTarget];
+
+  // Move ball to target zone
+  const ballTargets = {
+    "top-left":{left:"18%",top:"12%",scale:1.3},
+    "top-right":{left:"82%",top:"12%",scale:1.3},
+    "mid-left":{left:"22%",top:"38%",scale:1.2},
+    "mid-right":{left:"78%",top:"38%",scale:1.2},
+    "center":{left:"50%",top:"50%",scale:1.2}
+  };
+  const target = ballTargets[zone];
+  const ball = document.getElementById("penalty-ball");
+  ball.style.width = "28px"; ball.style.height = "28px";
+  ball.style.opacity = "1"; ball.style.fontSize = "28px";
+  ball.style.left = target.left; ball.style.top = target.top;
+  ball.style.transform = `translate(-50%,-50%) scale(${target.scale})`;
+
   const rd = document.getElementById("penalty-result");
   rd.style.display = "block";
   rd.innerHTML = '<span style="color:#d29922">🧤 El portero se lanza...</span>';
+
   const flash = document.createElement("div");
   flash.className = "flash";
   document.getElementById("penalty-modal").appendChild(flash);
   setTimeout(()=>{
     flash.remove();
-    if(success){rd.innerHTML='<span style="color:#7ee787">⚽ ¡GOOOOOOL!</span>';if(_penaltyCallback)_penaltyCallback("goal")}
-    else{rd.innerHTML='<span style="color:#f85149">❌ ¡Fallaste!</span>';if(_penaltyCallback)_penaltyCallback("miss")}
-    setTimeout(()=>{document.getElementById("penalty-modal").classList.remove("active");_penaltyCallback=null},2200);
+    if(success){
+      rd.innerHTML='<span style="color:#7ee787">⚽ ¡GOOOOOOL!</span>';
+      ball.style.filter = "drop-shadow(0 0 12px #7ee787)";
+      if(_penaltyCallback)_penaltyCallback("goal");
+    } else {
+      rd.innerHTML='<span style="color:#f85149">❌ ¡Parada!</span>';
+      ball.style.filter = "grayscale(0.7)";
+      if(_penaltyCallback)_penaltyCallback("miss");
+    }
+    setTimeout(()=>{
+      document.getElementById("penalty-modal").classList.remove("active");
+      _penaltyCallback=null;
+      // Reset ball/keeper for next time
+      ball.style.width="0";ball.style.height="0";ball.style.opacity="0";ball.style.filter="none";
+      ball.style.left="50%";ball.style.top="100%";ball.style.transform="translateX(-50%)";
+      keeper.style.left="50%";
+    },2200);
   },1400);
 }
 
