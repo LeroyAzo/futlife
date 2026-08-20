@@ -2780,8 +2780,11 @@ function advanceYear(){
     }
   }
 
-  // Generate exactly 6 events per year (2 months each)
-  const maxRandom = 6;
+  // Generate exactly 6 events per year (2 months each).
+  // Special events (debut, promotion, World Cup, free-agent offers) already queued in
+  // currentYearEvents count within the 6, so reduce random picks accordingly.
+  const specialsCount = currentYearEvents.length;
+  const maxRandom = Math.max(1, 6 - specialsCount);
   const eligible = getEligibleEvents();
   let filtered = eligible.filter(e=>!P.lastEventIds.includes(e.title));
   if(filtered.length<15) filtered = [...eligible];
@@ -2847,6 +2850,9 @@ function advanceYear(){
   P.seasonWonLeague = false;
   P.ballonDorResult = null;
 
+  // Keep the year to exactly 6 events (drop excess, protecting "big" specials)
+  capCurrentYearEvents(6);
+
   // Contract countdown - only if not just signed this year
   if(P.clubStars>0){
     if(!P.contractJustSigned){
@@ -2903,6 +2909,25 @@ function updateAdvanceButton(){
   } else {
     btn.textContent = "⏩ Avanzar un año";
   }
+}
+
+// Keep the year's event list within `max` events, protecting "big" specials and
+// the event currently being shown (used to guarantee exactly 6 events per year).
+function capCurrentYearEvents(max){
+  if(currentYearEvents.length <= max) return;
+  let excess = currentYearEvents.length - max;
+  const kept = [];
+  for(let i=0;i<currentYearEvents.length;i++){
+    const e = currentYearEvents[i];
+    if(excess>0 && i!==currentEventIndex && e.magnitude!=="big"){
+      excess--;
+      continue;
+    }
+    kept.push(e);
+  }
+  // If still over (all remaining are "big"), drop from the end
+  while(kept.length>max) kept.pop();
+  currentYearEvents = kept;
 }
 
 function showNextEvent(){
@@ -3252,8 +3277,31 @@ function closeEventModal(){
 // ============================================================
 // TRANSFERS
 // ============================================================
+// Centralized "which clubs are interested in you" based on overall, fame and age.
+function getTargetClubs(opts){
+  opts = opts||{};
+  const minStars = opts.minStars||1;
+  const maxStars = opts.maxStars||5;
+  const onlyHigher = !!opts.onlyHigher;
+  const candidates = [];
+  for(const c of CLUBS){
+    if(c.name===P.clubName) continue;
+    if(c.stars<minStars || c.stars>maxStars) continue;
+    if(isYouthClub(c.name) && c.stars<2) continue;
+    if(c.minOverall > P.overall + 3) continue;                            // not good enough for them
+    if(c.minOverall < P.overall - 20 && P.age < 33) continue;             // won't downgrade (unless retirement)
+    const fameNeed = c.stars>=5?40 : c.stars>=4?20 : 0;
+    if(P.fameLevel < fameNeed) continue;                                  // fame gate for top clubs
+    if(onlyHigher && c.stars <= P.clubStars) continue;                    // only bigger clubs
+    if(P.clubStars>0 && c.stars > P.clubStars + (P.fameLevel>=40?2:1)) continue; // ambition ceiling
+    if(P.age>=33 && c.stars>=4 && P.overall<75) continue;                 // retirement age: top needs level
+    candidates.push(c);
+  }
+  return candidates;
+}
+
 function transferToBigClub(){
-  const bigClubs = CLUBS.filter(c=>c.stars>=4 && c.minOverall<=P.overall+2 && c.name!==P.clubName);
+  const bigClubs = getTargetClubs({minStars:4});
   if(bigClubs.length===0){
     transferRandomClub();
     return;
@@ -3263,7 +3311,7 @@ function transferToBigClub(){
 }
 
 function transferRandomClub(){
-  const options = CLUBS.filter(c=>c.minOverall<=P.overall && c.name!==P.clubName && c.stars>=2);
+  const options = getTargetClubs({minStars:2});
   if(options.length===0) return;
   const club = pick(options);
   doTransfer(club);
@@ -3288,7 +3336,7 @@ function transferToRetirementLeague(){
 
 function checkClubOffers(){
   if(P.clubStars===0||P.age<18||P.clubStars===1) return; // No offers in first year or at cantera
-  const betterClubs = CLUBS.filter(c=>c.stars>P.clubStars && c.minOverall<=P.overall+3 && c.name!==P.clubName && !isYouthClub(c.name));
+  const betterClubs = getTargetClubs({onlyHigher:true});
   if(betterClubs.length>0 && Math.random()<0.35){
     const club = pick(betterClubs);
     doTransfer(club);
@@ -3604,12 +3652,10 @@ function openRenewalNegotiation(){
 }
 
 function showFreeAgentPicker(){
-  // Pick clubs matching player's overall and fame (bigger players get bigger offers)
-  const minStars = Math.max(1, Math.min(5, Math.floor(P.overall/18)));
-  const maxStars = Math.min(5, Math.max(minStars, Math.floor(P.overall/15) + Math.floor(P.fameLevel/20)));
-  let allCandidates = CLUBS.filter(c=>c.minOverall<=P.overall+8 && c.stars>=minStars && c.stars<=maxStars && c.name!==P.clubName && c.stars>=2 && !isYouthClub(c.name));
+  // Pick clubs matching player's level, fame and age
+  let allCandidates = getTargetClubs({minStars:2});
   if(allCandidates.length<3){
-    allCandidates = CLUBS.filter(c=>c.minOverall<=P.overall+5 && c.stars>=1 && c.name!==P.clubName && !isYouthClub(c.name));
+    allCandidates = getTargetClubs({minStars:1});
   }
   const shuffled = shuffle([...allCandidates]);
   const usedLeagues = new Set();
@@ -3680,10 +3726,8 @@ function openNegotiationFromPicker(idx){
 
 function generateFreeAgentOfferEvents(){
   // Clubs matching player's level send offers as events during the year
-  const minStars = Math.max(1, Math.min(5, Math.floor(P.overall/18)));
-  const maxStars = Math.min(5, Math.max(minStars, Math.floor(P.overall/15) + Math.floor(P.fameLevel/20)));
-  let candidates = CLUBS.filter(c=>c.minOverall<=P.overall+8 && c.stars>=minStars && c.stars<=maxStars && c.stars>=2 && !isYouthClub(c.name));
-  if(candidates.length<2) candidates = CLUBS.filter(c=>c.minOverall<=P.overall+5 && c.stars>=1 && !isYouthClub(c.name));
+  let candidates = getTargetClubs({minStars:2});
+  if(candidates.length<2) candidates = getTargetClubs({minStars:1});
   candidates = shuffle([...candidates]);
   const used = new Set();
   const count = Math.min(3, Math.max(1, Math.floor(candidates.length/3)));
@@ -3710,13 +3754,14 @@ function generateFreeAgentOfferEvents(){
 function onFreeAgentSigned(){
   // Remove any remaining free-agent offer events; no more offers until next window
   currentYearEvents = currentYearEvents.filter(e=>!e._freeAgentOffer);
-  // Add football/match events for the rest of the season now that the player has a club
+  // Add football/match events for the rest of the season, but never exceed 6 total
   const eligible = getEligibleEvents();
   const footballTypes = ["match","national","coach","drama"];
   const additions = [];
   const usedTitles = new Set(currentYearEvents.map(e=>e.title));
+  const room = Math.max(0, 6 - currentYearEvents.length);
   for(const e of shuffle([...eligible])){
-    if(additions.length>=3) break;
+    if(additions.length>=room) break;
     if(!footballTypes.includes(e.type)) continue;
     if(usedTitles.has(e.title)) continue;
     additions.push({...e});
@@ -4873,6 +4918,7 @@ function advanceContinental(){
           {text:"¡Voy a disparar!",effects:{penaltyGame:true},chance:0.95, failText:"El árbitro anuló el penalti tras una revisión del VAR. Sigues con vida.", failEffects:{morale:-8}}
         ]
       });
+      capCurrentYearEvents(6);
     } else if(cd.finalPlayed || !playerIn){
       if(cd.penaltyResolved) return;
       cd.finalPlayed = false;
