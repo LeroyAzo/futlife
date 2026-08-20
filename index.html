@@ -3118,12 +3118,13 @@ function resolveEvent(event, option){
           if(cd&&cd.current&&cd.current.teams&&cd.current.teams.length>=2){
             if(result==="goal"){
               const winner = cd.current.teams.find(t=>t.name===P.clubName)||cd.current.teams[0];
-              cd.winner = winner; cd.finalResult = `⚽ ${P.clubName} gana en penales`;
+              cd.winner = winner; cd.finalResult = `⚽ ${P.clubName} gana ${simPenalties()} en penales`;
               addTitle(cd.name); P.seasonWonTitle=true; P.reigningContinentalChampion = true;
               P.timeline.push(`Edad ${P.age}: ¡Campeón de la ${cd.name}!`);
             } else {
               const loser = cd.current.teams.find(t=>t.name!==P.clubName)||cd.current.teams[1];
-              cd.winner = loser; cd.finalResult = `❌ ${P.clubName} pierde en penales`;
+              const pen = simPenalties().split('-').reverse().join('-');
+              cd.winner = loser; cd.finalResult = `❌ ${P.clubName} pierde ${pen} en penales`;
             }
             cd.phase = "Finalizada"; cd.finalPlayed = true; cd.penaltyResolved = true;
           }
@@ -3590,10 +3591,12 @@ function openRenewalNegotiation(){
   if(btnOut){ btnOut.textContent = "No renovar (agente libre)";
     btnOut.onclick = function(){
       document.getElementById("transfer-modal").classList.remove("active");
-      P.clubName = "Sin club"; P.salary = 0; P.clubStars = 0; P.contractYears = 0;
+      P.clubName = "Agente libre"; P.salary = 0; P.clubStars = 0; P.contractYears = 0;
       showFreeAgentPicker();
     };
   }
+  document.getElementById("tf-submit").disabled = false;
+  document.getElementById("tf-submit").textContent = "Negociar contrato";
   document.getElementById("tf-submit").onclick = submitNegotiation;
   
   updateNegValues();
@@ -3634,7 +3637,7 @@ function showFreeAgentPicker(){
       if(!picked.includes(c)) picked.push(c);
     }
   }
-  if(picked.length===0){P.clubName="Sin club";P.clubStars=0;P.salary=0;showToast("Ningún club interesado...");return}
+  if(picked.length===0){P.clubName="Agente libre";P.clubStars=0;P.salary=0;showToast("Ningún club interesado...");return}
 
   const modal = document.getElementById("transfer-modal");
   document.getElementById("tf-club-name").innerHTML = "🆓 ERES AGENTE LIBRE";
@@ -3651,12 +3654,13 @@ function showFreeAgentPicker(){
   });
   // Store picked clubs temporarily
   window._faClubs = picked;
+  document.getElementById("tf-submit").disabled = false;
   document.getElementById("tf-submit").textContent = "Quedarme sin club";
   document.getElementById("tf-submit").onclick = ()=>{
     document.getElementById("transfer-modal").classList.remove("active");
     document.getElementById("tf-submit").textContent = "Negociar contrato";
     document.getElementById("tf-submit").onclick = submitNegotiation;
-    P.clubName = "Sin club"; P.clubStars = 0; P.salary = 0; P.contractYears = 0;
+    P.clubName = "Agente libre"; P.clubStars = 0; P.salary = 0; P.contractYears = 0;
     showToast("Te quedaste sin club...");
     updateUI();
   };
@@ -4883,9 +4887,10 @@ function advanceContinental(){
   }
 }
 
-function simKnockout(teams, target){
-  const w=[]; for(let i=0;i<teams.length;i+=2){if(i+1>=teams.length){w.push(teams[i]);break}const r=simMatch(teams[i].stars,teams[i+1].stars);w.push(r.home>r.away?teams[i]:r.away>r.home?teams[i+1]:(Math.random()<0.5?teams[i]:teams[i+1]))}
-  return w.slice(0,target);
+function simPenalties(){
+  const w = randomBetween(3,5);
+  const l = randomBetween(0, w-1);
+  return `${w}-${l}`;
 }
 
 function simTwoLegged(t1, t2){
@@ -4893,8 +4898,11 @@ function simTwoLegged(t1, t2){
   const leg2 = simMatch(t2.stars, t1.stars);
   const agg1 = leg1.home + leg2.away;
   const agg2 = leg1.away + leg2.home;
-  return {winner:agg1>agg2?t1:agg2>agg1?t2:(Math.random()<0.5?t1:t2),
-    result:`${leg1.home}-${leg1.away} / ${leg2.home}-${leg2.away} (${agg1}-${agg2})`};
+  if(agg1>agg2) return {winner:t1, result:`${leg1.home}-${leg1.away} / ${leg2.home}-${leg2.away} (${agg1}-${agg2})`};
+  if(agg2>agg1) return {winner:t2, result:`${leg1.home}-${leg1.away} / ${leg2.home}-${leg2.away} (${agg1}-${agg2})`};
+  const winner = Math.random()<0.5?t1:t2;
+  const pen = simPenalties();
+  return {winner, result:`${leg1.home}-${leg1.away} / ${leg2.home}-${leg2.away} (${agg1}-${agg2}) ${pen} pen.`};
 }
 
 function simKnockoutTL(teams, target){
@@ -4918,9 +4926,13 @@ function advanceCup(){
     if(i+1>=cup.teams.length){nr.push(cup.teams[i]);break}
     const home=cup.teams[i], away=cup.teams[i+1];
     const res=simMatch(home.stars,away.stars);
-    const winner = res.home>res.away?home:res.away>res.home?away:(Math.random()<0.5?home:away);
+    let resultStr = `${home.name} ${res.home}-${res.away} ${away.name}`;
+    let winner;
+    if(res.home>res.away) winner = home;
+    else if(res.away>res.home) winner = away;
+    else { winner = Math.random()<0.5?home:away; resultStr += ` (${simPenalties()} pen.)`; }
     nr.push(winner);
-    results.push(`${home.name} ${res.home}-${res.away} ${away.name}`);
+    results.push(resultStr);
   }
   cup.teams=nr;
   cup.round = cup.teams.length===1?"Campeón":(rounds[cup.teams.length]||"Final");
