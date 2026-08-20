@@ -745,6 +745,19 @@ input[type=range]::-webkit-slider-thumb{
   </div>
 </div>
 
+<!-- RETIREMENT CHOICE MODAL -->
+<div id="retire-choice-modal" class="modal-overlay">
+  <div class="modal-card" style="max-width:460px;text-align:center">
+    <div style="font-size:48px;text-align:center;margin-bottom:8px">🩺</div>
+    <div class="event-title" id="rc-title">Tu cuerpo pide descanso</div>
+    <div class="event-text" id="rc-text" style="text-align:center"></div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-danger" style="flex:1" onclick="chooseRetirement(true)">🏁 Retirarme</button>
+      <button class="btn btn-primary" style="flex:1" onclick="chooseRetirement(false)">💪 Seguir jugando</button>
+    </div>
+  </div>
+</div>
+
 <style>
 .pen-zone{position:relative;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background 0.2s,transform 0.15s}
 .pen-zone:hover{background:rgba(255,255,255,0.12);transform:scale(1.01)}
@@ -1233,10 +1246,10 @@ let P = {
   ownedItems:[],
   investments:[], investmentValue:0,
   yearEvents:[], year:0,
-  nationalTeam:false, worldCupWinner:false, worldCupParticipated:false,
-  retirementReason:"",
+  nationalTeam:false, worldCupWinner:false, worldCupParticipated:false, reigningContinentalChampion:false,
+  retirementReason:"", _declinedOnce:false,
   followers:1000, fameLevel:5, lastEventIds:[],
-  contractYears:0, contractTarget:0, contractWarnings:0, discipline:70, contractMet:true,
+  contractYears:0, contractTarget:0, contractWarnings:0, discipline:70, contractMet:true, contractExpiredThisYear:false,
   squadRole:3, releaseClause:0, pendingTransfer:null,
   personality:{}, lastTags:[], onceEvents:[],
   actionsThisYear:0, yearActionEffects:{}, _saveSlot:0
@@ -1477,7 +1490,7 @@ ev("El DT te elogia públicamente","En rueda de prensa, el entrenador dice que e
 
 // SELECCIÓN NACIONAL
 ev("Convocatoria soñada","Llega la lista de la selección nacional. Tu nombre aparece. Vas a representar a tu país. Tu familia llora de emoción.","🇦🇷","national",[
-  {text:"Viajas con orgullo y honor",effects:{morale:20,familia:15},chance:0.95, failText:"", failEffects:{}}
+  {text:"Viajas con orgullo y honor",effects:{morale:20,familia:15,nationalTeam:true},chance:0.95, failText:"", failEffects:{}}
 ]);
 ev("Mundial: fase de grupos","Estás en el Mundial. Los ojos del planeta te miran. Tu país entero está paralizado frente al televisor.","🌍","worldcup",[
   {text:"Juegas cada partido como una final",effects:{careerGoals:2,seasonGoals:2, morale:15,careerMatches:3},chance:0.7, failText:"No pasan de grupos. Vuelven en silencio.", failEffects:{morale:-20}},
@@ -1499,7 +1512,7 @@ ev("Gol en la final del Mundial","Es LA final del Mundial. El partido está empa
 
 // RELACIONES
 ev("Flechazo en la grada","Después de un partido, una persona entre el público te lanza una mirada que te deja helado. Intercambian números.","💘","relationship",[
-  {text:"La invitas a salir. Podría ser el amor de tu vida",effects:{hasPartner:true,partnerName:randomPartner(), morale:15},chance:0.9, failText:"Te rechaza educadamente. Era solo una fan.", failEffects:{morale:-5}},
+  {text:"La invitas a salir. Podría ser el amor de tu vida",effects:{hasPartner:true, morale:15},chance:0.9, failText:"Te rechaza educadamente. Era solo una fan.", failEffects:{morale:-5}},
   {text:"Te haces el difícil. Si está destinado, pasará",effects:{morale:2},chance:0.3, failText:"La persona aparece en redes sociales con otro futbolista. Te arrepientes.", failEffects:{morale:-8}}
 ]);
 ev("Crisis de pareja","Tu pareja está harta. Nunca estás en casa. Siempre de viaje, siempre entrenando. Te da un ultimátum: el fútbol o yo.","💔","relationship",[
@@ -2472,8 +2485,9 @@ function handleStart(){
   P.clubHistory = []; P.timeline = [];
   P.ownedItems = []; P.investments = []; P.investmentValue = 0;
   P.yearEvents = []; P.year = 0;
-  P.nationalTeam = false; P.worldCupWinner = false; P.worldCupParticipated = false;
+  P.nationalTeam = false; P.worldCupWinner = false; P.worldCupParticipated = false; P.reigningContinentalChampion = false;
   P.retirementReason = "";
+  P._declinedOnce = false;
   P.followers = randomBetween(500,3000);
   P.fameLevel = getFame();
   P.lastEventIds = [];
@@ -2482,6 +2496,7 @@ function handleStart(){
   P.contractWarnings = 0;
   P.discipline = 70;
   P.contractMet = true;
+  P.contractExpiredThisYear = false;
   P.squadRole = 2;
   P.releaseClause = 0;
   P.personality = {};
@@ -2587,7 +2602,7 @@ function getEligibleEvents(){
 
     // ---- CLASS-BASED FILTERING ----
     const playerClasses = getPlayerClasses();
-    if(e.classes && e.classes.length>0 && !e.classes.every(c=>playerClasses.includes(c)))
+    if(e.classes && e.classes.length>0 && !e.classes.some(c=>playerClasses.includes(c)))
       ok = false;
 
     // Events that should only happen ONCE
@@ -2636,6 +2651,7 @@ function advanceYear(){
   P.year++;
   P.midYearTransfer = false;
   P._oldSeasonStats = null;
+  P.contractExpiredThisYear = false;
   P.seasonGoals = 0;
   P.seasonAssists = 0;
   P.seasonMatches = 0;
@@ -2744,7 +2760,8 @@ function advanceYear(){
   }
 
   // World Cup logic (every 4 years: ages 18,22,26,30,34)
-  if([18,22,26,30,34].includes(P.age) && P.nationalTeam && P.overall>=70){
+  if([18,22,26,30,34].includes(P.age) && P.overall>=70){
+    P.nationalTeam = true;
     P.worldCupParticipated = true;
     P.timeline.push(`Edad ${P.age}: Convocado al Mundial con ${P.country}`);
     // Convocation event so the user sees the call-up
@@ -2763,8 +2780,7 @@ function advanceYear(){
   }
 
   // Generate exactly 6 events per year (2 months each)
-  // Reduce to 5 random if contract renewal will add one extra
-  const maxRandom = (P.contractYears<=1 && P.clubStars>0) ? 5 : 6;
+  const maxRandom = 6;
   const eligible = getEligibleEvents();
   let filtered = eligible.filter(e=>!P.lastEventIds.includes(e.title));
   if(filtered.length<15) filtered = [...eligible];
@@ -2794,23 +2810,10 @@ function advanceYear(){
 
   // Initialize season competitions at start of year (always reinit league)
   // Clear old competition data before reinit
-  // Store last season league position for continental qualification
-  if(P.leagueData){
-    P.lastLeaguePosition = getLeaguePosition();
-    if(P.lastLeaguePosition===1 && P.clubStars>=2){
-      if(!P.seasonWonLeague && P.clubLeague){
-        addTitle(P.clubLeague);
-        P.seasonWonLeague=true;
-        P.timeline.push(`Edad ${P.age}: ¡Campeón de ${P.clubLeague}!`);
-      }
-    }
-  } else if(!P.lastLeaguePosition){
-    const defaults = {5:1,4:2,3:randomBetween(2,4),2:randomBetween(4,7)};
-    P.lastLeaguePosition = defaults[P.clubStars] || 6;
-  }
-
+  // Note: lastLeaguePosition + league title are granted at end of season (showYearSummary)
   P.leagueData = null; P.cd = null; P.cupData = null; P.wcData = null;
   initSeasonData();
+  P.reigningContinentalChampion = false;
   // World Cup every 4 years at eligible ages
   if([18,22,26,30,34].includes(P.age)) initWorldCup();
   else{P.wcData=null;document.getElementById("wc-section").style.display="none";}
@@ -2851,12 +2854,8 @@ function advanceYear(){
     P.contractJustSigned = false;
     
     if(P.contractYears<=0){
-      // Push renewal negotiation event - opens transfer modal as "renewal"
-      P.contractJustSigned = true;
-      currentYearEvents.push({title:"Renovación de contrato",text:`Tu contrato con ${P.clubName} ha terminado. ¿Qué quieres hacer?`,emoji:"📝",type:"contract",options:[
-        {text:"Negociar renovación",effects:{renewalNegotiation:true},chance:0.95, failText:"", failEffects:{}},
-        {text:"No renuevas. Buscar nuevos horizontes",effects:{freeAgent:true,followers:50000},chance:0.8,failText:"Nadie te ofrece contrato. Te arrepientes.",failEffects:{clubName:"Sin club",salary:0,clubStars:0,morale:-30,followers:-50000}}
-      ]});
+      // Contract expired: renewal decision happens AFTER the year summary (see closeSummary)
+      P.contractExpiredThisYear = true;
     }
   }
 
@@ -3028,6 +3027,7 @@ function resolveEvent(event, option){
       if(e.overall_boost){for(const k of Object.keys(P.stats)){P.stats[k]=clamp(P.stats[k]+1,1,99)};effectsHTML+="📈 Atributos +1<br>"}
       if(e.investmentValue){P.investmentValue+=e.investmentValue;P.investments.push({name:"Startup",value:e.investmentValue});effectsHTML+="📊 Inversión realizada<br>"}
       if(e.worldCupWinner){P.worldCupWinner=true;addTitle("Copa del Mundo");effectsHTML+="🏆 ¡GANASTE EL MUNDIAL!<br>"}
+      if(e.nationalTeam){P.nationalTeam=true;P.worldCupParticipated=true;effectsHTML+=`🇦🇷 Convocado con ${P.country}<br>`}
       if(e.worldCupGoal) effectsHTML+="⚽ Gol en el Mundial<br>";
       if(e.followers){
         const scale = Math.max(0.3, Math.min(8, Math.sqrt(Math.max(100,P.followers)/5000)));
@@ -3117,7 +3117,7 @@ function resolveEvent(event, option){
             if(result==="goal"){
               const winner = cd.current.teams.find(t=>t.name===P.clubName)||cd.current.teams[0];
               cd.winner = winner; cd.finalResult = `⚽ ${P.clubName} gana en penales`;
-              addTitle(cd.name); P.seasonWonTitle=true;
+              addTitle(cd.name); P.seasonWonTitle=true; P.reigningContinentalChampion = true;
               P.timeline.push(`Edad ${P.age}: ¡Campeón de la ${cd.name}!`);
             } else {
               const loser = cd.current.teams.find(t=>t.name!==P.clubName)||cd.current.teams[1];
@@ -3497,7 +3497,8 @@ function finalizeTransfer(club, salary, years, role, clausePct){
     P._oldSeasonStats = {club:oldClub, goals:P.seasonGoals||0, assists:P.seasonAssists||0, matches:P.seasonMatches||0};
   }
   // If signed from free agency, stop further offers and bring back football events
-  if(oldClub==="Sin club" || oldClub==="Agente libre"){
+  // (only when there is still a season in progress; end-of-year renewal skips this)
+  if((oldClub==="Sin club" || oldClub==="Agente libre") && currentYearEvents.length>0){
     onFreeAgentSigned();
   }
   // Save old club league data for year summary (only if actual transfer to new club)
@@ -3723,6 +3724,16 @@ function onFreeAgentSigned(){
 // ============================================================
 function showYearSummary(){
   document.getElementById("sum-year").textContent = P.age;
+
+  // Grant league title + store final position (used for next year's continental qualification)
+  const finalPos = getLeaguePosition();
+  if(!P.midYearTransfer && finalPos===1 && P.clubStars>=2 && !P.seasonWonLeague && P.clubLeague){
+    addTitle(P.clubLeague);
+    P.seasonWonLeague = true;
+    P.timeline.push(`Edad ${P.age}: ¡Campeón de ${P.clubLeague}!`);
+  }
+  P.lastLeaguePosition = P.seasonWonLeague ? 1 : (typeof finalPos==="number" && finalPos>0 ? finalPos : null);
+
   // Only regenerate competition if player hasn't transferred mid-year
   const clubChanges = P.clubHistory.filter(c=>c.midYearTransfer).length;
   if(!P.midYearTransfer){
@@ -3782,11 +3793,15 @@ function closeSummary(){
   updateUI();
   autoSave();
 
-  // Retirement age
-  if(P.age >= 38 && Math.random()<0.6){
-    P.retirementReason = "edad avanzada";
-    showRetirement();
+  // Contract renewal decision AFTER seeing the summary
+  if(P.contractExpiredThisYear && P.clubStars>0){
+    P.contractExpiredThisYear = false;
+    openRenewalNegotiation();
+    return;
   }
+
+  // Retirement by decay: offer the choice when the body is worn out
+  if(maybeOfferRetirement()) return;
 }
 
 function getPositionMedal(pos){
@@ -3877,8 +3892,10 @@ function getCompetitionSummary(){
 }
 function getLeaguePosition(){
   if(!P.leagueData) return "-";
+  const pt = P.leagueData.teams.find(t=>t.isPlayer) || P.leagueData.teams.find(t=>t.name===P.clubName);
+  if(!pt) return "-";
   const s=P.leagueData.teams.map(t=>{const x=getTeamStats(t.name);return{...t,...x,gd:x.gf-x.gc}}).sort((a,b)=>b.pts-a.pts||b.gd-a.gd||b.gf-a.gf);
-  return s.findIndex(t=>t.name===P.clubName)+1;
+  return s.findIndex(t=>t.name===pt.name)+1;
 }
 function getTeamStatsFromData(data, teamName){
   let pts=0,pj=0,gf=0,gc=0;
@@ -4421,6 +4438,52 @@ function renderAchievements(){
 // ============================================================
 // RETIREMENT
 // ============================================================
+function maybeOfferRetirement(){
+  if(P.retirementReason) return false;
+  if(P.age < 33) return false;
+  if(P._declinedOnce || P.overall <= 72){
+    openRetirementChoice();
+    return true;
+  }
+  return false;
+}
+
+function openRetirementChoice(){
+  document.getElementById("rc-text").textContent = `Los médicos te han detectado un desgaste crónico en la rodilla${P.clubName&&P.clubName!=="Sin club"?" mientras juegas en "+P.clubName:""}. Tu cuerpo ya no responde como antes. ¿Es momento de colgar las botas?`;
+  document.getElementById("retire-choice-modal").classList.add("active");
+}
+
+function chooseRetirement(retire){
+  document.getElementById("retire-choice-modal").classList.remove("active");
+  if(retire){
+    P.retirementReason = "edad avanzada";
+    showRetirement();
+  } else {
+    applyDecline();
+    updateUI();
+    showToast("Decides seguir pese al dolor. Tu nivel cae drásticamente.");
+  }
+}
+
+function applyDecline(){
+  if(!P._declinedOnce){
+    const cur = P.overall || getOverall();
+    if(cur > 70){
+      const factor = 70 / cur;
+      for(const k of Object.keys(P.stats)){
+        P.stats[k] = Math.max(10, Math.round(P.stats[k] * factor));
+      }
+    }
+    P._declinedOnce = true;
+    P.timeline.push(`Edad ${P.age}: Le detectan un desgaste crónico en la rodilla`);
+  } else {
+    const keys = shuffle(Object.keys(P.stats));
+    for(let i=0;i<3;i++){ if(keys[i]) P.stats[keys[i]] = Math.max(10, P.stats[keys[i]] - randomBetween(2,4)); }
+    P.timeline.push(`Edad ${P.age}: Su rodilla empeora. Su nivel sigue cayendo`);
+  }
+  refreshOverall();
+}
+
 function showRetirement(){
   document.getElementById("event-modal").classList.remove("active");
   document.getElementById("summary-modal").classList.remove("active");
@@ -4694,9 +4757,9 @@ function initContinental(){
   const cont = club?club.continent:"europe";
   // Only elite clubs (2+ stars) participate in continental competition
   if(P.clubStars<2){P.cd=null;return}
-  // Must have finished top 4 in league last season (or favorable default for first season)
+  // Must have finished top 4 in league last season (or be reigning continental champion)
   const position = P.lastLeaguePosition || 6;
-  if(position>4){P.cd=null;return}
+  if(position>4 && !P.reigningContinentalChampion){P.cd=null;return}
   const contClubs = CLUBS.filter(c=>c.continent===cont&&c.stars>=2);
   let selected = shuffle(contClubs);
   const playerClub = CLUBS.find(c=>c.name===P.clubName);
@@ -4798,7 +4861,7 @@ function advanceContinental(){
         title:"🎯 ¡La final! Tiro Decisivo",
         text:`Es la final de ${cd.name}. Último minuto. Penalti a favor. Todo depende de ti. ¿A dónde disparas?`,
         emoji:"🎯",type:"match",magnitude:"big",options:[
-          {text:"¡Voy a disparar!",effects:{penaltyGame:true},chance:0.95}
+          {text:"¡Voy a disparar!",effects:{penaltyGame:true},chance:0.95, failText:"El árbitro anuló el penalti tras una revisión del VAR. Sigues con vida.", failEffects:{morale:-8}}
         ]
       });
     } else if(cd.finalPlayed || !playerIn){
@@ -4809,7 +4872,7 @@ function advanceContinental(){
       cd.finalResult=`${t1.name} ${final.result} ${t2.name}`;
       cd.winner=final.winner; cd.phase="Finalizada";
       if(final.winner.isPlayer){
-        addTitle(cd.name); P.seasonWonTitle=true; P.timeline.push(`Edad ${P.age}: ¡Campeón de la ${cd.name}!`);
+        addTitle(cd.name); P.seasonWonTitle=true; P.reigningContinentalChampion = true; P.timeline.push(`Edad ${P.age}: ¡Campeón de la ${cd.name}!`);
       }
     }
   }
@@ -5117,7 +5180,7 @@ function advanceWorldCup(){
     wc.finalResult=`${t1.name} ${final.home}-${final.away} ${t2.name}`;
     wc.winner=winner; wc.phase="Finalizada";
     if(wc.winner.name===P.country){
-      const title = "🏆 Copa del Mundo";
+      const title = "Copa del Mundo";
       addTitle(title);P.timeline.push(`Edad ${P.age}: ¡Campeón del Mundo con ${P.country}!`);P.seasonWonTitle=true;P.worldCupWinner=true;
     }
   }
