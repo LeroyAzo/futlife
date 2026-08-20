@@ -1492,22 +1492,22 @@ ev("El DT te elogia públicamente","En rueda de prensa, el entrenador dice que e
 ev("Convocatoria soñada","Llega la lista de la selección nacional. Tu nombre aparece. Vas a representar a tu país. Tu familia llora de emoción.","🇦🇷","national",[
   {text:"Viajas con orgullo y honor",effects:{morale:20,familia:15,nationalTeam:true},chance:0.95, failText:"", failEffects:{}}
 ]);
-ev("Mundial: fase de grupos","Estás en el Mundial. Los ojos del planeta te miran. Tu país entero está paralizado frente al televisor.","🌍","worldcup",[
-  {text:"Juegas cada partido como una final",effects:{careerGoals:2,seasonGoals:2, morale:15,careerMatches:3},chance:0.7, failText:"No pasan de grupos. Vuelven en silencio.", failEffects:{morale:-20}},
+ev("Mundial: fase de grupos","Estás en el Mundial. Los ojos del planeta te miran. Cada balón que tocas puede marcar una era.","🌍","worldcup",[
+  {text:"Juegas cada partido como una final",effects:{careerGoals:2,seasonGoals:2, morale:15,careerMatches:3},chance:0.7, failText:"El ritmo del Mundial te exige al máximo y acabas fundido.", failEffects:{morale:-20}},
   {text:"Disfrutas la experiencia sin presión",effects:{morale:8,careerMatches:3},chance:0.85, failText:"", failEffects:{}}
 ]);
-ev("Mundial: eliminación directa","Octavos de final del Mundial. El partido está 1-1. Quedan 5 minutos. Te llega el balón.","⚽","worldcup",[
-  {text:"Tiro desde fuera del área",effects:{careerGoals:1, morale:25,worldCupGoal:true},chance:0.45, failText:"El balón se va desviado. Luego pierden en penales.", failEffects:{morale:-25}},
-  {text:"Pase filtrado al delantero",effects:{careerAssists:1, morale:15},chance:0.55, failText:"El pase es interceptado. Contraataque y gol del rival. Eliminados.", failEffects:{morale:-20}},
-  {text:"Aguantas el balón en la esquina",effects:{morale:5},chance:0.6, failText:"Pierden igual. Al menos no arriesgaste.", failEffects:{morale:-10}}
+ev("Mundial: eliminación directa","Octavos de final del Mundial. El partido está igualado. Quedan 5 minutos. Te llega el balón.","⚽","worldcup",[
+  {text:"Tiro desde fuera del área",effects:{careerGoals:1, morale:25},chance:0.45, failText:"El balón se va desviado por poco.", failEffects:{morale:-25}},
+  {text:"Pase filtrado al delantero",effects:{careerAssists:1, morale:15},chance:0.55, failText:"El pase es interceptado en el último momento.", failEffects:{morale:-20}},
+  {text:"Aguantas el balón con calma",effects:{morale:5},chance:0.6, failText:"Pierdes el control y se complica la jugada.", failEffects:{morale:-10}}
 ]);
 ev("No convocado","La lista de la selección sale... y tu nombre NO está. Las redes sociales explotan preguntando por qué.","😞","national",[
   {text:"Llamas al seleccionador para pedir explicaciones",effects:{morale:-8},chance:0.4, failText:"Te cuelga el teléfono. Humillación total.", failEffects:{morale:-20}},
   {text:"Lo aceptas y te centras en tu club",effects:{morale:-5,rel_entrenador:5},chance:0.9, failText:"", failEffects:{}}
 ]);
 ev("Gol en la final del Mundial","Es LA final del Mundial. El partido está empatado. Balón al área, te elevas, y...","👑","worldcup",[
-  {text:"Cabezazo picado al suelo",effects:{careerGoals:1, morale:40,worldCupWinner:true},chance:0.5, failText:"El portero la saca con la punta de los dedos. Pierden en penales.", failEffects:{morale:-30}},
-  {text:"Remates de volea sin pensarlo",effects:{careerGoals:1, morale:40,worldCupWinner:true},chance:0.4, failText:"La mandas a la grada. El país entero se lamenta.", failEffects:{morale:-30}}
+  {text:"Cabezazo picado al suelo",effects:{careerGoals:1, morale:40},chance:0.5, failText:"El portero adivina el tiro y lo desvía.", failEffects:{morale:-30}},
+  {text:"Remates de volea sin pensarlo",effects:{careerGoals:1, morale:40},chance:0.4, failText:"La mandas a la grada por poco.", failEffects:{morale:-30}}
 ]);
 
 // RELACIONES
@@ -2200,71 +2200,75 @@ function generateSeasonStats(){
   const pos = P.position;
   const ovr = P.overall;
   const roleMul = 1 + (P.squadRole-2)*0.15;
-  // Realistic match counts based on club level
-  let baseMatches;
-  if(P.clubStars<=1) baseMatches = randomBetween(22, 30); // Cantera/reservas
-  else if(P.clubStars<=2) baseMatches = randomBetween(30, 40); // Semi-pro/2★
-  else if(P.clubStars<=3) baseMatches = randomBetween(34, 46); // Profesional (league + cup)
-  else baseMatches = randomBetween(42, 58); // Élite (league + cup + Champions/Libertadores)
-  P.seasonMatches = Math.floor(baseMatches * (P.injured?0.3:1) * (0.6+roleMul*0.4));
-  P.careerMatches += P.seasonMatches;
+  // Real match count: league (38) by squad role + continental + domestic cup
+  let leagueMatches;
+  if(P.squadRole>=4) leagueMatches = 38;
+  else if(P.squadRole===3) leagueMatches = 35;
+  else if(P.squadRole===2) leagueMatches = 30;
+  else if(P.squadRole===1) leagueMatches = 18;
+  else leagueMatches = 8;
 
-  // Goals and assists based on position stats
+  let continentalMatches = 0;
+  if(P.clubStars>=2){
+    const inCont = (P.lastLeaguePosition && P.lastLeaguePosition<=4) || P.reigningContinentalChampion;
+    if(inCont){
+      const knock = P.clubStars>=5?6:P.clubStars>=4?4:P.clubStars>=3?2:0;
+      continentalMatches = 6 + knock;
+    }
+  }
+  let cupMatches = 0;
+  if(P.clubStars>=2){
+    cupMatches = P.clubStars>=5?5:P.clubStars>=4?4:P.clubStars>=3?3:2;
+  }
+  P._baseMatches = leagueMatches + continentalMatches + cupMatches;
+  P.seasonMatches = P._baseMatches;
+
+  // Goals/assists per match based on position stats
   const attackScore = getWeightedScore(ATTACK_SCORE_WEIGHTS[pos]);
   const assistScore = getWeightedScore(ASSIST_SCORE_WEIGHTS[pos]);
   const baseGoals = BASE_GOALS[pos] || 0;
   const baseAssists = BASE_ASSISTS[pos] || 0;
 
-  if(baseGoals>0){
-    P.seasonGoals = Math.floor(baseGoals * (attackScore/65) * roleMul + randomBetween(-2,4));
-  } else {
-    P.seasonGoals = 0;
-  }
-  if(baseAssists>0){
-    P.seasonAssists = Math.floor(baseAssists * (assistScore/65) * roleMul + randomBetween(-2,4));
-  } else {
-    P.seasonAssists = 0;
-  }
-  P.seasonGoals = Math.max(0, P.seasonGoals);
-  P.seasonAssists = Math.max(0, P.seasonAssists);
+  let gpm = baseGoals>0 ? (baseGoals/38) : 0;
+  let apm = baseAssists>0 ? (baseAssists/38) : 0;
+  gpm *= (attackScore/65) * roleMul;
+  apm *= (assistScore/65) * roleMul;
 
   // Age scaling: youth score less, prime normal, veterans less
   let ageMul = 1;
   if(P.age<=18) ageMul = 0.35;
   else if(P.age<=21) ageMul = 0.6;
   else if(P.age>=33) ageMul = 0.7;
-  P.seasonGoals = Math.max(0, Math.floor(P.seasonGoals*ageMul));
-  P.seasonAssists = Math.max(0, Math.floor(P.seasonAssists*ageMul));
+  gpm *= ageMul; apm *= ageMul;
 
-  // ---------- PERFORMANCE MODIFIERS ----------
-  // Morale affects output: high = bonus goals, low = penalty
-  if(P.morale>=75){P.seasonGoals+=randomBetween(2,6);P.seasonAssists+=randomBetween(1,3)}
-  else if(P.morale<=30){P.seasonGoals-=randomBetween(2,5);P.seasonAssists-=randomBetween(1,3)}
-  // Discipline: low = worse fitness, high = bonus stats
-  if(P.discipline<=35){P.seasonGoals-=randomBetween(1,3);P.morale-=5}
-  else if(P.discipline>=75){P.seasonGoals+=randomBetween(1,3);P.morale+=5}
-  // Squad role modifier
-  if(P.squadRole>=4){P.seasonGoals+=randomBetween(2,5);P.seasonAssists+=randomBetween(1,3)}
-  else if(P.squadRole<=1){P.seasonGoals-=randomBetween(2,4)}
-  // Injuries halve output
-  if(P.injured){P.seasonGoals=Math.floor(P.seasonGoals*0.3);P.seasonAssists=Math.floor(P.seasonAssists*0.3)}
-  // Suspension: no football at all
-  if(P.suspended){P.seasonMatches=0;P.seasonGoals=0;P.seasonAssists=0}
-  P.seasonGoals=Math.max(0,P.seasonGoals);P.seasonAssists=Math.max(0,P.seasonAssists);P.morale=clamp(P.morale,0,100);
+  // Performance modifiers
+  if(P.morale>=75){gpm*=1.2;apm*=1.15}
+  else if(P.morale<=30){gpm*=0.7;apm*=0.75}
+  if(P.discipline<=35){gpm*=0.8}
+  else if(P.discipline>=75){gpm*=1.15}
+  if(P.squadRole>=4){gpm*=1.3;apm*=1.2}
+  else if(P.squadRole<=1){gpm*=0.7}
+
+  P._gpm = gpm;
+  P._apm = apm;
+  P.seasonGoals = Math.max(0, Math.floor(gpm * P.seasonMatches));
+  P.seasonAssists = Math.max(0, Math.floor(apm * P.seasonMatches));
+
+  // Injury/suspension at season start (weeks out are accumulated in advanceYear/resolveEvent)
+  if(P.injured){P.seasonMatches=Math.floor(P.seasonMatches*0.3); P.seasonGoals=Math.floor(P.seasonGoals*0.3); P.seasonAssists=Math.floor(P.seasonAssists*0.3)}
+  if(P.suspended){P.seasonMatches=0; P.seasonGoals=0; P.seasonAssists=0}
+  P.morale=clamp(P.morale,0,100);
 
   // ---------- INJURY RISK ----------
   // Fiestero + no gym = higher injury chance
   if(P.discipline<=35&&!P.yearActionEffects.injuryResist&&Math.random()<0.3){
     P.injured=true;P.injuryWeeks=randomBetween(2,8);
+    P._outWeeks=(P._outWeeks||0)+P.injuryWeeks;
     P.timeline.push(`Edad ${P.age}: Lesión por mal estado físico`);
     currentYearEvents.unshift({title:"Lesión por descuido",text:"Tu bajo estado físico te ha pasado factura. Una lesión muscular te deja fuera varias semanas.",emoji:"🤕",type:"injury",options:[{text:"Aceptar y recuperarme",effects:{morale:-10},chance:0.95,failText:"",failEffects:{}}]});
   }
   // Disciplined + gym = injury shield
   if(P.discipline>=75||(P.yearActionEffects.injuryResist&&P.discipline>=50)){P.injuryWeeks=Math.max(0,(P.injuryWeeks||0)-2)}
-
-  // Add to career totals  
-  P.careerGoals += P.seasonGoals;
-  P.careerAssists += P.seasonAssists;
 }
 
 function generateCompetitionResults(){
@@ -2483,6 +2487,7 @@ function handleStart(){
   P.relationships = {entrenador:60,compañeros:60,pareja:0,familia:70,amigos:60};
   P.hasPartner = false; P.partnerName = ""; P.partnerGender = "mujer"; P.partnerStats = {aspecto:5,cuerpo:5,personalidad:5,inteligencia:5}; P.married = false; P.hasKids = false; P.kidNames = [];
   P.seasonGoals = 0; P.seasonAssists = 0; P.seasonMatches = 0; P.careerGoals = 0; P.careerAssists = 0;
+  P._baseMatches = 0; P._gpm = 0; P._apm = 0; P._outWeeks = 0;
   P.careerMatches = 0;
   P.seasonHadHatTrick = false;
   P._titleDeciderAdded = false;
@@ -2573,7 +2578,7 @@ function getEligibleEvents(){
     if(e.type==="transfer" && P.clubStars>=5) ok = false;
     if(e.type==="transfer" && P.age<18) ok = false; // No transfers in first year
     if(e.type==="worldcup") ok = false;
-    if(e.type==="national" && P.age<18) ok = false;
+    if(e.type==="national") ok = false; // national team handled only on World Cup years
     if(e.type==="relationship" && P.age<18) ok = false;
     if(e.type==="injury" && P.injured) ok = false;
 
@@ -2602,6 +2607,7 @@ function getEligibleEvents(){
     if(e.title==="Último baile" && P.age<30) ok = false;
     if(e.title==="Debut soñado") ok = false; // unified with "Debut profesional"
     if(e.title==="Tu equipo gana la liga") ok = false; // injected only on last matchday when title decider
+    if(e.title==="Fiesta de campeones") ok = false; // injected only as the last event when a title is won
     // Continent/competition filtering
     if(e.continent && e.continent!==clubContinent) ok = false;
     if(e.competition && e.competition!==clubComp) ok = false;
@@ -2726,6 +2732,7 @@ function advanceYear(){
 
   // Injury recovery
   if(P.injured){
+    P._outWeeks=(P._outWeeks||0)+P.injuryWeeks;
     P.injuryWeeks--;
     if(P.injuryWeeks<=0){
       P.injured = false;
@@ -2737,6 +2744,7 @@ function advanceYear(){
 
   // Suspension countdown (doping / betting bans)
   if(P.suspended){
+    P._outWeeks=(P._outWeeks||0)+P.suspensionWeeks;
     P.suspensionWeeks--;
     if(P.suspensionWeeks<=0){
       P.suspended = false;
@@ -2868,13 +2876,10 @@ function advanceYear(){
   // Keep the year to exactly 6 events (drop excess, protecting "big" specials)
   capCurrentYearEvents(6);
 
-  // Contract countdown - only if not just signed this year
+  // Contract countdown: 1 year per full season (no grace year for the signing season)
   if(P.clubStars>0){
-    if(!P.contractJustSigned){
-      P.contractYears--;
-    }
+    P.contractYears--;
     P.contractJustSigned = false;
-    
     if(P.contractYears<=0){
       // Contract expired: renewal decision happens AFTER the year summary (see closeSummary)
       P.contractExpiredThisYear = true;
@@ -2902,6 +2907,8 @@ function advanceYear(){
   P.seasonMatchRegistry = null;
   P.seasonHadHatTrick = false;
   P._titleDeciderAdded = false;
+  P._partyAdded = false;
+  P._outWeeks = 0;
   updateAdvanceButton();
   updateUI();
 }
@@ -2965,6 +2972,18 @@ function checkTitleDecider(){
   }
 }
 
+// Adds the title celebration as the last event of the year, only if a title was won.
+function maybeAddChampionsParty(){
+  if(P._partyAdded) return;
+  if(!(P.seasonWonTitle || P.seasonWonLeague)) return;
+  P._partyAdded = true;
+  currentYearEvents.push({title:"Fiesta de campeones",text:"¡Ganaron el título! El vestuario es una locura. Champán, música, bailes. Esto quedará para la historia.",emoji:"🍾",type:"match",magnitude:"big",options:[
+    {text:"Celebras hasta que salga el sol. ¡Campeones!",effects:{morale:25, rel_compañeros:15, followers:200000},chance:0.8, failText:"La resaca te dura 3 días. El DT no está contento.", failEffects:{morale:15, rel_entrenador:-5}},
+    {text:"Celebración moderada. Ya habrá tiempo de festejar",effects:{morale:10, rel_entrenador:5, followers:50000},chance:0.9, failText:"", failEffects:{}}
+  ]});
+  capCurrentYearEvents(6);
+}
+
 function showNextEvent(){
   // Advance competitions per event
   if(P.leagueData && P.leagueData.currentMD<38){
@@ -2979,8 +2998,11 @@ function showNextEvent(){
   if(P.wcData) advanceWorldCup();
   
   if(currentEventIndex >= currentYearEvents.length){
-    showYearSummary();
-    return;
+    maybeAddChampionsParty();
+    if(currentEventIndex >= currentYearEvents.length){
+      showYearSummary();
+      return;
+    }
   }
   const event = currentYearEvents[currentEventIndex];
   if(event.title==="Convocatoria soñada") event.emoji = getCountryEmoji(P.country);
@@ -3145,8 +3167,8 @@ function resolveEvent(event, option){
           }
         }
       }
-      if(e.injured){P.injured=true;P.injuryWeeks=e.injuryWeeks||4;effectsHTML+=`🤕 Lesión: ${P.injuryWeeks} semanas<br>`}
-      if(e.suspended){P.suspended=true;P.suspensionWeeks=e.suspensionWeeks||52;effectsHTML+=`⛔ Sanción: ${P.suspensionWeeks} semanas sin fútbol<br>`}
+      if(e.injured){P.injured=true;P.injuryWeeks=e.injuryWeeks||4;P._outWeeks=(P._outWeeks||0)+P.injuryWeeks;effectsHTML+=`🤕 Lesión: ${P.injuryWeeks} semanas<br>`}
+      if(e.suspended){P.suspended=true;P.suspensionWeeks=e.suspensionWeeks||52;P._outWeeks=(P._outWeeks||0)+P.suspensionWeeks;effectsHTML+=`⛔ Sanción: ${P.suspensionWeeks} semanas sin fútbol<br>`}
       if(e.freeAgent){
         document.getElementById("event-modal").classList.remove("active");
         P.clubName = "Agente libre"; P.clubStars = 0; P.salary = 0; P.contractYears = 0;
@@ -3261,8 +3283,8 @@ function resolveEvent(event, option){
       if(fe.rel_compañeros){P.relationships.compañeros=clamp(P.relationships.compañeros+fe.rel_compañeros,0,100)}
       if(fe.familia){P.relationships.familia=clamp(P.relationships.familia+fe.familia,0,100)}
       if(fe.amigos){P.relationships.amigos=clamp(P.relationships.amigos+fe.amigos,0,100)}
-      if(fe.injured){P.injured=true;P.injuryWeeks=fe.injuryWeeks||4;effectsHTML+=`🤕 Lesión: ${P.injuryWeeks} semanas<br>`}
-      if(fe.suspended){P.suspended=true;P.suspensionWeeks=fe.suspensionWeeks||52;effectsHTML+=`⛔ Sanción: ${P.suspensionWeeks} semanas sin fútbol<br>`}
+      if(fe.injured){P.injured=true;P.injuryWeeks=fe.injuryWeeks||4;P._outWeeks=(P._outWeeks||0)+P.injuryWeeks;effectsHTML+=`🤕 Lesión: ${P.injuryWeeks} semanas<br>`}
+      if(fe.suspended){P.suspended=true;P.suspensionWeeks=fe.suspensionWeeks||52;P._outWeeks=(P._outWeeks||0)+P.suspensionWeeks;effectsHTML+=`⛔ Sanción: ${P.suspensionWeeks} semanas sin fútbol<br>`}
       if(fe.hasPartner===false){P.hasPartner=false;P.married=false;P.partnerName="";P.partnerStats={aspecto:5,cuerpo:5,personalidad:5,inteligencia:5};P.relationships.pareja=0;effectsHTML+="💔 Relación terminada<br>"}
       if(fe.hasPartner===true && !P.hasPartner){P.hasPartner=true;P.partnerName=fe.partnerName||randomPartner();P.partnerGender="mujer";P.partnerStats={aspecto:randomBetween(5,9),cuerpo:randomBetween(5,9),personalidad:randomBetween(4,9),inteligencia:randomBetween(4,9)};}
       if(fe.hasKids===true && !P.hasKids){P.hasKids=true;P.kidNames=fe.kidNames||["Junior"]}
@@ -3583,7 +3605,7 @@ function finalizeTransfer(club, salary, years, role, clausePct){
   document.getElementById("tf-submit").disabled = false;
   document.getElementById("tf-submit").textContent = "Negociar contrato";
   P.pendingTransfer = null;
-  P.contractJustSigned = true; // Don't decrement contract same year
+  P.contractJustSigned = false; // a full season counts toward the contract length
   const oldStars = P.clubHistory.length>1?P.clubHistory[P.clubHistory.length-2]?.stars:0;
   const prevClub = P.clubHistory.length>1?P.clubHistory[P.clubHistory.length-2]?.name:"Sin club";
   
@@ -3834,8 +3856,29 @@ function onFreeAgentSigned(){
 // ============================================================
 // YEAR SUMMARY
 // ============================================================
+// Finalizes the season: applies real match count (subtracting weeks out due to
+// injury/suspension) and adds the resulting goals/assists/matches to career totals.
+function finalizeSeasonStats(){
+  if(P._baseMatches===undefined) return;
+  const outRatio = Math.min(1,(P._outWeeks||0)/52);
+  const newMatches = Math.max(0, Math.floor(P._baseMatches*(1-outRatio)));
+  const baseGoals = Math.floor(P._gpm * P._baseMatches);
+  const baseAssists = Math.floor(P._apm * P._baseMatches);
+  const eventGoals = Math.max(0, P.seasonGoals - baseGoals);
+  const eventAssists = Math.max(0, P.seasonAssists - baseAssists);
+  P.seasonMatches = newMatches;
+  P.seasonGoals = Math.max(0, Math.floor(P._gpm * newMatches)) + eventGoals;
+  P.seasonAssists = Math.max(0, Math.floor(P._apm * newMatches)) + eventAssists;
+  P.careerMatches += newMatches;
+  P.careerGoals += Math.max(0, Math.floor(P._gpm * newMatches));
+  P.careerAssists += Math.max(0, Math.floor(P._apm * newMatches));
+}
+
 function showYearSummary(){
   document.getElementById("sum-year").textContent = P.age;
+
+  // Apply real match count (subtract weeks lost to injury/suspension) and finalize season stats
+  finalizeSeasonStats();
 
   // Grant league title + store final position (used for next year's continental qualification)
   const finalPos = getLeaguePosition();
@@ -4800,16 +4843,49 @@ function autoSave(){
 function simMatch(homeStars, awayStars){
   const diff = homeStars - awayStars;
   const r = Math.random();
-  if(r < 0.35 + diff*0.1){ // Home win
+  if(r < 0.42 + diff*0.1){ // Home win (home advantage)
     const aw = randomBetween(Math.random()<0.45?0:1, 2);
     return {home: aw + randomBetween(1,3), away: aw};
-  } else if(r < 0.6 + diff*0.05){ // Draw
+  } else if(r < 0.65 + diff*0.04){ // Draw
     const g = randomBetween(0, 3);
     return {home: g, away: g};
   } else { // Away win
     const hw = randomBetween(Math.random()<0.45?0:1, 2);
     return {home: hw, away: hw + randomBetween(1,3)};
   }
+}
+
+// Effective power of a team for knockout matches. The player's team is boosted by
+// their individual overall (70 ≈ no change, 90 ≈ +2, 50 ≈ -2).
+function teamPower(team){
+  let p = (team&&team.stars)||1;
+  const isPlayerTeam = team && (team.isPlayer || team.name===P.clubName || team.name===P.country);
+  if(isPlayerTeam && P.overall){
+    p += (P.overall - 70) / 10;
+  }
+  return Math.max(0.5, p);
+}
+
+const PLACEHOLDER_NAMES = [
+  "Atlético del Valle","Deportivo Montaña","Unión del Norte","Sporting Estrella","Club Aurora",
+  "Racing Litoral","Gimnasia del Sur","River del Este","CD Relámpago","Fundación Soria",
+  "Deportes Independencia","Atlético Victoria","SC Tormenta","Real Horizonte","Club Cenit",
+  "Atlético Playa","Unión Ferroviaria","Sporting Andino","CD Galaxia","Deportivo Cielo",
+  "Atlanta Sur","Sporting Capital","CD Boreal","Atlético Meridiano"
+];
+function placeholderName(i){
+  const base = i % PLACEHOLDER_NAMES.length;
+  const rep = Math.floor(i/PLACEHOLDER_NAMES.length);
+  return rep>0 ? PLACEHOLDER_NAMES[base]+" "+String.fromCharCode(65+rep-1) : PLACEHOLDER_NAMES[base];
+}
+function isReal(team){ return team && !team.isPlaceholder; }
+
+// Knockout winner: a placeholder always loses to a real team (never reaches big matches).
+function knockoutWinner(a,b){
+  if(isReal(a) && !isReal(b)) return a;
+  if(isReal(b) && !isReal(a)) return b;
+  const res = simMatch(teamPower(a), teamPower(b));
+  return res.home>res.away?a:res.away>res.home?b:(Math.random()<0.5?a:b);
 }
 
 function initSeasonData(){
@@ -4820,7 +4896,7 @@ function initSeasonData(){
   // Fill remaining spots with fictional teams from same country so leagues don't mix
   let placeholderIdx = 1;
   while(teams.length<20){
-    teams.push({name:`${P.clubCountry} FC ${placeholderIdx}`, stars:randomBetween(1,3), isPlaceholder:true});
+    teams.push({name:placeholderName(placeholderIdx), stars:randomBetween(1,3), isPlaceholder:true});
     placeholderIdx++;
   }
   P.leagueData = {teams: shuffle(teams), currentMD:0, playedMatches:[]};
@@ -4882,7 +4958,7 @@ function initContinental(){
   // Official format: 8 groups of 4 = 32 teams, top 2 per group advance to 16-team knockout
   let placeholderIdx = 1;
   while(selected.length<32){
-    selected.push({name:"Clasificado "+placeholderIdx, stars:randomBetween(2,4), isPlaceholder:true});
+    selected.push({name:placeholderName(placeholderIdx), stars:randomBetween(2,4), isPlaceholder:true});
     placeholderIdx++;
   }
   if(selected.length>32) selected = selected.slice(0,32);
@@ -4906,7 +4982,7 @@ function initCup(){
   // Fill to 32 teams for a clean knockout bracket
   let placeholderIdx = 1;
   while(selected.length<32){
-    selected.push({name:"Equipo "+placeholderIdx, stars:randomBetween(1,3), isPlaceholder:true});
+    selected.push({name:placeholderName(placeholderIdx), stars:randomBetween(1,3), isPlaceholder:true});
     placeholderIdx++;
   }
   if(selected.length>32) selected = selected.slice(0,32);
@@ -4928,7 +5004,7 @@ function advanceContinental(){
       // Round-robin: simulate every group match once so standings are decided here
       for(let i=0;i<g.length;i++){
         for(let j=i+1;j<g.length;j++){
-          const r=simMatch(g[i].stars,g[j].stars);
+          const r=simMatch(teamPower(g[i]),teamPower(g[j]));
           g.matches.push({home:g[i],away:g[j],homeG:r.home,awayG:r.away});
           stats[g[i].name].pj++;stats[g[j].name].pj++;
           stats[g[i].name].gf+=r.home;stats[g[i].name].gc+=r.away;
@@ -5001,8 +5077,11 @@ function simPenalties(){
 }
 
 function simTwoLegged(t1, t2){
-  const leg1 = simMatch(t1.stars, t2.stars);
-  const leg2 = simMatch(t2.stars, t1.stars);
+  // placeholders always lose to real teams in knockout
+  if(isReal(t1) && !isReal(t2)) return {winner:t1, result:`${t1.name} ${randomBetween(1,3)}-0 / 0-0 (${randomBetween(1,3)}-0)`};
+  if(isReal(t2) && !isReal(t1)) return {winner:t2, result:`${t1.name} 0-${randomBetween(1,3)} / 0-0 (0-${randomBetween(1,3)})`};
+  const leg1 = simMatch(teamPower(t1), teamPower(t2));
+  const leg2 = simMatch(teamPower(t2), teamPower(t1));
   const agg1 = leg1.home + leg2.away;
   const agg2 = leg1.away + leg2.home;
   if(agg1>agg2) return {winner:t1, result:`${leg1.home}-${leg1.away} / ${leg2.home}-${leg2.away} (${agg1}-${agg2})`};
@@ -5032,12 +5111,15 @@ function advanceCup(){
   for(let i=0;i<cup.teams.length;i+=2){
     if(i+1>=cup.teams.length){nr.push(cup.teams[i]);break}
     const home=cup.teams[i], away=cup.teams[i+1];
-    const res=simMatch(home.stars,away.stars);
-    let resultStr = `${home.name} ${res.home}-${res.away} ${away.name}`;
-    let winner;
-    if(res.home>res.away) winner = home;
-    else if(res.away>res.home) winner = away;
-    else { winner = Math.random()<0.5?home:away; resultStr += ` (${simPenalties()} pen.)`; }
+    let winner, resultStr;
+    if(isReal(home) && !isReal(away)){ winner=home; resultStr=`${home.name} ${randomBetween(1,3)}-0 ${away.name}`; }
+    else if(isReal(away) && !isReal(home)){ winner=away; resultStr=`${home.name} 0-${randomBetween(1,3)} ${away.name}`; }
+    else {
+      const res=simMatch(teamPower(home),teamPower(away));
+      winner = res.home>res.away?home:res.away>res.home?away:(Math.random()<0.5?home:away);
+      resultStr = `${home.name} ${res.home}-${res.away} ${away.name}`;
+      if(res.home===res.away) resultStr += ` (${simPenalties()} pen.)`;
+    }
     nr.push(winner);
     results.push(resultStr);
   }
@@ -5296,7 +5378,7 @@ function simulateWorldCup(){
   }
   if(!wc.playerEliminated){
     const t1=teams[0], t2=teams[1];
-    const final=simMatch(t1.stars,t2.stars);
+    const final=simMatch(teamPower(t1),teamPower(t2));
     const winner = final.home>final.away?t1:final.away>final.home?t2:(Math.random()<0.5?t1:t2);
     wc.finalResult=`${t1.name} ${final.home}-${final.away} ${t2.name}`;
     wc.winner=winner;
