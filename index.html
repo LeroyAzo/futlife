@@ -1235,7 +1235,7 @@ let P = {
   stats:{ritmo:50,tiro:50,pase:50,regate:50,fisico:50,aereo:50,centro:50,vision:50,entrada:50,estirada:50,salto:50,reflejos:50},
   money:5000, salary:0,
   clubName:"Sin club", clubStars:0, clubLeague:"", clubCountry:"",
-  morale:60, energyAvailable:true, injured:false, injuryWeeks:0,
+  morale:60, energyAvailable:true, injured:false, injuryWeeks:0, suspended:false, suspensionWeeks:0,
   trainingsLeft:2,
   relationships:{entrenador:60,compañeros:60,pareja:0,familia:70,amigos:60},
   hasPartner:false, partnerName:"", partnerGender:"mujer", partnerStats:{aspecto:5,cuerpo:5,personalidad:5,inteligencia:5}, married:false, hasKids:false, kidNames:[],
@@ -1543,12 +1543,12 @@ ev("Fiesta salvaje","Tus compañeros te arrastran a una fiesta. Hay de todo. La 
 
 // DRAMA / MORBO
 ev("Apuesta clandestina","Un tipo sospechoso se te acerca en un aparcamiento. Te ofrece dinero por dejarte marcar un gol en propia puerta.","🕵️","drama",[
-  {text:"Aceptas. El dinero es muy tentador",effects:{money:1000000,morale:-20,rel_entrenador:-30,rel_compañeros:-30},chance:0.7, failText:"Te investigan. Escándalo de apuestas. Te suspenden un año.", failEffects:{morale:-40,money:-200000,injured:true,injuryWeeks:52}},
+  {text:"Aceptas. El dinero es muy tentador",effects:{money:1000000,morale:-20,rel_entrenador:-30,rel_compañeros:-30},chance:0.7, failText:"Te investigan. Escándalo de apuestas. Te suspenden un año.", failEffects:{morale:-40,money:-200000,suspended:true,suspensionWeeks:52}},
   {text:"Lo denuncias a las autoridades",effects:{morale:8,rel_entrenador:5,rel_compañeros:5},chance:0.9, failText:"El tipo te amenaza. Vives con miedo unos meses.", failEffects:{morale:-15}}
 ]);
 ev("Doping sorpresa","Un control antidoping aleatorio da positivo. Juras que fue un suplemento contaminado. Nadie te cree.","🧪","drama",[
-  {text:"Contratas al mejor abogado deportivo",effects:{money:-200000,morale:-10},chance:0.5, failText:"Te sancionan 2 años. Tu carrera pende de un hilo.", failEffects:{injured:true,injuryWeeks:104,morale:-40,clubChange:"forcedOut"}},
-  {text:"Admites tu error públicamente y pides perdón",effects:{morale:-15,rel_entrenador:-15},chance:0.4, failText:"Te sancionan igual. Al menos fuiste honesto.", failEffects:{injured:true,injuryWeeks:26,morale:-25}}
+  {text:"Contratas al mejor abogado deportivo",effects:{money:-200000,morale:-10},chance:0.5, failText:"Te sancionan 2 años. Tu carrera pende de un hilo.", failEffects:{suspended:true,suspensionWeeks:104,morale:-40,clubChange:"forcedOut"}},
+  {text:"Admites tu error públicamente y pides perdón",effects:{morale:-15,rel_entrenador:-15},chance:0.4, failText:"Te sancionan igual. Al menos fuiste honesto.", failEffects:{suspended:true,suspensionWeeks:26,morale:-25}}
 ]);
 ev("Pelea en el vestuario","Después de una derrota, el vestuario estalla. Tu compañero te echa la culpa frente a todos. Los ánimos se caldean.","👊","drama",[
   {text:"Le respondes. Esto se resuelve a puñetazos",effects:{morale:-5,rel_compañeros:-15,rel_entrenador:-10},chance:0.4, failText:"Te rompen la nariz. Sales en todos los periódicos.", failEffects:{injured:true,injuryWeeks:2,morale:-20,rel_compañeros:-25}},
@@ -1810,8 +1810,8 @@ ev("Se filtra tu grupo de WhatsApp","Alguien filtra conversaciones privadas tuya
   {text:"Dices que es falso. Un montaje",effects:{morale:-5},chance:0.35, failText:"Sale el metadato que confirma la autenticidad. Ahora eres mentiroso además.", failEffects:{morale:-25, followers:-100000, rel_entrenador:-20}}
 ]);
 ev("Problemas de apuestas","Sale a la luz que apostaste en partidos... pero no en los tuyos. Aun así, la federación investiga. El escándalo es enorme.","🎰","drama",[
-  {text:"Cooperas totalmente con la investigación",effects:{morale:-8, followers:-30000},chance:0.6, failText:"Aun así te sancionan varios partidos. Mancha en tu expediente.", failEffects:{morale:-20, money:-300000, followers:-100000,injured:true,injuryWeeks:8}},
-  {text:"Contratas al mejor abogado y luchas",effects:{money:-500000, morale:-10},chance:0.35, failText:"Pierdes el caso. Sanción ejemplar. Tu carrera tiembla.", failEffects:{injured:true,injuryWeeks:26,morale:-35,money:-1000000,clubChange:"forcedOut"}}
+  {text:"Cooperas totalmente con la investigación",effects:{morale:-8, followers:-30000},chance:0.6, failText:"Aun así te sancionan varios partidos. Mancha en tu expediente.", failEffects:{morale:-20, money:-300000, followers:-100000,suspended:true,suspensionWeeks:8}},
+  {text:"Contratas al mejor abogado y luchas",effects:{money:-500000, morale:-10},chance:0.35, failText:"Pierdes el caso. Sanción ejemplar. Tu carrera tiembla.", failEffects:{suspended:true,suspensionWeeks:26,morale:-35,money:-1000000,clubChange:"forcedOut"}}
 ]);
 ev("Fiesta de campeones","¡Ganaron el título! El vestuario es una locura. Champán, música, bailes. Esto quedará para la historia.","🍾","match",[
   {text:"Celebras hasta que salga el sol. ¡Campeones!",effects:{morale:25, rel_compañeros:15, followers:200000},chance:0.8, failText:"La resaca te dura 3 días. El DT no está contento.", failEffects:{morale:15, rel_entrenador:-5}},
@@ -2248,6 +2248,8 @@ function generateSeasonStats(){
   else if(P.squadRole<=1){P.seasonGoals-=randomBetween(2,4)}
   // Injuries halve output
   if(P.injured){P.seasonGoals=Math.floor(P.seasonGoals*0.3);P.seasonAssists=Math.floor(P.seasonAssists*0.3)}
+  // Suspension: no football at all
+  if(P.suspended){P.seasonMatches=0;P.seasonGoals=0;P.seasonAssists=0}
   P.seasonGoals=Math.max(0,P.seasonGoals);P.seasonAssists=Math.max(0,P.seasonAssists);P.morale=clamp(P.morale,0,100);
 
   // ---------- INJURY RISK ----------
@@ -2477,6 +2479,7 @@ function handleStart(){
   P.morale = 60;
   P.energyAvailable = true;
   P.injured = false;
+  P.suspended = false; P.suspensionWeeks = 0;
   P.relationships = {entrenador:60,compañeros:60,pareja:0,familia:70,amigos:60};
   P.hasPartner = false; P.partnerName = ""; P.partnerGender = "mujer"; P.partnerStats = {aspecto:5,cuerpo:5,personalidad:5,inteligencia:5}; P.married = false; P.hasKids = false; P.kidNames = [];
   P.seasonGoals = 0; P.seasonAssists = 0; P.seasonMatches = 0; P.careerGoals = 0; P.careerAssists = 0;
@@ -2585,8 +2588,8 @@ function getEligibleEvents(){
       if(hasGoal) ok = false;
     }
 
-    // Free agent: only personal off-pitch events
-    if((P.clubName==="Sin club" || P.clubName==="Agente libre") && !["life","relationship","drama","humor","random"].includes(e.type)) ok = false;
+    // Free agent or suspended: only personal off-pitch events
+    if((P.clubName==="Sin club" || P.clubName==="Agente libre" || P.suspended) && !["life","relationship","drama","humor","random"].includes(e.type)) ok = false;
 
     // Relationship state coherence
     if(e.title==="Flechazo en la grada" && P.hasPartner) ok = false;
@@ -2730,6 +2733,17 @@ function advanceYear(){
     }
   }
 
+  // Suspension countdown (doping / betting bans)
+  if(P.suspended){
+    P.suspensionWeeks--;
+    if(P.suspensionWeeks<=0){
+      P.suspended = false;
+      P.timeline.push(`Edad ${P.age}: Cumple su sanción y vuelve al fútbol`);
+    } else {
+      P.timeline.push(`Edad ${P.age}: Sigue sancionado (${P.suspensionWeeks} semanas restantes)`);
+    }
+  }
+
   // Passive income
   P.money += Math.floor(P.salary);
   if(P.investmentValue > 0){
@@ -2746,7 +2760,7 @@ function advanceYear(){
   }
 
   // Club upgrade/downgrade based on overall
-  if(!P.injured && P.clubStars>0 && P.age<35){
+  if(!P.injured && !P.suspended && P.clubStars>0 && P.age<35){
     checkClubOffers();
   }
 
@@ -3110,6 +3124,7 @@ function resolveEvent(event, option){
         }
       }
       if(e.injured){P.injured=true;P.injuryWeeks=e.injuryWeeks||4;effectsHTML+=`🤕 Lesión: ${P.injuryWeeks} semanas<br>`}
+      if(e.suspended){P.suspended=true;P.suspensionWeeks=e.suspensionWeeks||52;effectsHTML+=`⛔ Sanción: ${P.suspensionWeeks} semanas sin fútbol<br>`}
       if(e.freeAgent){
         document.getElementById("event-modal").classList.remove("active");
         P.clubName = "Agente libre"; P.clubStars = 0; P.salary = 0; P.contractYears = 0;
@@ -3202,6 +3217,7 @@ function resolveEvent(event, option){
       if(fe.familia){P.relationships.familia=clamp(P.relationships.familia+fe.familia,0,100)}
       if(fe.amigos){P.relationships.amigos=clamp(P.relationships.amigos+fe.amigos,0,100)}
       if(fe.injured){P.injured=true;P.injuryWeeks=fe.injuryWeeks||4;effectsHTML+=`🤕 Lesión: ${P.injuryWeeks} semanas<br>`}
+      if(fe.suspended){P.suspended=true;P.suspensionWeeks=fe.suspensionWeeks||52;effectsHTML+=`⛔ Sanción: ${P.suspensionWeeks} semanas sin fútbol<br>`}
       if(fe.hasPartner===false){P.hasPartner=false;P.married=false;P.partnerName="";P.partnerStats={aspecto:5,cuerpo:5,personalidad:5,inteligencia:5};P.relationships.pareja=0;effectsHTML+="💔 Relación terminada<br>"}
       if(fe.hasPartner===true && !P.hasPartner){P.hasPartner=true;P.partnerName=fe.partnerName||randomPartner();P.partnerGender="mujer";P.partnerStats={aspecto:randomBetween(5,9),cuerpo:randomBetween(5,9),personalidad:randomBetween(4,9),inteligencia:randomBetween(4,9)};}
       if(fe.hasKids===true && !P.hasKids){P.hasKids=true;P.kidNames=fe.kidNames||["Junior"]}
