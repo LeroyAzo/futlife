@@ -2481,6 +2481,7 @@ function handleStart(){
   P.hasPartner = false; P.partnerName = ""; P.partnerGender = "mujer"; P.partnerStats = {aspecto:5,cuerpo:5,personalidad:5,inteligencia:5}; P.married = false; P.hasKids = false; P.kidNames = [];
   P.seasonGoals = 0; P.seasonAssists = 0; P.seasonMatches = 0; P.careerGoals = 0; P.careerAssists = 0;
   P.careerMatches = 0;
+  P.seasonHadHatTrick = false;
   P.titles = {}; P.achievements = [];
   P.clubHistory = []; P.timeline = [];
   P.ownedItems = []; P.investments = []; P.investmentValue = 0;
@@ -2878,6 +2879,7 @@ function advanceYear(){
   P.datingAttemptsThisYear = 0;
   P.yearActionEffects = {};
   P.seasonMatchRegistry = null;
+  P.seasonHadHatTrick = false;
   updateAdvanceButton();
   updateUI();
 }
@@ -3834,11 +3836,13 @@ function generateMatchRegistry(){
   let remainingGoals = Math.floor(goals * 0.7);
   let remainingAssists = Math.floor(assists * 0.7);
   const registry = [];
+  let hatTrick = false;
   for(let i=0;i<n;i++){
     const opp = shuffled[i % shuffled.length] + (i>=shuffled.length?` ${Math.floor(i/shuffled.length)+1}`:"");
     let maxG = Math.min(3, remainingGoals);
     const g = remainingGoals>0?Math.min(maxG, Math.max(0, Math.round(remainingGoals/(n-i)*0.6 + randomBetween(-1,1)))):0;
     remainingGoals -= g;
+    if(g>=3) hatTrick = true;
     const a = (remainingAssists>0 && Math.random()<0.35 && g<3)?Math.min(2, Math.max(0, Math.round(remainingAssists*0.25))):0;
     remainingAssists -= a;
     const teamGoals = Math.max(g, randomBetween(g, g+3));
@@ -3859,6 +3863,7 @@ function generateMatchRegistry(){
   });
   html += `<div style="margin-top:4px;color:#8b949e;font-size:11px">📊 ${n} de ${matches} partidos</div></div>`;
   P.seasonMatchRegistry = html;
+  P.seasonHadHatTrick = hatTrick;
   return html;
 }
 
@@ -4395,7 +4400,7 @@ function checkAchievements(){
     switch(ach.id){
       case "debut": if(P.careerMatches>0 && P.clubStars>=2) earned=true; break;
       case "first_goal": if(P.careerGoals>0 && P.seasonGoals>0) earned=true; break;
-      case "hattrick": if(P.seasonGoals>=3) earned=true; break;
+      case "hattrick": if(P.seasonHadHatTrick) earned=true; break;
       case "transfer_big": if(P.clubStars>=5) earned=true; break;
       case "worldcup": if(P.worldCupParticipated) earned=true; break;
       case "worldcup_win": if(P.worldCupWinner) earned=true; break;
