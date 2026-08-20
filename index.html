@@ -2485,6 +2485,7 @@ function handleStart(){
   P.seasonGoals = 0; P.seasonAssists = 0; P.seasonMatches = 0; P.careerGoals = 0; P.careerAssists = 0;
   P.careerMatches = 0;
   P.seasonHadHatTrick = false;
+  P._titleDeciderAdded = false;
   P.titles = {}; P.achievements = [];
   P.clubHistory = []; P.timeline = [];
   P.ownedItems = []; P.investments = []; P.investmentValue = 0;
@@ -2600,6 +2601,7 @@ function getEligibleEvents(){
     // Career-stage coherence
     if(e.title==="Último baile" && P.age<30) ok = false;
     if(e.title==="Debut soñado") ok = false; // unified with "Debut profesional"
+    if(e.title==="Tu equipo gana la liga") ok = false; // injected only on last matchday when title decider
     // Continent/competition filtering
     if(e.continent && e.continent!==clubContinent) ok = false;
     if(e.competition && e.competition!==clubComp) ok = false;
@@ -2779,18 +2781,18 @@ function advanceYear(){
     P.nationalTeam = true;
     P.worldCupParticipated = true;
     P.timeline.push(`Edad ${P.age}: Convocado al Mundial con ${P.country}`);
-    // Convocation event so the user sees the call-up
+    initWorldCup();
+    // Pre-simulate the whole World Cup so narrative events follow the real path
+    simulateWorldCup();
+    const wc = P.wcData;
+    // Convocation event
     currentYearEvents.unshift({title:"¡Convocado para el Mundial!",text:`La selección de ${getCountryEmoji(P.country)} ${P.country} te incluye en la lista final para el Mundial. Todo un país sueña contigo.`,emoji:"🌍",type:"worldcup",magnitude:"big",options:[{text:"Afrontar el reto con ilusión",effects:{morale:10,followers:100000},chance:0.9,failText:"",failEffects:{}}]});
+    // Group stage always happens if you reach the World Cup
     const wcEvent = ALL_EVENTS.find(e=>e.type==="worldcup"&&e.title.includes("grupos"));
     if(wcEvent) currentYearEvents.push({...wcEvent});
-    // Semifinal/final chance
-    if(P.overall>=80 && Math.random()<0.5){
-      const deep = ALL_EVENTS.find(e=>e.type==="worldcup"&&e.title.includes("eliminación"));
-      if(deep) currentYearEvents.push({...deep});
-    }
-    if(P.overall>=85 && Math.random()<0.35){
-      const final = ALL_EVENTS.find(e=>e.type==="worldcup"&&e.title.includes("final"));
-      if(final) currentYearEvents.push({...final});
+    // If the player reaches the final, queue the decisive penalty event
+    if(wc && wc.playerReachedFinal){
+      currentYearEvents.push({title:"🏆 ¡La final del Mundial! Tiro Decisivo",text:`Es la final del Mundial. Último minuto. Penalti a favor. Todo depende de ti. ${P.country} entero sueña contigo.`,emoji:"🎯",type:"match",magnitude:"big",options:[{text:"¡Voy a disparar!",effects:{worldCupPenalty:true},chance:0.95, failText:"", failEffects:{morale:-20}}]});
     }
   }
 
@@ -2832,9 +2834,8 @@ function advanceYear(){
   P.leagueData = null; P.cd = null; P.cupData = null; P.wcData = null;
   initSeasonData();
   P.reigningContinentalChampion = false;
-  // World Cup every 4 years at eligible ages
-  if([18,22,26,30,34].includes(P.age)) initWorldCup();
-  else{P.wcData=null;document.getElementById("wc-section").style.display="none";}
+  // World Cup already initialized + simulated inside the WC block above
+  if(![18,22,26,30,34].includes(P.age)){P.wcData=null;document.getElementById("wc-section").style.display="none";}
 
   // Generate realistic base season stats BEFORE events
   generateSeasonStats();
@@ -2900,6 +2901,7 @@ function advanceYear(){
   P.yearActionEffects = {};
   P.seasonMatchRegistry = null;
   P.seasonHadHatTrick = false;
+  P._titleDeciderAdded = false;
   updateAdvanceButton();
   updateUI();
 }
@@ -2944,6 +2946,25 @@ function capCurrentYearEvents(max){
   currentYearEvents = kept;
 }
 
+// Injects "Tu equipo gana la liga" only on the last matchday when 1st and 2nd are
+// tied on points and one of them is the player's team.
+function checkTitleDecider(){
+  if(!P.leagueData || P.leagueData.currentMD < 38) return;
+  if(P._titleDeciderAdded || P.seasonWonLeague) return;
+  const s = P.leagueData.teams.map(t=>{const x=getTeamStats(t.name);return{...t,...x,gd:x.gf-x.gc}}).sort((a,b)=>b.pts-a.pts||b.gd-a.gd||b.gf-a.gf);
+  const p1 = s[0], p2 = s[1];
+  if(!p1 || !p2) return;
+  const isMy = (t)=> t.isPlayer || t.name===P.clubName;
+  if(p1.pts===p2.pts && (isMy(p1)||isMy(p2))){
+    P._titleDeciderAdded = true;
+    currentYearEvents.push({title:"Tu equipo gana la liga",text:"Último partido de liga. Dependen de sí mismos. Una victoria y son campeones. El estadio es una caldera.",emoji:"🏆",type:"match",magnitude:"big",options:[
+      {text:"Juegas el partido de tu vida. Sin presión",effects:{careerMatches:1,morale:20,rel_compañeros:15,rel_entrenador:15,winLeagueTitle:true},chance:0.7, failText:"Empatan. El otro resultado les da el título igual. Campeones sufriendo.", failEffects:{morale:10,winLeagueTitle:true}},
+      {text:"Administras la ventaja. Juego conservador",effects:{careerMatches:1,morale:15,rel_entrenador:10,winLeagueTitle:true},chance:0.85, failText:"", failEffects:{}}
+    ]});
+    capCurrentYearEvents(6);
+  }
+}
+
 function showNextEvent(){
   // Advance competitions per event
   if(P.leagueData && P.leagueData.currentMD<38){
@@ -2952,6 +2973,7 @@ function showNextEvent(){
     const toAdvance = Math.min(7, Math.ceil(remaining / remainingEvents));
     advanceMatchdays(toAdvance);
   }
+  checkTitleDecider();
   advanceContinental();
   advanceCup();
   if(P.wcData) advanceWorldCup();
@@ -3170,6 +3192,29 @@ function resolveEvent(event, option){
           }
           updateUI();
           // Advance to next event
+          currentEventIndex++;
+          if(currentEventIndex >= currentYearEvents.length) showYearSummary();
+          else updateAdvanceButton();
+        });
+        return;
+      }
+      if(e.worldCupPenalty){
+        document.getElementById("event-modal").classList.remove("active");
+        startPenaltyGame(event.text, (result)=>{
+          const wc = P.wcData;
+          if(wc && wc.current && wc.current.teams && wc.current.teams.length>=2){
+            if(result==="goal"){
+              const t = wc.current.teams.find(x=>x.name===P.country)||wc.current.teams[0];
+              wc.winner = t; wc.finalResult = `⚽ ${P.country} gana ${simPenalties()} en penales`; wc.phase="Finalizada";
+              addTitle("Copa del Mundo"); P.worldCupWinner=true; P.seasonWonTitle=true;
+              P.timeline.push(`Edad ${P.age}: ¡Campeón del Mundo con ${P.country}!`);
+            } else {
+              const loser = wc.current.teams.find(x=>x.name!==P.country)||wc.current.teams[1];
+              const pen = simPenalties().split('-').reverse().join('-');
+              wc.winner = loser; wc.finalResult = `❌ ${P.country} pierde ${pen} en penales`; wc.phase="Finalizada";
+            }
+          }
+          updateUI();
           currentEventIndex++;
           if(currentEventIndex >= currentYearEvents.length) showYearSummary();
           else updateAdvanceButton();
@@ -5218,49 +5263,64 @@ function initWorldCup(){
   };
 }
 
-function advanceWorldCup(){
-  const wc = P.wcData; if(!wc||!wc.playerCalled) return;
-  wc.stage++;
-  if(wc.stage===1){wc.phase="Fase de grupos"; wc.groups=Array.from({length:8},(_,i)=>wc.teams.slice(i*4,(i+1)*4));}
-  else if(wc.stage===2){
-    wc.phase="Fase de grupos";
-    const adv=[];
-    wc.groups.forEach(g=>{
-      const s=[...g].sort((a,b)=>(b.stars||2)+randomBetween(-2,2)-(a.stars||2));
-      adv.push(s[0],s[1]);
-      g.advanced=s.slice(0,2).map(t=>t.name);
-    });
-    wc.advancers=adv;
-    if(!wc.playerEliminated && !wc.advancers.find(t=>t.name===P.country)) wc.playerEliminated="Fase de grupos";
+// Simulates the whole World Cup once and records the player's real path.
+function simulateWorldCup(){
+  const wc = P.wcData; if(!wc) return;
+  wc.groups = Array.from({length:8},(_,i)=>wc.teams.slice(i*4,(i+1)*4));
+  const adv=[];
+  wc.groups.forEach(g=>{
+    const s=[...g].sort((a,b)=>(b.stars||2)+randomBetween(-2,2)-(a.stars||2));
+    adv.push(s[0],s[1]);
+    g.advanced=s.slice(0,2).map(t=>t.name);
+  });
+  wc.advancers=adv;
+  wc.playerEliminated=null;
+  wc.playerReachedFinal=false;
+  wc.stages=[];
+  let teams = shuffle(adv);
+  let r = simKnockoutTL(teams,8); // octavos
+  wc.stages.push({phase:"Octavos de final", current:r});
+  if(!wc.playerEliminated && !r.teams.find(t=>t.name===P.country)) wc.playerEliminated="Octavos de final";
+  teams = r.teams;
+  if(!wc.playerEliminated){
+    r = simKnockoutTL(teams,4); // cuartos
+    wc.stages.push({phase:"Cuartos de final", current:r});
+    if(!r.teams.find(t=>t.name===P.country)) wc.playerEliminated="Cuartos de final";
+    teams = r.teams;
   }
-  else if(wc.stage===3 && wc.advancers){
-    wc.phase="Octavos de final";
-    const r=simKnockoutTL(shuffle(wc.advancers),8);
-    wc.current=r;
-    if(!wc.playerEliminated && !r.teams.find(t=>t.name===P.country)) wc.playerEliminated="Octavos de final";
+  if(!wc.playerEliminated){
+    r = simKnockoutTL(teams,2); // semifinal
+    wc.stages.push({phase:"Semifinal", current:r});
+    if(!r.teams.find(t=>t.name===P.country)) wc.playerEliminated="Semifinal";
+    teams = r.teams;
   }
-  else if(wc.stage===4 && wc.current?.teams){
-    wc.phase="Cuartos de final";
-    const r=simKnockoutTL(wc.current.teams,4);
-    wc.current=r;
-    if(!wc.playerEliminated && !r.teams.find(t=>t.name===P.country)) wc.playerEliminated="Cuartos de final";
-  }
-  else if(wc.stage===5 && wc.current?.teams){
-    wc.phase="Semifinal";
-    const r=simKnockoutTL(wc.current.teams,2);
-    wc.current=r;
-    if(!wc.playerEliminated && !r.teams.find(t=>t.name===P.country)) wc.playerEliminated="Semifinal";
-  }
-  else if(wc.stage===6 && wc.current?.teams && wc.current.teams.length>=2){
-    wc.phase="Final";
-    const t1=wc.current.teams[0], t2=wc.current.teams[1];
+  if(!wc.playerEliminated){
+    const t1=teams[0], t2=teams[1];
     const final=simMatch(t1.stars,t2.stars);
     const winner = final.home>final.away?t1:final.away>final.home?t2:(Math.random()<0.5?t1:t2);
     wc.finalResult=`${t1.name} ${final.home}-${final.away} ${t2.name}`;
-    wc.winner=winner; wc.phase="Finalizada";
-    if(wc.winner.name===P.country){
-      const title = "Copa del Mundo";
-      addTitle(title);P.timeline.push(`Edad ${P.age}: ¡Campeón del Mundo con ${P.country}!`);P.seasonWonTitle=true;P.worldCupWinner=true;
+    wc.winner=winner;
+    wc.playerReachedFinal=true;
+    wc.stages.push({phase:"Final", finalists:teams, winner:winner});
+  }
+}
+
+// Advances the World Cup display using the pre-simulated results (no re-simulation).
+function advanceWorldCup(){
+  const wc = P.wcData; if(!wc||!wc.playerCalled) return;
+  wc.stage++;
+  if(wc.stage===1){ wc.phase="Fase de grupos"; return; }
+  if(wc.stage===2){ wc.phase="Fase de grupos"; return; }
+  const st = wc.stages && wc.stages[wc.stage-3];
+  if(st){
+    wc.phase=st.phase;
+    if(st.current) wc.current=st.current;
+    if(wc.stage>=6 && wc.playerReachedFinal && !wc._finalEventPushed){
+      wc._finalEventPushed=true;
+      if(st.finalists && st.finalists.some(t=>t.name===P.country)){
+        currentYearEvents.push({title:"🏆 ¡La final del Mundial! Tiro Decisivo",text:`Es la final del Mundial. Último minuto. Penalti a favor. Todo depende de ti. ${P.country} entero sueña contigo.`,emoji:"🎯",type:"match",magnitude:"big",options:[{text:"¡Voy a disparar!",effects:{worldCupPenalty:true},chance:0.95, failText:"", failEffects:{morale:-20}}]});
+        capCurrentYearEvents(6);
+      }
     }
   }
 }
